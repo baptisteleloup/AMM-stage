@@ -1,0 +1,7 @@
+.venv/
+.venv-full/
+reference/
+__pycache__/
+*.pyc
+contracts/out/
+contracts/cache/
