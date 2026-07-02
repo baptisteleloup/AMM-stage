@@ -4,7 +4,7 @@ pragma solidity >=0.8.19;
 import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
 import { Pricing } from "./Pricing.sol";
 
-/// @title  Market — collecte des ordres des prosumers (Phase 2, étape 1)
+/// @title  Market — collecte des ordres des prosumers
 /// @notice Stocke les netputs individuels d'une session, avant agrégation.
 contract Market {
 
