@@ -182,4 +182,37 @@ contract MarketTest is Test {
         assertGe(c.unwrap(), low.unwrap());
         assertLe(c.unwrap(), high.unwrap());
     }
+
+
+    /// Étape 3 — câblage des totaux, cas surplus (alice +150, bob -100 => s=150, d=100).
+    function test_settlementTotals_surplus() public {
+        vm.prank(alice); market.submitOrder(150e18);
+        vm.prank(bob);   market.submitOrder(-100e18);
+
+        (UD60x18 cT, UD60x18 rT) = market.settlementTotals();
+        assertApproxEqAbs(cT.unwrap(), 1516e18, TOL);
+        assertApproxEqAbs(rT.unwrap(), 1959e18, TOL); // 1516 + 443
+    }
+
+    /// Étape 3 — câblage, cas déficit (alice +100, bob -150 => s=100, d=150).
+    function test_settlementTotals_deficit() public {
+        vm.prank(alice); market.submitOrder(100e18);    
+        vm.prank(bob);   market.submitOrder(-150e18);
+
+        (UD60x18 cT, UD60x18 rT) = market.settlementTotals();
+        assertApproxEqAbs(rT.unwrap(), 1516e18, TOL);
+        assertApproxEqAbs(cT.unwrap(), 2589e18, TOL); // 1516 + 1073
+    }
+
+    /// Étape 3 — câblage, cas équilibré.
+    function test_settlementTotals_balanced() public {
+        vm.prank(alice); market.submitOrder(100e18);
+        vm.prank(bob);   market.submitOrder(-100e18);
+
+        (UD60x18 cT, UD60x18 rT) = market.settlementTotals();
+        assertApproxEqAbs(cT.unwrap(), 1516e18, TOL);
+        assertApproxEqAbs(rT.unwrap(), 1516e18, TOL);
+        assertEq(cT.unwrap(), rT.unwrap());
+    }
+
 }

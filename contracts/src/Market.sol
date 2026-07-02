@@ -71,4 +71,11 @@ contract Market {
         (r, c) = Pricing.prices(s, d, lambdaLow, lambdaHigh);
     }
 
+    /// @notice Agrège puis calcule les totaux du settlement (Ctotal, Rtotal),
+    ///         jambes grid incluses.
+    function settlementTotals() external view returns (UD60x18 cTotal, UD60x18 rTotal) {
+        (UD60x18 s, UD60x18 d) = aggregate();
+        (cTotal, rTotal) = Pricing.totals(s, d, lambdaLow, lambdaHigh);
+    }
+
 }
