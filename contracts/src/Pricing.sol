@@ -40,6 +40,42 @@ library Pricing {
         r = rho.sub( rho.sub(lambdaLow).mul(_oneMinusOrZero(ratioDS)) );
     }
 
+    /// @notice ΔE = min(s, d).
+    function matched(UD60x18 s, UD60x18 d) internal pure returns (UD60x18) {
+        return s.lt(d) ? s : d;
+    }
+
+    /// @notice Valeur pool : M = ρ · ΔE 
+    function poolValue(UD60x18 rho, UD60x18 deltaE) internal pure returns (UD60x18) {
+        return rho.mul(deltaE);
+    }
+
+    /// @notice coût total acheteurs (Ctotal) et revenu total vendeurs (Rtotal), jambes grid incluses.
+    function totals(
+        UD60x18 s,
+        UD60x18 d,
+        UD60x18 lambdaLow,
+        UD60x18 lambdaHigh
+    ) internal pure returns (UD60x18 cTotal, UD60x18 rTotal) {
+        UD60x18 rho = mid(lambdaLow, lambdaHigh);
+        UD60x18 deltaE = matched(s, d);
+        UD60x18 M = poolValue(rho, deltaE); 
+
+        if (d.lt(s)) {
+            // Cas II — surplus : les vendeurs touchent en plus la revente au grid
+            cTotal = M;
+            rTotal = M.add(lambdaLow.mul(s.sub(d)));
+        } else if (s.lt(d)) {
+            // Cas III — déficit : les acheteurs paient en plus l'import au grid
+            rTotal = M;
+            cTotal = M.add(lambdaHigh.mul(d.sub(s)));
+        } else {
+            // Cas I — équilibré : Ctotal = Rtotal = M
+            cTotal = M;
+            rTotal = M;
+        }
+    }
+
     /// @dev a/b, ou 0 si b == 0 
     function _ratioOrZero(UD60x18 a, UD60x18 b)
         private pure returns (UD60x18)
