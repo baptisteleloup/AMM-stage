@@ -4,10 +4,13 @@ pragma solidity >=0.8.19;
 import { Test } from "forge-std/Test.sol";
 import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
 import { Market } from "../src/Market.sol";
-import { Pricing } from "../src/Pricing.sol";
+import { EnergyEuro } from "../src/EnergyEuro.sol";
+import { TokenBackend } from "../src/TokenBackend.sol";
 
 contract MarketTest is Test {
     Market market;
+    EnergyEuro token;
+    TokenBackend backend;
 
     UD60x18 constant LAMBDA_LOW  = UD60x18.wrap(8.86e18);
     UD60x18 constant LAMBDA_HIGH = UD60x18.wrap(21.46e18);
@@ -16,9 +19,25 @@ contract MarketTest is Test {
     address alice = address(0xA11CE);
     address bob   = address(0xB0B);
     address carol = address(0xCA201);
+    address grid  = address(0x6819D);
 
     function setUp() public {
-        market = new Market(LAMBDA_LOW, LAMBDA_HIGH); //Nouveau market à chaque test, les rendants indépendants
+        // 1-3 : déploiement dans l'ordre des dépendances
+        token   = new EnergyEuro();
+        backend = new TokenBackend(token);
+        market  = new Market(LAMBDA_LOW, LAMBDA_HIGH, backend, grid);
+
+        // 4 : financer (le grid + les prosumers qui pourraient être acheteurs)
+        token.mint(grid,  1_000_000e18);
+        token.mint(alice, 1_000_000e18);
+        token.mint(bob,   1_000_000e18);
+        token.mint(carol, 1_000_000e18);
+
+        // 5 : approvals : c'est TokenBackend qui a la fonction de paiement et qui prélève donc on doit lui donner l'autorisation
+        vm.prank(grid);  token.approve(address(backend), type(uint256).max);
+        vm.prank(alice); token.approve(address(backend), type(uint256).max);
+        vm.prank(bob);   token.approve(address(backend), type(uint256).max);
+        vm.prank(carol); token.approve(address(backend), type(uint256).max);
     }
 
     // ---------- ÉTAPE 1 : collecte (5 units) ----------
@@ -172,7 +191,7 @@ contract MarketTest is Test {
         n1 = bound(n1, int256(-1e24), int256(1e24));
         n2 = bound(n2, int256(-1e24), int256(1e24));
 
-        Market m = new Market(low, high);
+        Market m = new Market(low, high, backend, grid);
         vm.prank(alice); m.submitOrder(n1);
         vm.prank(bob);   m.submitOrder(n2);
 
@@ -213,6 +232,61 @@ contract MarketTest is Test {
         assertApproxEqAbs(cT.unwrap(), 1516e18, TOL);
         assertApproxEqAbs(rT.unwrap(), 1516e18, TOL);
         assertEq(cT.unwrap(), rT.unwrap());
+    }
+
+    // ---------- ÉTAPE 4 : settlement (l'argent bouge) ----------
+
+    /// conservation. La somme des soldes ne change pas.
+    function test_settle_conservesMoney() public {
+        vm.prank(alice); market.submitOrder(150e18);  // vendeuse
+        vm.prank(bob);   market.submitOrder(-100e18); // acheteur
+
+        uint256 before_ = token.balanceOf(alice) + token.balanceOf(bob) + token.balanceOf(grid);
+        market.settle();
+        uint256 after_ = token.balanceOf(alice) + token.balanceOf(bob) + token.balanceOf(grid);
+
+        assertEq(before_, after_); 
+    }
+
+    /// Le vendeur touche R_total (surplus, Alice seule vendeuse).
+    function test_settle_sellerPaid() public {
+        vm.prank(alice); market.submitOrder(150e18);
+        vm.prank(bob);   market.submitOrder(-100e18);
+
+        uint256 before_ = token.balanceOf(alice);
+        market.settle();
+        // R_total surplus = 1516 + 443 = 1959 ; Alice seule vendeuse => tout
+        assertApproxEqAbs(token.balanceOf(alice) - before_, 1959e18, TOL);
+    }
+
+    /// L'acheteur paie C_total (surplus, Bob seul acheteur).
+    function test_settle_buyerCharged() public {
+        vm.prank(alice); market.submitOrder(150e18);
+        vm.prank(bob);   market.submitOrder(-100e18);
+
+        uint256 before_ = token.balanceOf(bob);
+        market.settle();
+        // C_total surplus = 1516 ; Bob seul acheteur => tout
+        assertApproxEqAbs(before_ - token.balanceOf(bob), 1516e18, TOL);
+    }
+
+    /// Fuzz conservation : sur des ordres quelconques, l'argent est conservé.
+    function testFuzz_settle_conserves(int256 n1, int256 n2, int256 n3) public {
+        n1 = bound(n1, int256(-1000e18), int256(1000e18));
+        n2 = bound(n2, int256(-1000e18), int256(1000e18));
+        n3 = bound(n3, int256(-1000e18), int256(1000e18));
+
+        vm.prank(alice); market.submitOrder(n1);
+        vm.prank(bob);   market.submitOrder(n2);
+        vm.prank(carol); market.submitOrder(n3);
+
+        uint256 before_ = token.balanceOf(alice) + token.balanceOf(bob)
+                        + token.balanceOf(carol) + token.balanceOf(grid);
+        market.settle();
+        uint256 after_ = token.balanceOf(alice) + token.balanceOf(bob)
+                       + token.balanceOf(carol) + token.balanceOf(grid);
+
+        assertEq(before_, after_); // conservation, quels que soient les ordres
     }
 
 }

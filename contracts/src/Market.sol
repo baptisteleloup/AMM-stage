@@ -3,6 +3,7 @@ pragma solidity >=0.8.19;
 
 import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
 import { Pricing } from "./Pricing.sol";
+import { IPaymentBackend } from "./IPaymentBackend.sol";
 
 /// @title  Market — collecte des ordres des prosumers
 /// @notice Stocke les netputs individuels d'une session, avant agrégation.
@@ -22,12 +23,26 @@ contract Market {
     UD60x18 public lambdaHigh;  // retail        
 
     event OrderSubmitted(address indexed prosumer, int256 netput);
+    event Settled(UD60x18 cTotal, UD60x18 rTotal);
 
-    constructor(UD60x18 _lambdaLow, UD60x18 _lambdaHigh) {
-        require(_lambdaLow.unwrap() <= _lambdaHigh.unwrap(), "lambdaLow > lambdaHigh");
-        lambdaLow = _lambdaLow;
-        lambdaHigh = _lambdaHigh;
-    }
+
+    IPaymentBackend public backend;
+    address public grid;
+
+    constructor(
+    UD60x18 _lambdaLow,
+    UD60x18 _lambdaHigh,
+    IPaymentBackend _backend,   // ◄── on reçoit le backend
+    address _grid               // ◄── et le grid
+) {
+    require(_lambdaLow.unwrap() <= _lambdaHigh.unwrap(), "lambdaLow > lambdaHigh");
+    lambdaLow = _lambdaLow;
+    lambdaHigh = _lambdaHigh;
+    backend = _backend;        
+    grid = _grid;               
+}
+
+
 
 
     /// @notice Soumettre ou mettre à jour son netput pour la session.
@@ -63,6 +78,36 @@ contract Market {
         }
         s = ud(totalS);
         d = ud(totalD);
+    }
+
+    function settle() external {
+        (UD60x18 s, UD60x18 d) = aggregate();
+        (UD60x18 cTotalUD, UD60x18 rTotalUD) = Pricing.totals(s, d, lambdaLow, lambdaHigh);
+
+        uint256 cTotal = cTotalUD.unwrap();
+        uint256 rTotal = rTotalUD.unwrap();
+        uint256 sAgg   = s.unwrap();
+        uint256 dAgg   = d.unwrap();
+
+        uint256 distributedR;
+        uint256 collectedC;
+
+        for (uint256 i = 0; i < prosumers.length; i++) {
+            address p = prosumers[i];
+            (uint256 sn, uint256 dn) = decompose(orderOf[p].netput);
+
+            if (sn > 0) {
+                uint256 share = rTotal * sn / sAgg;
+                backend.pay(grid, p, share);   // le grid verse aux vendeurs
+                distributedR += share;
+            } else if (dn > 0) {
+                uint256 share = cTotal * dn / dAgg;
+                backend.pay(p, grid, share);   // les acheteurs versent au grid
+                collectedC += share;
+            }
+        }
+
+        emit Settled(cTotalUD, rTotalUD);
     }
 
     /// @notice Agrège puis calcule les prix de clearing (r, c) via le pricer.
