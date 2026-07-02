@@ -191,6 +191,51 @@ contract PricingTest is Test {
         assertEq(c.unwrap(), 15.16e18);
     }
 
+
+    /// Totaux — cas équilibré : Ctotal = Rtotal = ρ·s (pas de jambe grid).
+    function test_totals_balanced() public {
+        (UD60x18 cT, UD60x18 rT) = Pricing.totals(ud(100e18), ud(100e18), LAMBDA_LOW, LAMBDA_HIGH);
+        // ρ = 15.16, ΔE = 100 => M = 1516
+        assertApproxEqAbs(cT.unwrap(), 1516e18, TOL);
+        assertApproxEqAbs(rT.unwrap(), 1516e18, TOL);
+        assertEq(cT.unwrap(), rT.unwrap()); // parfaitement équilibré
+    }
+
+    /// Totaux — surplus : Rtotal > Ctotal, l'écart = λ_low·(s−d).
+    function test_totals_surplus() public {
+        (UD60x18 cT, UD60x18 rT) = Pricing.totals(ud(150e18), ud(100e18), LAMBDA_LOW, LAMBDA_HIGH);
+        // ΔE = 100, M = 15.16·100 = 1516 ; jambe grid = 8.86·50 = 443
+        assertApproxEqAbs(cT.unwrap(), 1516e18, TOL);          // acheteurs paient M
+        assertApproxEqAbs(rT.unwrap(), 1516e18 + 443e18, TOL); // vendeurs : M + revente surplus
+    }
+
+    /// Totaux — déficit : Ctotal > Rtotal, l'écart = λ_high·(d−s).
+    function test_totals_deficit() public {
+        (UD60x18 cT, UD60x18 rT) = Pricing.totals(ud(100e18), ud(150e18), LAMBDA_LOW, LAMBDA_HIGH);
+        // ΔE = 100, M = 1516 ; jambe grid = 21.46·50 = 1073
+        assertApproxEqAbs(rT.unwrap(), 1516e18, TOL);           // vendeurs touchent M
+        assertApproxEqAbs(cT.unwrap(), 1516e18 + 1073e18, TOL); // acheteurs : M + import déficit
+    }
+
+    /// INVARIANT budget-balance complet : Rtotal − Ctotal = jambe grid, pour tout (s,d).
+    function testFuzz_budgetBalance(uint256 sRaw, uint256 dRaw) public {
+        UD60x18 s = ud(bound(sRaw, 1e18, 1_000_000e18));
+        UD60x18 d = ud(bound(dRaw, 1e18, 1_000_000e18));
+
+        (UD60x18 cT, UD60x18 rT) = Pricing.totals(s, d, LAMBDA_LOW, LAMBDA_HIGH);
+
+        // jambe grid attendue : +λ_low·(s−d) si surplus, −λ_high·(d−s) si déficit
+        if (s.unwrap() > d.unwrap()) {
+            uint256 gridLeg = LAMBDA_LOW.unwrap() * (s.unwrap() - d.unwrap()) / 1e18;
+            assertApproxEqAbs(rT.unwrap() - cT.unwrap(), gridLeg, TOL);
+        } else if (d.unwrap() > s.unwrap()) {
+            uint256 gridLeg = LAMBDA_HIGH.unwrap() * (d.unwrap() - s.unwrap()) / 1e18;
+            assertApproxEqAbs(cT.unwrap() - rT.unwrap(), gridLeg, TOL);
+        } else {
+            assertEq(cT.unwrap(), rT.unwrap()); // équilibre : pas d'écart
+        }
+    }
+
 }
 
 
