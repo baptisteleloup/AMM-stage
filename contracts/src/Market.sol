@@ -2,85 +2,96 @@
 pragma solidity >=0.8.19;
 
 import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Pricing } from "./Pricing.sol";
 import { IPaymentBackend } from "./IPaymentBackend.sol";
 
-/// @title  Market — collecte des ordres des prosumers
-/// @notice Stocke les netputs individuels d'une session, avant agrégation.
+/// @title Market — collecte, agrégation et règlement des ordres (modèle B)
+/// @notice Le metering soumet les ordres constatés puis déclenche le règlement.
+///         Les acheteurs déposent un collatéral au pire cas, remboursé au settle pour gestion de la solvabilité. 
+
 contract Market {
 
-    /// @dev Ordre soumis par un prosumer. netput signé, échelle 1e18 :
-    ///      > 0 = offre (kWh), < 0 = demande (kWh).
     struct Order {
-        int256 netput;
-        bool exists; // gère l'unicité dans le tableau `prosumers`
+        int256 netput;   // > 0 offre, < 0 demande (kWh, échelle 1e18)
+        bool exists;
     }
 
-    mapping(address => Order) public orderOf;
+    mapping(address => Order)   public orderOf;
+    mapping(address => uint256) public collateralOf;   // EEUR bloqués par acheteur
     address[] public prosumers;
 
-    UD60x18 public lambdaLow;   // feed-in
-    UD60x18 public lambdaHigh;  // retail        
+    UD60x18 public lambdaLow;    // feed-in (grid achète)
+    UD60x18 public lambdaHigh;   // retail  (grid vend)
+
+    IPaymentBackend public immutable backend;
+    address public immutable grid;         // contrepartie, détient la liquidité
+    address public immutable operator;     // le metering : seul autorisé à soumettre/settle
 
     event OrderSubmitted(address indexed prosumer, int256 netput);
+    event CollateralLocked(address indexed prosumer, uint256 amount);
     event Settled(UD60x18 cTotal, UD60x18 rTotal);
 
-
-    IPaymentBackend public backend;
-    address public grid;
+    modifier onlyOperator() {
+        require(msg.sender == operator, "not operator");
+        _;
+    }
 
     constructor(
-    UD60x18 _lambdaLow,
-    UD60x18 _lambdaHigh,
-    IPaymentBackend _backend,   // ◄── on reçoit le backend
-    address _grid               // ◄── et le grid
-) {
-    require(_lambdaLow.unwrap() <= _lambdaHigh.unwrap(), "lambdaLow > lambdaHigh");
-    lambdaLow = _lambdaLow;
-    lambdaHigh = _lambdaHigh;
-    backend = _backend;        
-    grid = _grid;               
-}
+        UD60x18 _lambdaLow,
+        UD60x18 _lambdaHigh,
+        IPaymentBackend _backend,
+        address _grid,
+        address _operator
+    ) {
+        require(_lambdaLow.unwrap() <= _lambdaHigh.unwrap(), "lambdaLow > lambdaHigh");
+        lambdaLow  = _lambdaLow;
+        lambdaHigh = _lambdaHigh;
+        backend    = _backend;
+        grid       = _grid;
+        operator   = _operator;
 
+        // le Market détient et redistribue du collatéral -> il s'auto-approuve
+        IERC20(_backend.tokenAddress()).approve(address(_backend), type(uint256).max);
+    }
 
+    /// Met à jour les prix grid avant une session (ré-ancrage).
+    function setGridPrices(UD60x18 _low, UD60x18 _high) external onlyOperator {
+        require(_low.unwrap() <= _high.unwrap(), "low > high");
+        lambdaLow = _low;
+        lambdaHigh = _high;
+    }
 
-
-    /// @notice Soumettre ou mettre à jour son netput pour la session.
-    function submitOrder(int256 netput) external {
-        if (!orderOf[msg.sender].exists) {
-            prosumers.push(msg.sender); // premier ordre → on l'ajoute à la liste
+    /// Soumet l'ordre constaté d'un prosumer. Bloque son collatéral s'il achète.
+    /// Le prosumer doit avoir approuvé le backend au préalable.
+    function submitOrder(address prosumer, int256 netput) external onlyOperator {
+        if (!orderOf[prosumer].exists) {
+            prosumers.push(prosumer);
         }
-        orderOf[msg.sender] = Order({ netput: netput, exists: true });
-        emit OrderSubmitted(msg.sender, netput);
-    }
 
-    /// @notice Décompose un netput en (offre, demande) non-négatifs.
-    function decompose(int256 netput) public pure returns (uint256 supply, uint256 demand) {
-        if (netput > 0)      supply = uint256(netput);
-        else if (netput < 0) demand = uint256(-netput);
-        // netput == 0 : ni offre ni demande, les deux restent à 0
-    }
-
-    /// @notice Nombre de prosumers ayant soumis (pratique pour les tests).
-    function prosumerCount() external view returns (uint256) {
-        return prosumers.length;
-    }
-
-     /// @notice Agrège tous les ordres en (s, d).
-    function aggregate() public view returns (UD60x18 s, UD60x18 d) {
-        uint256 totalS;
-        uint256 totalD;
-        for (uint256 i = 0; i < prosumers.length; i++) {
-            int256 netput = orderOf[prosumers[i]].netput;
-            (uint256 sn, uint256 dn) = decompose(netput);
-            totalS += sn;
-            totalD += dn;
+        // resoumission : on rend l'ancien collatéral avant de rebloquer
+        uint256 old = collateralOf[prosumer];
+        if (old > 0) {
+            collateralOf[prosumer] = 0;
+            backend.pay(address(this), prosumer, old);
         }
-        s = ud(totalS);
-        d = ud(totalD);
+
+        orderOf[prosumer] = Order({ netput: netput, exists: true });
+
+        // collatéral acheteur = demande * prix retail (coût maximum possible)
+        (, uint256 dn) = decompose(netput);
+        if (dn > 0) {
+            uint256 required = ud(dn).mul(lambdaHigh).unwrap();
+            backend.pay(prosumer, address(this), required);
+            collateralOf[prosumer] = required;
+            emit CollateralLocked(prosumer, required);
+        }
+
+        emit OrderSubmitted(prosumer, netput);
     }
 
-    function settle() external {
+    /// Règle la session : distribue coûts/revenus, rembourse les collatéraux, reset.
+    function settle() external onlyOperator {
         (UD60x18 s, UD60x18 d) = aggregate();
         (UD60x18 cTotalUD, UD60x18 rTotalUD) = Pricing.totals(s, d, lambdaLow, lambdaHigh);
 
@@ -89,38 +100,72 @@ contract Market {
         uint256 sAgg   = s.unwrap();
         uint256 dAgg   = d.unwrap();
 
-        uint256 distributedR;
-        uint256 collectedC;
-
         for (uint256 i = 0; i < prosumers.length; i++) {
             address p = prosumers[i];
             (uint256 sn, uint256 dn) = decompose(orderOf[p].netput);
 
             if (sn > 0) {
+                // vendeur : le grid le paie
                 uint256 share = rTotal * sn / sAgg;
-                backend.pay(grid, p, share);   // le grid verse aux vendeurs
-                distributedR += share;
+                backend.pay(grid, p, share);
             } else if (dn > 0) {
-                uint256 share = cTotal * dn / dAgg;
-                backend.pay(p, grid, share);   // les acheteurs versent au grid
-                collectedC += share;
+                // acheteur : son collatéral paie le grid, on lui rend l'écart
+                uint256 cost   = cTotal * dn / dAgg;
+                uint256 locked = collateralOf[p];
+                if (cost > locked) cost = locked;   // sécurité arrondi
+                collateralOf[p] = 0;
+                backend.pay(address(this), grid, cost);
+                if (locked > cost) {
+                    backend.pay(address(this), p, locked - cost);
+                }
             }
         }
 
         emit Settled(cTotalUD, rTotalUD);
+        _resetSession();
     }
 
-    /// @notice Agrège puis calcule les prix de clearing (r, c) via le pricer.
+    /// Vide les ordres pour la session suivante.
+    function _resetSession() internal {
+        for (uint256 i = 0; i < prosumers.length; i++) {
+            delete orderOf[prosumers[i]];
+            delete collateralOf[prosumers[i]];
+        }
+        delete prosumers;
+    }
+
+    /// Agrège offre et demande sur tous les ordres.
+    function aggregate() public view returns (UD60x18 s, UD60x18 d) {
+        uint256 totalS;
+        uint256 totalD;
+        for (uint256 i = 0; i < prosumers.length; i++) {
+            (uint256 sn, uint256 dn) = decompose(orderOf[prosumers[i]].netput);
+            totalS += sn;
+            totalD += dn;
+        }
+        s = ud(totalS);
+        d = ud(totalD);
+    }
+
+    /// Prix de clearing (r, c) pour la session courante.
     function clearingPrices() external view returns (UD60x18 r, UD60x18 c) {
         (UD60x18 s, UD60x18 d) = aggregate();
         (r, c) = Pricing.prices(s, d, lambdaLow, lambdaHigh);
     }
 
-    /// @notice Agrège puis calcule les totaux du settlement (Ctotal, Rtotal),
-    ///         jambes grid incluses.
+    /// Totaux du settlement (Ctotal, Rtotal), jambes grid incluses.
     function settlementTotals() external view returns (UD60x18 cTotal, UD60x18 rTotal) {
         (UD60x18 s, UD60x18 d) = aggregate();
         (cTotal, rTotal) = Pricing.totals(s, d, lambdaLow, lambdaHigh);
     }
 
+    /// Décompose un netput signé en (offre, demande) non-négatifs.
+    function decompose(int256 netput) public pure returns (uint256 supply, uint256 demand) {
+        if (netput > 0)      supply = uint256(netput);
+        else if (netput < 0) demand = uint256(-netput);
+    }
+
+    function prosumerCount() external view returns (uint256) {
+        return prosumers.length;
+    }
 }
