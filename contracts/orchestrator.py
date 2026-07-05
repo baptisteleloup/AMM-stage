@@ -32,18 +32,6 @@ def lire_netputs() -> dict:
     Renvoie les netputs de la tranche courante : { "id-prosumer": netput_1e18, ... }
     (echelle 1e18, > 0 vendeur, < 0 acheteur). Les ids correspondent a prosumers.json.
 
-    ================= QUESTION MICHELE =================
-    D'ou viennent ces netputs en production ? C'est le pont metering -> marche.
-    Le modele B suppose que le metering CONSTATE la position nette de chaque prosumer
-    sur la tranche ecoulee et la fournit ici. Source concrete a decider :
-      - lecture directe de compteurs communicants,
-      - oracle poussant les mesures on-chain,
-      - fichier / API alimente par un systeme de metering tiers.
-    C'est la frontiere DePIN ouverte du papier (et le point de confiance residuel).
-    ===================================================
-
-    Laisse vide volontairement. Brancher ici la source reelle.
-    return {}
     """
     # --- Pour TESTER sur Anvil, decommenter
     ids = list(prosumers.keys())
