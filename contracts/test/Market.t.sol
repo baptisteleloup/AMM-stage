@@ -16,7 +16,7 @@ contract MarketTest is Test {
     UD60x18 constant LAMBDA_HIGH = UD60x18.wrap(21.46e18);
     uint256 constant TOL = 1e12;
 
-    address operator = address(0x09E5A70);  // le metering
+    address operator = address(0x09E5A70);  
     address grid     = address(0x6819D);
     address alice    = address(0xA11CE);
     address bob      = address(0xB0B);
@@ -27,26 +27,21 @@ contract MarketTest is Test {
         backend = new TokenBackend(token);
         market  = new Market(LAMBDA_LOW, LAMBDA_HIGH, backend, grid, operator);
 
-        // financer tout le monde
         token.mint(grid,  1_000_000e18);
         token.mint(alice, 1_000_000e18);
         token.mint(bob,   1_000_000e18);
         token.mint(carol, 1_000_000e18);
 
-        // approvals : c'est le backend qui prélève (collatéral + paiements)
         vm.prank(grid);  token.approve(address(backend), type(uint256).max);
         vm.prank(alice); token.approve(address(backend), type(uint256).max);
         vm.prank(bob);   token.approve(address(backend), type(uint256).max);
         vm.prank(carol); token.approve(address(backend), type(uint256).max);
     }
 
-    // helper : soumettre en tant qu'operator
     function _submit(address who, int256 netput) internal {
         vm.prank(operator);
         market.submitOrder(who, netput);
     }
-
-    // ---------- COLLECTE ----------
 
     function test_submit_storesNetput() public {
         _submit(alice, 150e18);
@@ -57,14 +52,14 @@ contract MarketTest is Test {
     }
 
     function test_onlyOperatorCanSubmit() public {
-        vm.prank(alice);            // alice n'est pas l'operator
+        vm.prank(alice);            
         vm.expectRevert();
         market.submitOrder(alice, 150e18);
     }
 
     function test_resubmit_noDuplicate() public {
         _submit(alice, 150e18);
-        _submit(alice, 80e18);      // reste vendeuse, pas de collatéral en jeu
+        _submit(alice, 80e18);     
         (int256 n,) = market.orderOf(alice);
         assertEq(n, 80e18);
         assertEq(market.prosumerCount(), 1);
@@ -85,8 +80,6 @@ contract MarketTest is Test {
         (uint256 s3, uint256 d3) = market.decompose(0);
         assertEq(s3, 0); assertEq(d3, 0);
     }
-
-    // ---------- AGRÉGATION ----------
 
     function test_aggregate_mixed() public {
         _submit(alice, 150e18);
@@ -112,8 +105,6 @@ contract MarketTest is Test {
         assertApproxEqAbs(rT.unwrap(), 1959e18, TOL);
     }
 
-    // ---------- COLLATÉRAL ----------
-
     function test_collateral_buyerLocked() public {
         uint256 before_ = token.balanceOf(bob);
         _submit(bob, -100e18);
@@ -131,23 +122,20 @@ contract MarketTest is Test {
     }
 
     function test_collateral_resubmitBuyerToBuyer() public {
-        _submit(bob, -100e18);              // bloque 2146
-        _submit(bob, -50e18);               // rend 2146, bloque 50*21.46 = 1073
+        _submit(bob, -100e18);              
+        _submit(bob, -50e18);               
         assertEq(market.collateralOf(bob), 1073e18);
         assertEq(token.balanceOf(address(market)), 1073e18);
     }
 
     function test_collateral_resubmitBuyerToSeller() public {
         uint256 before_ = token.balanceOf(bob);
-        _submit(bob, -100e18);              // bloque 2146
-        _submit(bob, 80e18);               // devient vendeur : rend tout, ne bloque rien
+        _submit(bob, -100e18);              
+        _submit(bob, 80e18);               
         assertEq(market.collateralOf(bob), 0);
-        assertEq(token.balanceOf(bob), before_); // remboursé intégralement
+        assertEq(token.balanceOf(bob), before_); 
     }
 
-    // ---------- SETTLEMENT ----------
-
-    /// LE test roi : conservation (Market inclus).
     function test_settle_conservesMoney() public {
         uint256 before_ = _totalBalances();
         _submit(alice, 150e18);
@@ -161,17 +149,14 @@ contract MarketTest is Test {
         _submit(bob, -100e18);
         uint256 before_ = token.balanceOf(alice);
         vm.prank(operator); market.settle();
-        // Alice seule vendeuse => R_total = 1959
         assertApproxEqAbs(token.balanceOf(alice) - before_, 1959e18, TOL);
     }
 
     function test_settle_buyerNetCostAndRefund() public {
         _submit(alice, 150e18);
         uint256 before_ = token.balanceOf(bob);
-        _submit(bob, -100e18);              // bloque 2146
+        _submit(bob, -100e18);              
         vm.prank(operator); market.settle();
-        // coût réel = C_total = 1516 ; rendu = 2146 - 1516 = 630
-        // effet net sur bob = -1516
         assertApproxEqAbs(before_ - token.balanceOf(bob), 1516e18, TOL);
         assertEq(market.collateralOf(bob), 0);
     }
@@ -183,7 +168,7 @@ contract MarketTest is Test {
         assertEq(market.prosumerCount(), 0);
         (, bool ex) = market.orderOf(alice);
         assertFalse(ex);
-        assertEq(token.balanceOf(address(market)), 0); // plus de collatéral coincé
+        assertEq(token.balanceOf(address(market)), 0); 
     }
 
     function test_onlyOperatorCanSettle() public {
@@ -200,9 +185,6 @@ contract MarketTest is Test {
         market.setGridPrices(LAMBDA_LOW, LAMBDA_HIGH);
     }
 
-    // ---------- FUZZ ----------
-
-    /// Conservation quels que soient les ordres.
     function testFuzz_settle_conserves(int256 n1, int256 n2, int256 n3) public {
         n1 = bound(n1, int256(-1000e18), int256(1000e18));
         n2 = bound(n2, int256(-1000e18), int256(1000e18));
@@ -216,7 +198,6 @@ contract MarketTest is Test {
         assertEq(_totalBalances(), before_);
     }
 
-    /// Prix de clearing toujours dans [lambdaLow, lambdaHigh].
     function testFuzz_clearingPrices_respectIR(int256 n1, int256 n2) public {
         n1 = bound(n1, int256(-1000e18), int256(1000e18));
         n2 = bound(n2, int256(-1000e18), int256(1000e18));
@@ -228,7 +209,6 @@ contract MarketTest is Test {
         assertLe(r.unwrap(), c.unwrap()); // no-arbitrage
     }
 
-    // ---------- helper ----------
 
     function _totalBalances() internal view returns (uint256) {
         return token.balanceOf(alice) + token.balanceOf(bob)

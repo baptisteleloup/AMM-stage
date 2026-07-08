@@ -3,25 +3,24 @@ pragma solidity >=0.8.19;
 
 import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
 
-/// @title  Pricing — courbe linéaire (MMR) de l'AMM énergie
-/// @notice Prix marginaux acheteur (c) et vendeur (r), Eq. 18 de
-/// @dev    Librairie pure, sans état. Tout en UD60x18 (18 décimales).
-///         Unité : garder la même que l'oracle (c€/kWh).
+/// @title  Pricing — linear curve
+/// @dev    Pure library, without status. Entirely in UD60x18 (18 decimal places).
+///         Unit: Use the same unit as the oracle (c€/kWh).
 
 
 library Pricing {
 
-    /// @notice Prix interne ρ = (λ_low + λ_high) / 2 
+    /// @notice Intern price ρ = (λ_low + λ_high) / 2 
     function mid(UD60x18 lambdaLow, UD60x18 lambdaHigh) internal pure returns (UD60x18)
     {
         return lambdaLow.add(lambdaHigh).div(ud(2e18));
     }
 
-    /// @notice Prix marginaux (r, c) selon les agrégats offre/demande.
-    /// @param  s          offre agrégée (kWh)
-    /// @param  d          demande agrégée (kWh)
-    /// @param  lambdaLow  feed-in tarif λ (le grid achète)
-    /// @param  lambdaHigh retail price  λ̄ (le grid vend)
+    /// @notice Marginal prices (r, c) based on supply and demand aggregates.
+    /// @param  s          aggregate supply (kWh)
+    /// @param  d          aggregate demand (kWh)
+    /// @param  lambdaLow  feed-in tarif 
+    /// @param  lambdaHigh retail price 
     function prices(
         UD60x18 s,
         UD60x18 d,
@@ -45,12 +44,12 @@ library Pricing {
         return s.lt(d) ? s : d;
     }
 
-    /// @notice Valeur pool : M = ρ · ΔE 
+    /// @notice pool value : M = ρ · ΔE 
     function poolValue(UD60x18 rho, UD60x18 deltaE) internal pure returns (UD60x18) {
         return rho.mul(deltaE);
     }
 
-    /// @notice coût total acheteurs (Ctotal) et revenu total vendeurs (Rtotal), jambes grid incluses.
+    /// @notice total buyer cost (Ctotal) and total seller revenue (Rtotal)
     function totals(
         UD60x18 s,
         UD60x18 d,
@@ -62,21 +61,21 @@ library Pricing {
         UD60x18 M = poolValue(rho, deltaE); 
 
         if (d.lt(s)) {
-            // Cas II — surplus : les vendeurs touchent en plus la revente au grid
+            // Case II surplus
             cTotal = M;
             rTotal = M.add(lambdaLow.mul(s.sub(d)));
         } else if (s.lt(d)) {
-            // Cas III — déficit : les acheteurs paient en plus l'import au grid
+            // Case III deficit 
             rTotal = M;
             cTotal = M.add(lambdaHigh.mul(d.sub(s)));
         } else {
-            // Cas I — équilibré : Ctotal = Rtotal = M
+            // Case I balanced
             cTotal = M;
             rTotal = M;
         }
     }
 
-    /// @dev a/b, ou 0 si b == 0 
+    /// @dev a/b, or 0 si b == 0 
     function _ratioOrZero(UD60x18 a, UD60x18 b)
         private pure returns (UD60x18)
     {

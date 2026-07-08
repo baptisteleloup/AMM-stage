@@ -4,9 +4,8 @@ pragma solidity >=0.8.19;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title  EnergyEuro — monnaie du réseau (euro tokenisé), mintable par l'owner.
-/// @notice ERC-20 standard représentant l'euro sur le réseau AMM énergie.
-///         Pour le pilote : l'owner (déployeur) émet les tokens et les distribue.
+/// @title  EnergyEuro — Network currency
+/// @notice Pilot mock : the owner (contract deployer) mints the EEUR
 contract EnergyEuro is ERC20, Ownable {
 
     constructor() ERC20("Energy Euro", "EEUR") Ownable(msg.sender) {}

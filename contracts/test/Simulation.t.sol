@@ -21,8 +21,8 @@ contract SimulationTest is Test {
     address grid     = address(0x6819D);
 
     address[8] prosumers = [
-        address(0x51), address(0x52), address(0x53), address(0x54), // 4 premiers : offreurs
-        address(0xB1), address(0xB2), address(0xB3), address(0xB4)  // 4 suivants : demandeurs
+        address(0x51), address(0x52), address(0x53), address(0x54), // sellers
+        address(0xB1), address(0xB2), address(0xB3), address(0xB4)  // buyers
     ];
 
     function setUp() public {
@@ -40,7 +40,6 @@ contract SimulationTest is Test {
     }
 
 
-    //  joue une session complète et renvoie les prix + soldes
      function _runSession(int256[8] memory netputs)
         internal
         returns (UD60x18 r, UD60x18 c, uint256[8] memory startBal, uint256 totalBefore)
@@ -59,7 +58,6 @@ contract SimulationTest is Test {
         market.settle();
     }
 
-    //  Vérifications communes à toute session
     function _checkInvariants(uint256 totalBefore) internal view {
         assertEq(_totalTracked(), totalBefore, "conservation violee");
         assertEq(token.balanceOf(address(market)), 0, "collateral coince");
@@ -69,7 +67,6 @@ contract SimulationTest is Test {
         }
     }
 
-    //  RÉGIME 1 — SURPLUS  (offre 500 > demande 350)
     function test_surplus() public {
         int256[8] memory netputs = [
             int256(200e18), int256(150e18), int256(100e18), int256(50e18),
@@ -77,17 +74,15 @@ contract SimulationTest is Test {
         ];
         (UD60x18 r, UD60x18 c,, uint256 totalBefore) = _runSession(netputs);
 
-        console.log("=== SURPLUS (offre 500 > demande 350) ===");
+        console.log("=== SURPLUS (supply 500 > demand 350) ===");
         _logPrices(r, c);
         _checkInvariants(totalBefore);
 
-        // Théorie surplus : c = rho (acheteur non penalise), r < rho (offre abondante)
         assertApproxEqAbs(c.unwrap(), RHO.unwrap(), TOL);
         assertLt(r.unwrap(), RHO.unwrap());
         assertLe(r.unwrap(), c.unwrap()); // no-arbitrage
     }
 
-    //  RÉGIME 2 — DÉFICIT  (offre 350 < demande 500)
     function test_deficit() public {
         int256[8] memory netputs = [
             int256(120e18), int256(100e18), int256(80e18), int256(50e18),
@@ -95,17 +90,15 @@ contract SimulationTest is Test {
         ];
         (UD60x18 r, UD60x18 c,, uint256 totalBefore) = _runSession(netputs);
 
-        console.log("=== DEFICIT (offre 350 < demande 500) ===");
+        console.log("=== DEFICIT (supply 350 < demand 500) ===");
         _logPrices(r, c);
         _checkInvariants(totalBefore);
 
-        // Théorie deficit : r = rho (vendeur non avantage), c > rho (demande excede)
         assertApproxEqAbs(r.unwrap(), RHO.unwrap(), TOL);
         assertGt(c.unwrap(), RHO.unwrap());
         assertLe(r.unwrap(), c.unwrap());
     }
 
-    //  RÉGIME 3 — ÉQUILIBRÉ  (offre 400 = demande 400)
     function test_balanced() public {
         int256[8] memory netputs = [
             int256(150e18), int256(120e18), int256(80e18), int256(50e18),
@@ -113,17 +106,15 @@ contract SimulationTest is Test {
         ];
         (UD60x18 r, UD60x18 c,, uint256 totalBefore) = _runSession(netputs);
 
-        console.log("=== EQUILIBRE (offre 400 = demande 400) ===");
+        console.log("=== BALANCED (supply 400 = demand 400) ===");
         _logPrices(r, c);
         _checkInvariants(totalBefore);
 
-        // Theorie equilibre : r = c = rho (tout se regle au prix interne, aucune jambe grid)
         assertApproxEqAbs(r.unwrap(), RHO.unwrap(), TOL);
         assertApproxEqAbs(c.unwrap(), RHO.unwrap(), TOL);
     }
 
     
-    //  Utilitaires
     function _logPrices(UD60x18 r, UD60x18 c) internal pure {
         console.log("r (vendeurs) x1e-4:", r.unwrap() / 1e14);
         console.log("c (acheteurs) x1e-4:", c.unwrap() / 1e14);

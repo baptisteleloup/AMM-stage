@@ -8,9 +8,7 @@ import { EnergyEuro } from "../src/EnergyEuro.sol";
 import { TokenBackend } from "../src/TokenBackend.sol";
 import { NiceData } from "../src/NiceData.sol";
 
-/// @notice Simulation sur les netputs optimises reels du papier (Nice, t=48, 50 agents).
-///         Valide que le mecanisme on-chain regle correctement une session issue de
-///         l'equilibre Mean-Field, sur donnees reelles.
+/// @notice Simulation of optimized paper reel netputs (Nice, t=48, 50 agents).
 contract SimulationNiceTest is Test {
     Market market;
     EnergyEuro token;
@@ -35,11 +33,9 @@ contract SimulationNiceTest is Test {
 
         netputs = NiceData.netputs();
 
-        // grid finance et approuve
         token.mint(grid, 1_000_000e18);
         vm.prank(grid); token.approve(address(backend), type(uint256).max);
 
-        // 50 prosumers : adresses deterministes, mint + approve
         for (uint256 i = 0; i < N; i++) {
             prosumers[i] = address(uint160(0x1000 + i));
             token.mint(prosumers[i], 1_000_000e18);
@@ -51,7 +47,6 @@ contract SimulationNiceTest is Test {
     function test_simulationNice_t48_50agents() public {
         uint256 totalBefore = _totalTracked();
 
-        // l'operator (metering) soumet les 50 netputs constates
         for (uint256 i = 0; i < N; i++) {
             vm.prank(operator);
             market.submitOrder(prosumers[i], netputs[i]);
@@ -71,24 +66,14 @@ contract SimulationNiceTest is Test {
 
         // ---- verifications ----
 
-        // 1. conservation (prosumers + grid + market)
-        assertEq(_totalTracked(), totalBefore, "conservation violee");
-
-        // 2. le Market ne retient aucun collateral
-        assertEq(token.balanceOf(address(market)), 0, "collateral coince");
-
-        // 3. session reset
-        assertEq(market.prosumerCount(), 0, "session non reset");
-
-        // 4. regime SURPLUS attendu (offre 48.5 >> demande 0.8 kW) :
-        //    c = rho (acheteurs non penalises), r < rho (offre tres abondante,
-        //    prix vendeur ecrase vers le feed-in)
-        assertApproxEqAbs(c.unwrap(), RHO.unwrap(), TOL, "c != rho en surplus");
+        assertEq(_totalTracked(), totalBefore, "conservation failed");
+        assertEq(token.balanceOf(address(market)), 0, "collateral not refunded");
+        assertEq(market.prosumerCount(), 0, "session not reset");
+        assertApproxEqAbs(c.unwrap(), RHO.unwrap(), TOL, "c != rho");
         assertLt(r.unwrap(), RHO.unwrap());
-        assertGe(r.unwrap(), LAMBDA_LOW.unwrap());  // borne inferieure feed-in
+        assertGe(r.unwrap(), LAMBDA_LOW.unwrap());  
         assertLe(r.unwrap(), c.unwrap());           // no-arbitrage
 
-        console.log("=== OK : conservation + regime surplus coherent ===");
     }
 
     function _totalTracked() internal view returns (uint256 sum) {

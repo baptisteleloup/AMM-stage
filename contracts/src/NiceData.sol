@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-// pas de temps t=48 (midi), 50 agents, netputs optimises (equilibre Mean-Field)
-// netput = plan.s[t] - plan.d[t], echelle 1e18. > 0 vendeur, < 0 acheteur.
+// t=48 (midi), 50 agents
+
 pragma solidity >=0.8.19;
 
 library NiceData {
