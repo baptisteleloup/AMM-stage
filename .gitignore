@@ -1,8 +1,29 @@
-.venv/
-.venv-full/
-reference/
+# ---- Foundry ----
+out/
+cache/
+broadcast/
+foundry.lock
+ 
+# ---- dependencies ----
+
+ 
+# ---- Python ----
 __pycache__/
-*.pyc
-contracts/out/
-contracts/cache/
-*.json
+*.py[cod]
+.venv/
+venv/
+.python-version
+*.egg-info/
+ 
+ 
+# ---- generated files / local ----
+deployed_besu.json
+deployed.json
+prosumers_nice.json
+netputs_nice.json
+ 
+# ---- OS / editeur ----
+.DS_Store
+*.swp
+.vscode/
+.idea/
