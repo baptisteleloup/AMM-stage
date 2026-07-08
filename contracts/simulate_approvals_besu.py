@@ -1,16 +1,5 @@
 """
-=========  ECHAFAUDAGE DE TEST (Besu) — PAS DU CODE DE PRODUCTION  =========
-
-En scenario B, chaque prosumer approuve le backend depuis son wallet. Pour valider
-sur Besu, on simule ces approvals avec des comptes de test derives deterministe-
-ment de l'id. En production, chaque prosumer le fait lui-meme.
-
-Deux usages :
-  uv run python simulate_approvals_besu.py --generate 50   # cree prosumers_nice.json {id: adresse}
-  uv run python simulate_approvals_besu.py                 # approve pour chaque prosumer
-
-Note : les ids "prosumer-i" correspondent a ceux de netputs_nice.json (meme i).
-============================================================================
+Simmulate approvals (read README).
 """
 
 import sys
@@ -36,7 +25,7 @@ def account_for_id(pid: str):
 def generate(n: int):
     data = {f"prosumer-{i}": account_for_id(f"prosumer-{i}").address for i in range(n)}
     PROSUMERS_FILE.write_text(json.dumps(data, indent=2))
-    print(f"prosumers_nice.json genere : {n} comptes de test")
+    print(f"prosumers_nice.json generated : {n} comptes de test")
 
 
 def approve_all():
@@ -44,7 +33,7 @@ def approve_all():
     for pid in prosumers:
         acct = account_for_id(pid)
         bc.send(token.functions.approve(backend_addr, MAX_UINT), acct)
-    print(f"{len(prosumers)} approvals simules (en prod : faits par les prosumers)")
+    print(f"{len(prosumers)} approvals simulated")
 
 
 if __name__ == "__main__":

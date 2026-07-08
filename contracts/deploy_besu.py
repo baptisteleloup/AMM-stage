@@ -1,16 +1,5 @@
 """
-Deploiement des contrats AMM sur le reseau Besu QBFT local (Docker).
-
-Specificites Besu vs Anvil :
-  - Besu ne deverrouille pas les comptes -> signature explicite avec cle privee.
-  - Reseau proof-of-authority (QBFT) -> middleware PoA pour lire les blocs.
-  - Transactions legacy (gasPrice), pas EIP-1559.
-
-Le compte deployeur est celui pre-finance dans le genesis (alloc). Sa cle privee
-est publique = TEST UNIQUEMENT, jamais sur un vrai reseau.
-
-Prerequis : reseau Besu lance (node-1 sur 8545), contrats compiles (forge build).
-Lancer : uv run python deploy_besu.py
+Smart Contracts Deployment
 """
 
 import json
@@ -22,10 +11,10 @@ from eth_account import Account
 RPC      = "http://127.0.0.1:8545"
 CHAIN_ID = 1337
 
-# compte pre-finance dans le genesis (alloc). Cle publique = TEST ONLY.
+# Pre-funded account in Genesis (alloc). Public key = TEST ONLY.
 DEPLOYER_KEY = "0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
 
-# comptes grid / operator (adresses seulement necessaires au deploiement du Market)
+# Grid/Operator accounts (addresses required only for Market deployment)
 GRID_KEY     = "0x" + "11" * 32
 OPERATOR_KEY = "0x" + "22" * 32
 
@@ -36,8 +25,8 @@ ROOT = Path(__file__).resolve().parent
 OUT  = ROOT / "out"
 
 w3 = Web3(Web3.HTTPProvider(RPC))
-w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)   # lit les blocs PoA (QBFT)
-assert w3.eth.block_number >= 0, "Reseau Besu injoignable (node-1 sur 8545) ?"
+w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)   # read PoA blocks (QBFT)
+assert w3.eth.block_number >= 0, "Besu network unreachable (node-1 on 8545)?"
 
 deployer = Account.from_key(DEPLOYER_KEY)
 grid     = Account.from_key(GRID_KEY)
@@ -52,8 +41,6 @@ def load(name):
 def deploy(name, *args):
     abi, bytecode = load(name)
     Contract = w3.eth.contract(abi=abi, bytecode=bytecode)
-
-    # transaction complete et coherente (legacy : gasPrice), signee sans retouche
     tx = Contract.constructor(*args).build_transaction({
         "gas": 6_000_000,
         "gasPrice": w3.eth.gas_price,

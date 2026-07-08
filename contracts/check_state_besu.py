@@ -1,8 +1,5 @@
 """
-check_state_besu.py — lit l'etat on-chain (Besu) et l'affiche.
-
-Lance-le avant/apres une session pour verifier la conservation.
-Lancer : uv run python check_state_besu.py
+check_state_besu.py — reads chain state and display it.
 """
 
 import json
