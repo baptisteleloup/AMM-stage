@@ -86,6 +86,9 @@ contract Market {
             emit CollateralLocked(prosumer, required);
         }
 
+
+        //wannings system
+
         emit OrderSubmitted(prosumer, netput);
     }
 
@@ -121,6 +124,8 @@ contract Market {
         emit Settled(cTotalUD, rTotalUD);
         _resetSession();
     }
+
+    //Problem to privacy (encrypt electricity consumption) 
 
     /// Empty orders
     function _resetSession() internal {
@@ -166,3 +171,14 @@ contract Market {
         return prosumers.length;
     }
 }
+
+
+//AMM with a recovery mode, assume that the community is connected to the grid. 
+//Fast regime, receovery regime
+//Recovery regime, the community is disconnected from the grid and supply/demand has to be matched internally. Auction, deal with negative prices. 
+//Protocol : Thundrella https://eprint.iacr.org/2017/913.pdf
+
+
+
+
+
