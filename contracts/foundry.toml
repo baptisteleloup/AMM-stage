@@ -6,4 +6,6 @@ remappings = [
     "@prb/math/=lib/prb-math/",
     "@openzeppelin/=lib/openzeppelin-contracts/"
 ]
-
+code_size_limit = 100000
+via_ir = true
+optimizer = true

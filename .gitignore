@@ -27,3 +27,12 @@ netputs_nice.json
 *.swp
 .vscode/
 .idea/
+
+# ---- ZK ----
+# ZK build artifacts
+zk/node_modules/
+zk/build/
+zk/*.ptau
+zk/*.zkey
+zk/vkey.json
+zk/circom
