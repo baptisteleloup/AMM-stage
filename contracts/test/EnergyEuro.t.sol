@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.19;
 
-import { Test } from "forge-std/Test.sol";
-import { EnergyEuro } from "../src/EnergyEuro.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {Test} from "forge-std/Test.sol";
+import {EnergyEuro} from "../src/EnergyEuro.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract EnergyEuroTest is Test {
     EnergyEuro token;
-    address owner = address(this); 
+    address owner = address(this);
     address alice = address(0xA11CE);
     address mallory = address(0xBAD);
 
@@ -19,7 +19,7 @@ contract EnergyEuroTest is Test {
         assertEq(token.name(), "Energy Euro");
         assertEq(token.symbol(), "EEUR");
         assertEq(token.decimals(), 18);
-        assertEq(token.totalSupply(), 0); 
+        assertEq(token.totalSupply(), 0);
     }
 
     function test_ownerCanMint() public {

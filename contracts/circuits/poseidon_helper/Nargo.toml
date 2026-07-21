@@ -1,0 +1,8 @@
+[package]
+name = "poseidon_helper"
+type = "bin"
+authors = ["Baptiste"]
+
+[dependencies]
+# MUST be the same tag as day_chunk/reveal: same lib = same hash, bit for bit.
+nodash = { tag = "v0.44.1", git = "https://github.com/olehmisar/nodash" }

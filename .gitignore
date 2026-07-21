@@ -1,12 +1,24 @@
-# ---- Foundry ----
+ # ---- Foundry ----
 out/
 cache/
 broadcast/
 foundry.lock
- 
-# ---- dependencies ----
 
- 
+# ---- Noir / circuits ----
+# artefacts de compilation (nargo compile) — le JSON, la VK, le witness
+**/target/
+# witnesses & proofs générés localement
+*.gz
+**/proofs/
+witness.tr
+# NB : on garde Nargo.toml (source) et src/*Verifier.sol (générés MAIS
+#      importés par les contrats, donc requis au build)
+
+# ---- Node / TypeScript (js_scripts) ----
+node_modules/
+*.tsbuildinfo
+# NB : package.json, package-lock.json et tsconfig.json sont VERSIONNÉS
+
 # ---- Python ----
 __pycache__/
 *.py[cod]
@@ -14,25 +26,15 @@ __pycache__/
 venv/
 .python-version
 *.egg-info/
- 
- 
+
 # ---- generated files / local ----
 deployed_besu.json
 deployed.json
 prosumers_nice.json
 netputs_nice.json
- 
-# ---- OS / editeur ----
+
+# ---- OS / éditeur ----
 .DS_Store
 *.swp
 .vscode/
 .idea/
-
-# ---- ZK ----
-# ZK build artifacts
-zk/node_modules/
-zk/build/
-zk/*.ptau
-zk/*.zkey
-zk/vkey.json
-zk/circom

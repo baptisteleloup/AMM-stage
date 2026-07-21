@@ -2,10 +2,23 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+ffi = true
 remappings = [
     "@prb/math/=lib/prb-math/",
     "@openzeppelin/=lib/openzeppelin-contracts/"
+
 ]
 code_size_limit = 100000
 via_ir = true
 optimizer = true
+optimizer_runs = 200
+
+[[profile.default.additional_compiler_profiles]]
+name = "no_via_ir"
+via_ir = false
+optimizer_runs = 1
+
+[[profile.default.compilation_restrictions]]
+paths = "src/*Verifier.sol"
+via_ir = false
+optimizer_runs = 1

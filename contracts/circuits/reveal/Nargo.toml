@@ -1,0 +1,7 @@
+[package]
+name = "reveal"
+type = "bin"
+authors = ["Baptiste"]
+
+[dependencies]
+nodash = { tag = "v0.44.1", git = "https://github.com/olehmisar/nodash" }
