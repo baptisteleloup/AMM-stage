@@ -5,17 +5,19 @@ import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {IGridTariff} from "./interfaces/IGridTariff.sol";
 
 contract GridTariff is IGridTariff {
+   
     enum Mode {
         Schedule,
         Feed
     }
 
-    uint256 constant SLOT = 900; // 15 min
-    uint256 constant DAY = 86400; // 96 slots
+    uint256 constant SLOT = 900; // 15 minutes = 900 seconds
+    uint256 constant DAY = 86400; // 96 slots, 86400 = 900 x 96
 
     Mode public immutable mode;
-    address public immutable admin; // grid role 
+    address public immutable admin; // grid role, admin of the tariffs
 
+    //French mode
     struct Schedule {
         UD60x18 feedIn; // lambda_low, constant across the day
         UD60x18 retailOffPeak; // lambda_high outside peak windows

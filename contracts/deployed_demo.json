@@ -1,0 +1,281 @@
+{
+  "chainId": 1337,
+  "rpcUrl": "http://127.0.0.1:8545",
+  "contracts": {
+    "eeur": "0x736Dc0D96E327bA20F07B3FF84864af374982394",
+    "tariff": "0x609CAF8799C6A905271a9935751dD154DD4ADf0d",
+    "dayVerifier": "0x608676e33aE7451112102Dc3BDbD29daf6C378Ba",
+    "revealVerifier": "0x8b1E5011Ac0F547bE8b3118ea2154Cc18C0755c6",
+    "market": "0x68d98DDA6Bf6A2FC365DE6E6D31f474d69CA9821"
+  },
+  "roles": {
+    "operator": {
+      "address": "0xECb80bBF85fF02bE96b2538C19a99d0119C4fadb",
+      "privateKey": "0xb7c439c7569b1064d84f3af06672244600d0c0b5914d22037ceaa968231bcf41"
+    },
+    "grid": {
+      "address": "0xf10FFb49870242b4BbD4c9BCE284C9D76dFf12B0",
+      "privateKey": "0x2364fd5fd6ea5341b3435a96fc54e8b54cb206e0cfe27025dab37274da803a19"
+    },
+    "floorAdmin": {
+      "address": "0x6EfCBA2015Bd67c2CCb69432AfF2865450b07574",
+      "privateKey": "0xcf8d1acd3bfb569da07c5d9e58f50cc58248d4ab0e53a083ac269cc2c7e9676c"
+    },
+    "reserve": {
+      "address": "0x31fB7e861dBB0674dBFc0D0aB57Ac442a51886B6",
+      "privateKey": "0x14692abe49ddd4a1d6119fab517ea974599f598c88ac2bec055a908cd4f180e3"
+    }
+  },
+  "prosumers": {
+    "prosumer-0": {
+      "address": "0xe401bbdd41Bc6E4D2c1D4fF1A6A3E6d82934AFBe",
+      "privateKey": "0x10cdc134100462436be7dd3bfece6721d0f3b85031f9c88573766bb37e4f5673",
+      "slot": 50
+    },
+    "prosumer-1": {
+      "address": "0x24BAb3aD75A4B77667df126dc0af2DFC714C6C38",
+      "privateKey": "0x7bc95ac3e81686c355d40b9b888232f7a1701e24b3fd07fef790a7cdf7cf8b72",
+      "slot": 49
+    },
+    "prosumer-2": {
+      "address": "0xb0B7F326FD9457A0Ba4638270279d839a54CAFd0",
+      "privateKey": "0xd446f74e55add089cb8874821409eb79531ca920f47c96decc28c3e911759ea9",
+      "slot": 48
+    },
+    "prosumer-3": {
+      "address": "0x0D0b4Ccb39C74c1b889564813a64FB12Bb1697E7",
+      "privateKey": "0x34443bf0b2c94ba160907b68049a865a10c8741d6890e6af5485871d5e160c27",
+      "slot": 47
+    },
+    "prosumer-4": {
+      "address": "0x644d00bA81B76C9Db1C2625883de90d2349cfDd3",
+      "privateKey": "0x9f942fcce32c751b74493332dad945ccd29176738025b42f920e3b20d641f305",
+      "slot": 46
+    },
+    "prosumer-5": {
+      "address": "0xdC4C6F66e50df76E8acc3529c61A5eEF002E64cA",
+      "privateKey": "0x4cdf552ebd1652bd9299aa48633123eebc5a3bbbd0fec4720bc7460c136f562f",
+      "slot": 45
+    },
+    "prosumer-6": {
+      "address": "0x20042e309CDDECA2B4e4334bbec02Dd4814aA6aD",
+      "privateKey": "0xe9cf1743d1a82e2d8ef3ce74c2403f47237947ab67be28903715e3b301aae2a5",
+      "slot": 44
+    },
+    "prosumer-7": {
+      "address": "0xF871dA0D7b03D7BF343FE8bB2401D7cE47FD513b",
+      "privateKey": "0x8db6bdcff37cc9ec9ea1406f62fdffc33c4c9362afa7171e9a142c90f6d9194b",
+      "slot": 43
+    },
+    "prosumer-8": {
+      "address": "0xf34C0Bc43B66B54e61542E3F6C04b1B844974d82",
+      "privateKey": "0xee41e1a97a53dc5ade22bbf3a6c4833a933e5d7512c6ee5187fe06492ac47417",
+      "slot": 42
+    },
+    "prosumer-9": {
+      "address": "0xb457928d47B9F4D3F8810Bd5b6fcE907dB5CABcC",
+      "privateKey": "0xb95a2ccdab0c73d2e1015bfc85d109f89579a4514ac14fd1d91e921500bd7ce0",
+      "slot": 41
+    },
+    "prosumer-10": {
+      "address": "0x981E37F2A5452a495833EE709408DC7c95598bB1",
+      "privateKey": "0x6dcd1431acb63dfe369b39b05fbcbfb38ebbe1f78082d3bb9e52a6443f27469b",
+      "slot": 40
+    },
+    "prosumer-11": {
+      "address": "0x7F151b171A9b31E8162bB3c89e75bd0f4bD78418",
+      "privateKey": "0xa0cd6f3908650ea0570b3da012961c1144d47df8cc1abf282c3626befa46e214",
+      "slot": 39
+    },
+    "prosumer-12": {
+      "address": "0x939bdc5F7d62cebaA42Da128F677236E0c2615ff",
+      "privateKey": "0x3ecd1104a98d88e9e87ae3fed3077ebb6bc3fea9f2450469732bc3a679777507",
+      "slot": 38
+    },
+    "prosumer-13": {
+      "address": "0x9a62115D27458B71D1C7B94f011b6e5A9948ADe3",
+      "privateKey": "0xdd97480aee48a696a0d3204bb540e63b1a090a689bd449eaa06625c0a732cacf",
+      "slot": 37
+    },
+    "prosumer-14": {
+      "address": "0xbF61F3B385e43D242C1d561e50a6c5622D2c791C",
+      "privateKey": "0x4a6fbeb361d9d670a66ef16e043e3c6f4d1a2dd8b8129421b8f5e7554f2e8647",
+      "slot": 36
+    },
+    "prosumer-15": {
+      "address": "0xCDDa05A257BE0b77eB994Dc415303c8B79376fA9",
+      "privateKey": "0x3de16042be9c6d9cb1c879d5be3e86f183ec7e81d19c2c8e216b29d1ea6ec311",
+      "slot": 35
+    },
+    "prosumer-16": {
+      "address": "0xD57f83b415922672c8d7fe0F95F3115E64789d5f",
+      "privateKey": "0x3bcdc2c7474e5948e06ed6ad091180575c05797568c41fb9aa8d7186d6fa6ecf",
+      "slot": 34
+    },
+    "prosumer-17": {
+      "address": "0xBEdb33E31dA4F187AEd8180Dd0eAf7e22fF494A7",
+      "privateKey": "0x4a69c126dbccd8094b87acf7acf0ebcbcc3a6182016ded89adbf469400c3372b",
+      "slot": 33
+    },
+    "prosumer-18": {
+      "address": "0xDF415cA8eFCC9EfeB4C4b1ccB150310d5EfcfA4A",
+      "privateKey": "0x4f86a4c13f91550db80e20ce6bdc59ab39b7f3b5dc810bad94d4a37f353473fd",
+      "slot": 32
+    },
+    "prosumer-19": {
+      "address": "0x2C659e6D42Fa581E4C03C8EAeb36753395B917D2",
+      "privateKey": "0xd4af09c47a5fabdf771b25e632fe30517f83269ffe5e50df238cd9bab11f2f63",
+      "slot": 31
+    },
+    "prosumer-20": {
+      "address": "0xd42E11E7E0708be07D57e67B53fb71aC1462a203",
+      "privateKey": "0x704801ca266299344584c5f8e1dea71c78588a0d73d0e27162c0aa478b46d55a",
+      "slot": 30
+    },
+    "prosumer-21": {
+      "address": "0x7b116bE28eba70C3d6371d20d224b2aF90830A95",
+      "privateKey": "0x21268254870b600f2546638074258948e76cdcc315b86336455395cf234ca41b",
+      "slot": 29
+    },
+    "prosumer-22": {
+      "address": "0x9461FC05358F129a67164c30e702F8F68C55c8fc",
+      "privateKey": "0x2cc660f41c20c933a9292b939d50c183a94883f20648a40aa37cd67cadde1aa3",
+      "slot": 28
+    },
+    "prosumer-23": {
+      "address": "0x58446114a7b1c5fcD3033415a0703eF45498Dd21",
+      "privateKey": "0xd5f5c4d7f3bb11ff19f69ff872a465e4c31993d6eb25b0a20de7eb05bc4233fb",
+      "slot": 27
+    },
+    "prosumer-24": {
+      "address": "0x85DC9692C2500F75D5d2FD9202452408a3508d3B",
+      "privateKey": "0x324692f6441ff01c0c85391bc6fe4274db73bb94d8277ee340af9a19491d4c7c",
+      "slot": 26
+    },
+    "prosumer-25": {
+      "address": "0x85d76d2Df223a9B5b9005f385B0051695DC9b6D4",
+      "privateKey": "0xbaf6ecd9a0a6a69c2dfb8ef13efeec2f061049157ec290b944b0adc1508131ad",
+      "slot": 25
+    },
+    "prosumer-26": {
+      "address": "0x71b1D0d8c83DdB7225CbC26076bda82c8019db84",
+      "privateKey": "0x9074ad1cede1007e84afc5b5066e7519ffc387f9a11fbf2d5d43a64c5e81cf65",
+      "slot": 24
+    },
+    "prosumer-27": {
+      "address": "0x1Ae79b364445b397A6Bc709f17C414508E22583B",
+      "privateKey": "0xe8773d4b4b3e1d8c164177c00cc1f650b33b3153716cc0d8adfdd33c4f239c38",
+      "slot": 23
+    },
+    "prosumer-28": {
+      "address": "0xeC77218695D08fa2365F3745cb0b872389631c8D",
+      "privateKey": "0x667547d363fc06ece5d5ce6caa0136eed0442a5b3a1865daaaf179df4398a07c",
+      "slot": 22
+    },
+    "prosumer-29": {
+      "address": "0xc4fa24Ec86d4111Cc2a6344ddA1593C0f6a8150A",
+      "privateKey": "0x62da473852049b969127c6189e57bcb06e7c99bdfdb009e244525672f5d94807",
+      "slot": 21
+    },
+    "prosumer-30": {
+      "address": "0xFB184F9e096e2990E8DA210b1Cb835a7b2637CE6",
+      "privateKey": "0x12ae9dd84fc08935c22f090ef7723b10769fbdfe23c1879ac97b9dc522ff7016",
+      "slot": 20
+    },
+    "prosumer-31": {
+      "address": "0xb72AC2B3Ac4388a5F775088050626B1824f57631",
+      "privateKey": "0xef3ace2dd54a9ad86c3637815c15aeddccf6902b1f8f74b94e7f1c52e1414ff9",
+      "slot": 19
+    },
+    "prosumer-32": {
+      "address": "0xC5887514d67459F9A83957Fced9ce54b6DbEd35b",
+      "privateKey": "0x79eabee94926bcb3243d91e87102ac9d510a8d2c9f7bea0b395885135eaabaa7",
+      "slot": 18
+    },
+    "prosumer-33": {
+      "address": "0xFB96E4ecF0Dbf9Ad0022b770aa9De94220207B89",
+      "privateKey": "0x9be0685729837dc4580150b799efaa2f5748de7e721fd1244d5189a3b6c2281b",
+      "slot": 17
+    },
+    "prosumer-34": {
+      "address": "0x157bf2C749d03e0e49FC988c9a72E8f238011993",
+      "privateKey": "0x8d8c41c141cbcddf93245c29e221f02142a39b43cd8ad1862d976dc2d482ed69",
+      "slot": 16
+    },
+    "prosumer-35": {
+      "address": "0x12E5f1DE62dF12Cb2CD206629E57E8164ae0BE86",
+      "privateKey": "0x5e7c3f6c962cf8a820a622fe652b888b9ebfc4e5dc9baacce0801b08e4adbfca",
+      "slot": 15
+    },
+    "prosumer-36": {
+      "address": "0xad40DF7278D26b1983215d363f1b4BC18c9e4d19",
+      "privateKey": "0x94e1f6b2ea3130a128cba2c95d6f25c005cecfeda6dbfa299b7a11272d82fd8f",
+      "slot": 14
+    },
+    "prosumer-37": {
+      "address": "0x534a9F0cc67CE6C40298F421740919bb259C84c7",
+      "privateKey": "0xeb928d1a3a2a6ce78079410f731db35cca27d8f04cc13e462873e31fee6709ce",
+      "slot": 13
+    },
+    "prosumer-38": {
+      "address": "0xEc9424A41565E9ac77771A3628f87dbabdEA3A05",
+      "privateKey": "0x3256919acc2a6af6bcdf91c258828a0fdbdde15ab14a54a8299657e503e278f7",
+      "slot": 12
+    },
+    "prosumer-39": {
+      "address": "0x204C112F5169217638A5CdA075Eb9E875E85C89a",
+      "privateKey": "0x9a4e544837394ff799350c39f3f13fc5d561fe01fd821c3021319ee3d8977dce",
+      "slot": 11
+    },
+    "prosumer-40": {
+      "address": "0x2437DF73E83Dd7b63b162b6Cc1845Ad04F709488",
+      "privateKey": "0x2ed8f10b3abd35c72cc9c6c1b1efaddcfc99c93f53a9176f2a51db2f518d65ca",
+      "slot": 10
+    },
+    "prosumer-41": {
+      "address": "0x4DDc728C8456f90945f8d9dFF63d83FF739c69F3",
+      "privateKey": "0xced3fb4ba46442d6bf17bf883ed5e0cc02acdc8994bd6a94399faf956c15eb39",
+      "slot": 9
+    },
+    "prosumer-42": {
+      "address": "0xd21f76c6aCd421c4D5879f273bB15Bd053AC9cc6",
+      "privateKey": "0x3418a24e7e2d65f96c56389efc1f2e4b12ff93c4acea5c3b188ad2f664027bcb",
+      "slot": 8
+    },
+    "prosumer-43": {
+      "address": "0x2E3f7d8DFD0C5B604488D9d903aec64b6137A5c5",
+      "privateKey": "0x37e4e52a673bee737aff70180efb679dadc6dd80ff1dce9986e27a48fec913ce",
+      "slot": 7
+    },
+    "prosumer-44": {
+      "address": "0x0ea964cCcc41687e5EF49D91F8B87c49bAC0cdfa",
+      "privateKey": "0xf1bebf27013934a19643e6bb1d80a522632854130f6f0333a0c91e81e6101353",
+      "slot": 6
+    },
+    "prosumer-45": {
+      "address": "0x2c56cf282DFE318B3B971FFa81Ef3AE600344B23",
+      "privateKey": "0x40d61705ad5eb3ebfbf5edcd10198f59076dfcf87808965be176540cab69de76",
+      "slot": 5
+    },
+    "prosumer-46": {
+      "address": "0x4Fec7D7d1A5Df1A383BA66f38376b637F7FB1b88",
+      "privateKey": "0xb0a8551a6566dab8d05a045161b70eb7cecce6f3592c6cc2094df97dde07ef46",
+      "slot": 4
+    },
+    "prosumer-47": {
+      "address": "0x5114278Cbe15B1aa29AaDD2AE6f949c42C80e5Ce",
+      "privateKey": "0xfceb4d2613e4a24b78d6d2ee1f1edc9d2df6ea54919fdbaf677fe821f6cda123",
+      "slot": 3
+    },
+    "prosumer-48": {
+      "address": "0x09d8608A8B6dc27cf40a0C968f063eFa77c31371",
+      "privateKey": "0xeda2e8b55f90987dca526d02ca25877be3b2dd00040e86f09ab17a8420ecd5fb",
+      "slot": 2
+    },
+    "prosumer-49": {
+      "address": "0xB57Ab05bc39d5F3BC16dcd5767B20504EbA55D92",
+      "privateKey": "0xb0323ed20b186a935d5ec9ba6d38f17eb0c9bd3c4feaa77ac7ca742e7e75f3c7",
+      "slot": 1
+    }
+  }
+}

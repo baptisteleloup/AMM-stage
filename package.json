@@ -2,6 +2,9 @@
   "dependencies": {
     "@aztec/bb.js": "^4.0.0-nightly.20260120",
     "@noir-lang/noir_js": "^1.0.0-beta.19",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^13.0.1",
+    "eciesjs": "^0.5.0",
     "ethers": "^6.17.0"
   },
   "devDependencies": {

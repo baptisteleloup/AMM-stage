@@ -38,3 +38,6 @@ netputs_nice.json
 *.swp
 .vscode/
 .idea/
+
+# --- Deployment ---
+.env*
