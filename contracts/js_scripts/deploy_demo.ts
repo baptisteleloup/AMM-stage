@@ -18,6 +18,9 @@ const FEED_IN_C = env("FEED_IN_C", "8.86");
 const OFF_PEAK_C = env("OFF_PEAK_C", "16.96");
 const PEAK_C = env("PEAK_C", "21.46");
 const PEAK_WINDOWS = env("PEAK_WINDOWS", "64800-79200");
+const TARIFF_MODE = env("TARIFF_MODE", "schedule");   // "schedule" | "feed"
+const N_REPORTERS = Number(env("N_REPORTERS", "3"));
+const QUORUM = Number(env("QUORUM", "2"));
 const ARTIFACTS = env("ARTIFACTS", "out");
 const OUT = env("DEPLOY_OUT", "deployed_demo.json");
 const PROSUMERS_OUT = env("PROSUMERS_OUT", "prosumers_demo.json");
@@ -64,10 +67,14 @@ async function main(): Promise<void> {
     floorAdmin: ethers.Wallet.createRandom().connect(provider),
     reserve: ethers.Wallet.createRandom().connect(provider),
   };
+  const feedMode = TARIFF_MODE.toLowerCase() === "feed";
+  const reporters = feedMode
+    ? Array.from({ length: N_REPORTERS }, () => ethers.Wallet.createRandom().connect(provider))
+    : [];
   const prosumers = Array.from({ length: N }, () => ethers.Wallet.createRandom().connect(provider));
 
   const fund = ethers.parseEther(FUND_ETH);
-  const targets = [...Object.values(roles), ...prosumers];
+  const targets = [...Object.values(roles), ...reporters, ...prosumers];
   await Promise.all(targets.map((w) => deployer.sendTransaction({ to: w.address, value: fund })));
   console.log(`funded ${targets.length} accounts with ${FUND_ETH} ETH each`);
 
@@ -81,7 +88,16 @@ async function main(): Promise<void> {
     winStart: wins.map((w) => w[0]),
     winEnd: wins.map((w) => w[1]),
   };
-  const tariff = await deploy("GridTariff", deployer, [0, roles.grid.address, schedule, [], 0]);
+  // Schedule mode: one feed-in rate and a peak/off-peak retail split, set once.
+  // Feed mode: a 96-slot price vector posted per day by reporters, finalised on
+  // quorum. The schedule passed here is only the constructor's initial value and
+  // is never read in feed mode.
+  const tariff = feedMode
+    ? await deploy("GridTariff", deployer, [1, roles.grid.address, schedule, reporters.map((w) => w.address), QUORUM])
+    : await deploy("GridTariff", deployer, [0, roles.grid.address, schedule, [], 0]);
+  console.log(feedMode
+    ? `tariff in feed mode: ${reporters.length} reporter(s), quorum ${QUORUM}`
+    : `tariff in schedule mode: feed-in ${FEED_IN_C}c, off-peak ${OFF_PEAK_C}c, peak ${PEAK_C}c`);
 
   const dayVerifier = await deploy("DayChunkVerifier", deployer, [], "HonkVerifier");
   const revealVerifier = await deploy("RevealVerifier", deployer, [], "HonkVerifier");
@@ -151,6 +167,9 @@ async function main(): Promise<void> {
       revealVerifier: await revealVerifier.getAddress(),
       market: marketAddr,
     },
+    tariffMode: feedMode ? "feed" : "schedule",
+    quorum: feedMode ? QUORUM : 0,
+    reporters: reporters.map((w) => ({ address: w.address, privateKey: w.privateKey })),
     roles: Object.fromEntries(Object.entries(roles).map(([k, w]) => [k, { address: w.address, privateKey: w.privateKey }])),
     prosumers: prosumerEntries,
   };

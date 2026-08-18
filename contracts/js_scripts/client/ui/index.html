@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prosumer client</title>
+<style>
+  :root {
+    --ground: #e8ecef;
+    --panel: #fcfdfe;
+    --line: #cfd8de;
+    --line-soft: #e3e9ed;
+    --ink: #16212b;
+    --ink-soft: #5c6d7a;
+    --ink-faint: #8b9aa5;
+    --sold: #c08214;
+    --sold-soft: #f2e2bf;
+    --bought: #3b5ba9;
+    --bought-soft: #d8e0f2;
+    --good: #2f6f6a;
+    --bad: #ab2f22;
+    --warn: #a86a12;
+    --display: "Avenir Next Condensed", "Helvetica Neue", "Arial Narrow", sans-serif;
+    --body: Charter, "Iowan Old Style", Palatino, Georgia, serif;
+    --data: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  button, input, select { font: inherit; color: inherit; }
+
+  :focus-visible { outline: 2px solid var(--bought); outline-offset: 2px; }
+
+  .shell { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; }
+
+  .rail {
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+    padding: 22px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .wordmark {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .wordmark strong { display: block; font-size: 21px; letter-spacing: 0.06em; color: var(--ink); }
+
+  .idcard { border: 1px solid var(--line-soft); padding: 12px; background: #fff; }
+  .idcard .slot { font-family: var(--data); font-size: 26px; line-height: 1; }
+  .idcard .addr { font-family: var(--data); font-size: 11px; color: var(--ink-faint); word-break: break-all; margin-top: 6px; }
+
+  nav { display: flex; flex-direction: column; gap: 2px; }
+  nav button {
+    text-align: left;
+    background: none;
+    border: 0;
+    border-left: 3px solid transparent;
+    padding: 7px 10px;
+    cursor: pointer;
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  nav button:hover { color: var(--ink); }
+  nav button[aria-current="true"] { border-left-color: var(--bought); color: var(--ink); background: #f2f5f8; }
+
+  .keeper { margin-top: auto; border-top: 1px solid var(--line-soft); padding-top: 16px; }
+  .keeper-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .keeper h4 { margin: 0; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.1em; font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+  .keeper p { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-faint); line-height: 1.4; }
+
+  .switch { position: relative; width: 42px; height: 22px; border: 1px solid var(--line); border-radius: 11px; background: #eef1f4; cursor: pointer; padding: 0; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ink-faint); transition: transform .16s, background .16s; }
+  .switch[aria-pressed="true"] { background: var(--bought-soft); border-color: var(--bought); }
+  .switch[aria-pressed="true"]::after { transform: translateX(20px); background: var(--bought); }
+
+  main { padding: 26px 34px 60px; max-width: 1080px; }
+
+  h1 { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink-soft); margin: 0 0 22px; font-size: 14px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); padding: 18px 20px; margin-bottom: 18px; }
+  .panel > h2 {
+    font-family: var(--display); text-transform: uppercase; letter-spacing: 0.11em;
+    font-size: 12px; color: var(--ink-soft); margin: 0 0 14px; font-weight: 600;
+  }
+
+  .figures { display: flex; flex-wrap: wrap; gap: 28px; }
+  .figure .label { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.09em; font-size: 11px; color: var(--ink-faint); }
+  .figure .value { font-family: var(--data); font-size: 22px; }
+  .figure .value.small { font-size: 15px; }
+
+  .badge {
+    display: inline-block; font-family: var(--display); text-transform: uppercase;
+    letter-spacing: 0.09em; font-size: 11px; padding: 2px 8px; border: 1px solid currentColor;
+  }
+  .badge.ok, .badge.verified, .badge.Finalized { color: var(--good); }
+  .badge.warning { color: var(--warn); }
+  .badge.critical, .badge.mismatch, .badge.Cancelled { color: var(--bad); }
+  .badge.unknown, .badge.incomplete, .badge.Pending { color: var(--ink-faint); }
+  .badge.Closing { color: var(--bought); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left; font-family: var(--display); text-transform: uppercase;
+    letter-spacing: 0.09em; font-size: 11px; color: var(--ink-faint); font-weight: 600;
+    padding: 0 10px 7px 0; border-bottom: 1px solid var(--line);
+  }
+  td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  td.num, th.num { font-family: var(--data); }
+  tr.click { cursor: pointer; }
+  tr.click:hover td { background: #f2f5f8; }
+
+  .ribbon { margin: 4px 0 10px; }
+  .ribbon svg { width: 100%; height: 92px; display: block; }
+  .ribbon-legend { display: flex; gap: 18px; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; color: var(--ink-faint); }
+  .ribbon-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+  .ribbon-readout { font-family: var(--data); font-size: 12.5px; color: var(--ink-soft); min-height: 1.4em; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    background: #fff; border: 1px solid var(--line); padding: 6px 13px; cursor: pointer;
+    font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px;
+  }
+  .btn:hover { border-color: var(--ink-soft); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn.danger { color: var(--bad); border-color: var(--bad); }
+
+  .note { font-size: 13.5px; color: var(--ink-soft); margin: 10px 0 0; }
+  .actionable { margin: 0; padding-left: 18px; font-size: 14px; }
+  .actionable li { margin-bottom: 4px; }
+
+  .field { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .field input { border: 1px solid var(--line); padding: 6px 9px; font-family: var(--data); width: 150px; background: #fff; }
+  .field label { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.09em; font-size: 11px; color: var(--ink-faint); width: 110px; }
+
+  .stream { font-family: var(--data); font-size: 12.5px; max-height: 62vh; overflow-y: auto; }
+  .stream div { padding: 4px 0; border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; }
+  .stream .t { color: var(--ink-faint); flex: 0 0 62px; }
+  .stream .k { flex: 0 0 62px; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  .stream .k.error { color: var(--bad); }
+  .stream .k.alert { color: var(--warn); }
+  .stream .k.action { color: var(--bought); }
+  .stream .k.keeper { color: var(--good); }
+  .stream .k.info { color: var(--ink-faint); }
+
+  .toast {
+    position: fixed; right: 20px; bottom: 20px; max-width: 380px;
+    background: var(--ink); color: #fff; padding: 12px 16px; font-size: 13.5px;
+    border-left: 3px solid var(--bought);
+  }
+  .toast.bad { border-left-color: var(--bad); }
+
+  .cover { height: 6px; background: var(--line-soft); width: 110px; display: inline-block; vertical-align: middle; }
+  .cover span { display: block; height: 100%; background: var(--bought); }
+
+  .empty { color: var(--ink-faint); font-style: italic; }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { border-right: 0; border-bottom: 1px solid var(--line); }
+    .keeper { margin-top: 16px; }
+    main { padding: 20px 16px 50px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="wordmark">Energy market<strong>Prosumer</strong></div>
+    <div class="idcard">
+      <div class="slot" id="slot">—</div>
+      <div class="addr" id="addr">connecting…</div>
+    </div>
+    <nav>
+      <button data-view="overview" aria-current="true">Overview</button>
+      <button data-view="days">Days</button>
+      <button data-view="money">Money</button>
+      <button data-view="activity">Activity</button>
+    </nav>
+    <div class="keeper">
+      <div class="keeper-row">
+        <h4>Keeper</h4>
+        <button class="switch" id="keeperSwitch" aria-pressed="false" aria-label="Run the keeper"></button>
+      </div>
+      <p id="keeperNote">Collects your receipts and settles days that are ready.</p>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+let view = "overview";
+let selectedDay = null;
+let logSeq = 0;
+let logEntries = [];
+let overviewData = null;
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { "content-type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "request failed");
+  return data;
+}
+
+function toast(text, bad) {
+  const old = $(".toast");
+  if (old) old.remove();
+  const el = document.createElement("div");
+  el.className = "toast" + (bad ? " bad" : "");
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 5200);
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function eur(v) {
+  if (v === null || v === undefined) return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return v;
+  return n.toFixed(4).replace(/0+$/, "").replace(/\.$/, "") + " EUR";
+}
+
+function clock(hms) {
+  return new Date(hms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function ribbon(strip) {
+  const W = 960, H = 92, mid = 50, cw = W / strip.length;
+  const peak = Math.max(1, ...strip.map((s) => Math.max(Number(s.sell), Number(s.buy))));
+  let bars = "";
+  strip.forEach((s, i) => {
+    const x = (i * cw).toFixed(2);
+    const w = Math.max(1.5, cw - 1.2).toFixed(2);
+    if (!s.held) {
+      bars += `<rect x="${x}" y="${mid - 3}" width="${w}" height="6" fill="none" stroke="#c2ccd4" stroke-dasharray="1.5 1.5"/>`;
+      return;
+    }
+    const sell = Number(s.sell), buy = Number(s.buy);
+    if (sell === 0 && buy === 0) {
+      bars += `<rect x="${x}" y="${mid - 1}" width="${w}" height="2" fill="#c2ccd4"/>`;
+      return;
+    }
+    if (sell > 0) {
+      const h = Math.max(2, (sell / peak) * 42);
+      bars += `<rect x="${x}" y="${mid - h}" width="${w}" height="${h.toFixed(2)}" fill="var(--sold)"/>`;
+    }
+    if (buy > 0) {
+      const h = Math.max(2, (buy / peak) * 38);
+      bars += `<rect x="${x}" y="${mid}" width="${w}" height="${h.toFixed(2)}" fill="var(--bought)"/>`;
+    }
+  });
+  let ticks = "";
+  for (let q = 0; q <= 96; q += 16) {
+    const x = (q * cw).toFixed(2);
+    ticks += `<line x1="${x}" y1="${mid + 40}" x2="${x}" y2="${mid + 44}" stroke="#a9b6c0"/>`;
+    ticks += `<text x="${x}" y="${H - 2}" font-size="9" fill="#8b9aa5" font-family="ui-monospace, monospace" text-anchor="${q === 0 ? "start" : q === 96 ? "end" : "middle"}">${String(q / 4).padStart(2, "0")}h</text>`;
+  }
+  return `<div class="ribbon">
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" id="ribbonSvg">
+      <line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="#dde4e9"/>
+      ${bars}${ticks}
+    </svg>
+  </div>
+  <div class="ribbon-legend">
+    <span><i style="background:var(--sold)"></i>Sold</span>
+    <span><i style="background:var(--bought)"></i>Bought</span>
+    <span><i style="border:1px dashed #c2ccd4"></i>No receipt held</span>
+  </div>
+  <div class="ribbon-readout" id="readout">Hover a quarter-hour to read it.</div>`;
+}
+
+function bindRibbon(strip) {
+  const svg = $("#ribbonSvg");
+  if (!svg) return;
+  const readout = $("#readout");
+  svg.addEventListener("mousemove", (e) => {
+    const r = svg.getBoundingClientRect();
+    const i = Math.min(strip.length - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * strip.length)));
+    const s = strip[i];
+    const h = String(Math.floor(i / 4)).padStart(2, "0") + ":" + String((i % 4) * 15).padStart(2, "0");
+    readout.textContent = s.held
+      ? `${h}  session ${i}  sold ${s.sell}  bought ${s.buy}`
+      : `${h}  session ${i}  no receipt held`;
+  });
+  svg.addEventListener("mouseleave", () => { readout.textContent = "Hover a quarter-hour to read it."; });
+}
+
+function marginPanel(m) {
+  if (!m) return "";
+  const tier = m.tier || "unknown";
+  return `<div class="panel">
+    <h2>Margin</h2>
+    <div class="figures">
+      <div class="figure"><div class="label">Standing</div><div class="value small"><span class="badge ${tier}">${tier}</span></div></div>
+      <div class="figure"><div class="label">Projected balance</div><div class="value">${eur(m.projectedEur)}</div></div>
+      <div class="figure"><div class="label">Requirement</div><div class="value">${eur(m.floorEur)}</div></div>
+    </div>
+    <p class="note">${esc(m.message || "")}</p>
+  </div>`;
+}
+
+async function renderOverview() {
+  const o = overviewData = await api("GET", "/api/overview");
+  $("#slot").textContent = o.registration.registered ? "slot " + o.registration.slot : "—";
+  $("#addr").textContent = o.address;
+  $("#keeperSwitch").setAttribute("aria-pressed", String(o.keeper.running));
+  $("#keeperNote").textContent = o.keeper.running
+    ? `Checking every ${o.keeper.pollSeconds}s. ${o.keeper.ticks} checks so far.`
+    : "Collects your receipts and settles days that are ready.";
+
+  const reg = o.registration;
+  const pos = o.position;
+
+  let body = `<h1>Overview</h1>
+    <p class="sub">Day ${o.clock.day}, quarter-hour ${o.clock.t} of 96 on the market clock.</p>`;
+
+  if (!reg.registered) {
+    body += `<div class="panel">
+      <h2>Not registered</h2>
+      <p>This address holds no slot on the market yet. Registering publishes your encryption key so the operator can send you receipts only you can read.</p>
+      <div class="actions"><button class="btn primary" data-act="register">Register this address</button></div>
+    </div>`;
+  } else {
+    body += `<div class="panel">
+      <h2>Standing</h2>
+      <div class="figures">
+        <div class="figure"><div class="label">Slot</div><div class="value">${reg.slot}</div></div>
+        <div class="figure"><div class="label">Trading</div><div class="value small"><span class="badge ${reg.tradable ? "ok" : "unknown"}">${reg.tradable ? "allowed" : "on hold"}</span></div></div>
+        <div class="figure"><div class="label">Balance last known</div><div class="value">${eur(pos && pos.knownBalanceEur)}</div></div>
+        <div class="figure"><div class="label">As of day</div><div class="value">${pos && pos.knownAtDay !== null ? pos.knownAtDay : "—"}</div></div>
+      </div>
+      <p class="note">${esc(reg.note)}</p>
+    </div>`;
+    body += marginPanel(o.margin);
+    body += `<div class="panel">
+      <h2>Yesterday</h2>
+      <p class="note">Day ${o.clock.day - 1} is the one that settles next.</p>
+      <div class="actions">
+        <button class="btn" data-act="openday" data-day="${o.clock.day - 1}">Open day ${o.clock.day - 1}</button>
+        <button class="btn" data-act="sync" data-day="${o.clock.day - 1}">Collect receipts for day ${o.clock.day - 1}</button>
+        <button class="btn" data-act="sync" data-day="${o.clock.day}">Collect today's</button>
+      </div>
+    </div>`;
+  }
+
+  body += `<div class="panel">
+    <h2>Connection</h2>
+    <table>
+      <tr><td>Market</td><td class="num">${esc(o.market)}</td></tr>
+      <tr><td>Node</td><td class="num">${esc(o.rpcUrl)}</td></tr>
+      <tr><td>Receipts</td><td class="num">${esc(o.receiptsDir)}</td></tr>
+      <tr><td>Meter data</td><td class="num">${o.meterConfigured ? "configured" : "not configured"}</td></tr>
+    </table>
+  </div>`;
+
+  $("#main").innerHTML = body;
+}
+
+async function renderDays() {
+  const days = await api("GET", "/api/days?count=10");
+  let rows = "";
+  for (const d of days) {
+    const pct = d.expected > 0 ? Math.round((d.held / d.expected) * 100) : 0;
+    const v = d.lastVerdict ? d.lastVerdict.verdict : null;
+    rows += `<tr class="click" data-act="openday" data-day="${d.day}">
+      <td class="num">${d.day}${d.isToday ? " <span class='empty'>today</span>" : ""}</td>
+      <td><span class="badge ${d.state}">${d.state}</span></td>
+      <td class="num">${d.held}/${d.expected} <span class="cover"><span style="width:${pct}%"></span></span></td>
+      <td>${d.hasOpening ? "held" : "<span class='empty'>missing</span>"}</td>
+      <td>${v ? `<span class="badge ${v}">${v}</span>` : "<span class='empty'>not checked</span>"}</td>
+    </tr>`;
+  }
+  $("#main").innerHTML = `<h1>Days</h1>
+    <p class="sub">Each day settles once. Check it before your time to object runs out.</p>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Day</th><th>State</th><th>Receipts</th><th>Closing packet</th><th>Last check</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function renderDay(day) {
+  const d = await api("GET", "/api/day?day=" + day);
+  const v = d.view;
+  const deadlines = v.deadlines.map((x) => `<tr>
+      <td>${esc(x.label)}</td>
+      <td class="num">${x.expired ? "expired" : Math.max(0, x.secondsLeft) + "s left"}</td>
+      <td>${esc(x.meaning)}</td>
+    </tr>`).join("");
+
+  const actionable = v.actionable.length
+    ? `<ul class="actionable">${v.actionable.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>`
+    : `<p class="note">Nothing to do on this day right now.</p>`;
+
+  $("#main").innerHTML = `<h1>Day ${day}</h1>
+    <p class="sub">${v.state} · ${v.chunksVerified}/${v.chunksExpected} batches proven · ${d.coverage.held}/${d.coverage.expected} receipts held</p>
+
+    <div class="panel">
+      <h2>The day, quarter-hour by quarter-hour</h2>
+      ${ribbon(d.strip)}
+    </div>
+
+    ${marginPanel(d.margin)}
+
+    <div class="panel">
+      <h2>What you can do</h2>
+      ${actionable}
+      <div class="actions" style="margin-top:14px">
+        <button class="btn" data-act="sync" data-day="${day}">Collect receipts</button>
+        <button class="btn primary" data-act="verify" data-day="${day}">Check this day</button>
+        <button class="btn" data-act="finalize" data-day="${day}">Settle it</button>
+      </div>
+    </div>
+
+    ${deadlines ? `<div class="panel"><h2>Deadlines</h2><table><tbody>${deadlines}</tbody></table></div>` : ""}
+
+    <div class="panel">
+      <h2>If the operator goes quiet</h2>
+      <p class="note">These steps escalate in order. Each one is recorded on the market contract and blocks settlement of this day until it is answered.</p>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn" data-act="request-data" data-day="${day}">Demand my data</button>
+        <button class="btn" data-act="fetch-data" data-day="${day}">Decrypt what was published</button>
+        <button class="btn" data-act="request-clear" data-day="${day}">Demand my balance in the clear</button>
+        <button class="btn" data-act="revealed" data-day="${day}">Read the revealed balance</button>
+        <button class="btn danger" data-act="dispute" data-day="${day}">Open a dispute</button>
+        <button class="btn danger" data-act="cancel" data-day="${day}">Cancel the day</button>
+      </div>
+    </div>
+
+    <div class="panel" id="verifyPanel">
+      <h2>Last check</h2>
+      ${d.lastVerdict ? `<p class="note">Verdict <span class="badge ${d.lastVerdict.verdict}">${d.lastVerdict.verdict}</span> at ${esc(d.lastVerdict.at)}.</p>` : `<p class="note empty">This day has not been checked yet.</p>`}
+    </div>`;
+
+  bindRibbon(d.strip);
+}
+
+function renderVerdict(r) {
+  const rows = r.checks.map((c) => `<tr>
+    <td>${esc(c.name)}</td>
+    <td><span class="badge ${c.status === "pass" ? "ok" : c.status === "fail" ? "critical" : "unknown"}">${c.status}</span></td>
+    <td>${esc(c.detail)}</td>
+  </tr>`).join("");
+  $("#verifyPanel").innerHTML = `<h2>Check of day ${r.day}</h2>
+    <div class="figures" style="margin-bottom:14px">
+      <div class="figure"><div class="label">Verdict</div><div class="value small"><span class="badge ${r.verdict}">${r.verdict}</span></div></div>
+      <div class="figure"><div class="label">Net for the day</div><div class="value">${eur(r.amountEur)}</div></div>
+    </div>
+    <table><thead><tr><th>Check</th><th>Result</th><th>What it means</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function renderMoney() {
+  const o = overviewData || await api("GET", "/api/overview");
+  const p = o.position;
+  // Part of the queued deposit the day-close packet has already absorbed.
+  const counted = p && p.depositAlreadyInBalancePeur ? Number(p.depositAlreadyInBalancePeur) : 0;
+  $("#main").innerHTML = `<h1>Money</h1>
+    <p class="sub">Deposits and withdrawals queue up and are applied when a day settles.</p>
+    ${p ? `<div class="panel">
+      <h2>Position</h2>
+      <div class="figures">
+        <div class="figure"><div class="label">Last known balance</div><div class="value">${eur(p.knownBalanceEur)}</div></div>
+        <div class="figure"><div class="label">Deposit still to apply</div><div class="value">${eur(p.depositStillToApplyEur)}</div></div>
+        <div class="figure"><div class="label">Withdrawal queued</div><div class="value">${eur(p.pendingWithdrawalEur)}</div></div>
+      </div>
+      <p class="note">Your balance itself is never public: the market holds only a commitment to it, and the figure above comes from the packets the operator signed for you.</p>
+    </div>` : ""}
+    <div class="panel">
+      <h2>Move money</h2>
+      <div class="field"><label for="depAmt">Deposit</label><input id="depAmt" placeholder="10.5"><button class="btn" data-act="deposit">Deposit</button></div>
+      <div class="field"><label for="wdrAmt">Withdraw</label><input id="wdrAmt" placeholder="5"><button class="btn" data-act="withdraw">Request withdrawal</button></div>
+      <p class="note">A withdrawal is a request, not a promise: settlement pays whichever is smaller, what you asked for or what you have. A capped payout is visible on chain and tells everyone your balance was exactly the amount paid.</p>
+    </div>`;
+}
+
+function renderActivity() {
+  const rows = logEntries.slice().reverse().map((e) => `<div>
+      <span class="t">${clock(e.at)}</span>
+      <span class="k ${e.kind}">${e.kind}</span>
+      <span>${esc(e.text)}</span>
+    </div>`).join("");
+  $("#main").innerHTML = `<h1>Activity</h1>
+    <p class="sub">Everything this client has done and seen since it started.</p>
+    <div class="panel"><div class="stream">${rows || "<p class='empty'>Nothing yet.</p>"}</div></div>`;
+}
+
+async function render() {
+  try {
+    if (view === "overview") await renderOverview();
+    else if (view === "days") await renderDays();
+    else if (view === "day") await renderDay(selectedDay);
+    else if (view === "money") await renderMoney();
+    else renderActivity();
+  } catch (e) {
+    $("#main").innerHTML = `<h1>Cannot reach the market</h1><p class="sub">${esc(e.message)}</p>
+      <div class="panel"><p class="note">Check that the node is running and that this client points at the right market address, then reload.</p></div>`;
+  }
+}
+
+const NEEDS_DAY = {
+  verify: "Checked day",
+  finalize: "Settlement",
+  "request-data": "Data demand",
+  "fetch-data": "Decryption",
+  "request-clear": "Clear-balance demand",
+  revealed: "Revealed balance",
+  dispute: "Dispute",
+  cancel: "Cancellation",
+};
+
+document.addEventListener("click", async (e) => {
+  const nav = e.target.closest("nav button");
+  if (nav) {
+    view = nav.dataset.view;
+    document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-current", String(b === nav)));
+    render();
+    return;
+  }
+
+  if (e.target.closest("#keeperSwitch")) {
+    const sw = $("#keeperSwitch");
+    const on = sw.getAttribute("aria-pressed") !== "true";
+    try {
+      await api("POST", "/api/keeper", { on });
+      sw.setAttribute("aria-pressed", String(on));
+      toast(on ? "Keeper running." : "Keeper stopped.");
+    } catch (err) { toast(err.message, true); }
+    return;
+  }
+
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  const day = el.dataset.day ? Number(el.dataset.day) : undefined;
+
+  if (act === "openday") {
+    view = "day";
+    selectedDay = day;
+    document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.view === "days")));
+    render();
+    return;
+  }
+
+  const button = el.tagName === "BUTTON" ? el : null;
+  if (button) button.disabled = true;
+  try {
+    if (act === "register") {
+      await api("POST", "/api/register");
+      toast("Registered.");
+      await render();
+    } else if (act === "sync") {
+      const r = await api("POST", "/api/sync", day !== undefined ? { day } : {});
+      toast(r.coverage);
+      await render();
+    } else if (act === "deposit" || act === "withdraw") {
+      const amount = $(act === "deposit" ? "#depAmt" : "#wdrAmt").value.trim();
+      if (!amount) { toast("Enter an amount first.", true); return; }
+      await api("POST", "/api/" + act, { eur: amount });
+      toast(act === "deposit" ? "Deposit queued." : "Withdrawal requested.");
+      overviewData = null;
+      await render();
+    } else if (act === "verify") {
+      const r = await api("POST", "/api/verify", { day });
+      renderVerdict(r);
+      toast(`Day ${day}: ${r.verdict}.`, r.verdict === "mismatch");
+    } else if (NEEDS_DAY[act]) {
+      const r = await api("POST", "/api/" + act, { day });
+      toast(r.outcome || r.reason || "Done.");
+      await render();
+    }
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
+
+async function pollLog() {
+  try {
+    const r = await api("GET", "/api/log?since=" + logSeq);
+    if (r.entries.length) {
+      logEntries = logEntries.concat(r.entries).slice(-400);
+      logSeq = r.seq;
+      const alert = r.entries.filter((e) => e.kind === "alert" || e.kind === "error").pop();
+      if (alert) toast(alert.text, alert.kind === "error");
+      if (view === "activity") renderActivity();
+    }
+  } catch { /* server restarting */ }
+}
+
+render();
+setInterval(pollLog, 4000);
+setInterval(() => { if (view === "overview") { overviewData = null; renderOverview().catch(() => {}); } }, 20000);
+</script>
+</body>
+</html>

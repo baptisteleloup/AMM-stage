@@ -13,8 +13,8 @@ contract MarketV4 {
     uint256 public constant SESSION_SECONDS = 900; 
     uint256 public constant PRICE_SCALE = 1e11;
     uint256 public constant WEI_PER_UNIT = 1e6;
-    uint256 public constant PROOF_WINDOW = 6 hours; 
-    uint256 public constant REVEAL_WINDOW = 12 hours; 
+    uint256 public constant PROOF_WINDOW = 12 hours; 
+    uint256 public constant REVEAL_WINDOW = 4 hours; 
     uint256 public constant DISPUTE_BOND = 50e12 * WEI_PER_UNIT;
     uint256 public constant MAX_UNIT = type(uint32).max; 
 
@@ -336,6 +336,11 @@ contract MarketV4 {
     function requestData(uint256 dayId) external {
         uint256 slot = slotOf[msg.sender];
         require(slot != 0, "not registered");
+        // Only a day that is closing can be challenged. Without this a prosumer
+        // could request data on a day that has not happened yet: the reveal
+        // deadline would expire long before the day closed, _revealTimedOut
+        // would then be true, and anyone could cancel that day for free.
+        require(dayCloses[dayId].state == DayState.Closing, "state");
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage1Deadline == 0, "requested");
         r.stage1Deadline = uint64(block.timestamp + REVEAL_WINDOW);
@@ -353,6 +358,8 @@ contract MarketV4 {
 
     function requestClearReveal(uint256 dayId) external {
         uint256 slot = slotOf[msg.sender];
+        require(slot != 0, "not registered");
+        require(dayCloses[dayId].state == DayState.Closing, "state");
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage1Done && r.stage2Deadline == 0, "stage1 first");
         r.stage2Deadline = uint64(block.timestamp + REVEAL_WINDOW);

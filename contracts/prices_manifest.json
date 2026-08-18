@@ -1,0 +1,55 @@
+{
+ "generated_at": "2026-08-17T15:30:02.161954+00:00",
+ "source": {
+  "name": "ISO New England SMD hourly data, 2018",
+  "zone": "WCMA",
+  "url": "https://www.iso-ne.com/isoexpress/web/reports/pricing/-/tree/zone-info",
+  "file": "2018_smd_hourly.xlsx",
+  "sha256": "85ae3c5f70425bab9c8fdd24a31b0aa4d4b9ef449b27122fc7d4cb2afa8ba936",
+  "landing_page": "https://www.iso-ne.com/isoexpress/web/reports/pricing/-/tree/zone-info"
+ },
+ "transformations": [
+  "hour-ending labels converted to interval-start hours",
+  "clock shifted back 1h from Eastern Prevailing Time to the Eastern Standard Time ResStock uses all year",
+  "$/MWh converted to currency per kWh",
+  "each hourly day-ahead price held flat across its four quarter hours, as day-ahead settlement does",
+  "buyer price = day-ahead LMP + 0.12/kWh delivery adder"
+ ],
+ "modelling_choice": {
+  "regime": "export paid at wholesale, import paid at retail",
+  "why": "under net metering an export is credited at the retail price, so low equals high, the spread vanishes and a local market has no reason to exist. Pricing exports at wholesale is what creates the spread that a local market splits between neighbours.",
+  "delivery_adder_note": "a single flat figure standing for distribution, transmission and taxes, which in practice vary by utility and by rate class"
+ },
+ "daily_wholesale_summary_per_kwh": [
+  {
+   "day": "2018-07-01",
+   "min": 0.0232,
+   "max": 0.066,
+   "mean": 0.0403
+  },
+  {
+   "day": "2018-07-02",
+   "min": 0.0263,
+   "max": 0.1031,
+   "mean": 0.0547
+  },
+  {
+   "day": "2018-07-03",
+   "min": 0.0255,
+   "max": 0.0937,
+   "mean": 0.0513
+  },
+  {
+   "day": "2018-07-04",
+   "min": 0.0227,
+   "max": 0.0501,
+   "mean": 0.0329
+  },
+  {
+   "day": "2018-07-05",
+   "min": 0.0218,
+   "max": 0.0633,
+   "mean": 0.0397
+  }
+ ]
+}

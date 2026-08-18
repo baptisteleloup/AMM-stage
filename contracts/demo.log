@@ -1,0 +1,783 @@
+[36m[demo-ui][0m previous state cleared
+[36m[demo-ui][0m starting anvil
+JsonRpcProvider failed to detect network and cannot start up; retry in 1s (perhaps the URL is wrong or the node is not started)
+[32m[demo-ui][0m anvil up on 8545
+[36m[demo-ui][0m deploying (10 prosumers)
+[32m[demo-ui][0m market 0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44
+[36m[demo-ui][0m posting day-ahead prices (40 days from prices.json)
+[32m[demo-ui][0m prices finalised on chain by the reporter quorum
+[36m[demo-ui][0m setting floors (31 EUR)
+[32m[demo-ui][0m floors set and openings written
+[36m[demo-ui][0m starting operator daemon
+[90m  [operator] [main] source: NiceSource (10 registered prosumers)[0m
+[90m  [operator] [main] operator daemon up — market=0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44 chainId=31337[0m
+[90m  [operator] [main] proofs run in a separate process; session opening is never blocked by one[0m
+[32m[demo-ui][0m client for slot 1 at http://127.0.0.1:8787
+[35m  [client-1] prosumer client at http://127.0.0.1:8787[0m
+
+[32m[demo-ui][0m everything is up. Leave this running and watch the browser.
+[36m[demo-ui][0m one quarter-hour every 4s, so a full day takes about 6 min
+[36m[demo-ui][0m press Ctrl-C to stop the chain, the operator and the clients
+[36m[demo-ui][0m run `touch PAUSE` to freeze the clock while you click through the client,
+[36m[demo-ui][0m then `rm PAUSE` to let it run again
+
+[36m[demo-ui][0m --- day 20684 ---
+[90m  [operator] [close] day 20683: netput hashes posted + freeze (N=10)[0m
+[90m  [operator] [reveals] stage 1 served: day=20683 slot=1[0m
+[90m  [operator] [main] a tick took 9926ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20683: chunk 1/2 queued for proving[0m
+[90m  [operator] [main] a tick took 500ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 432ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 401ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [close] day 20683: chunk 0 verified on-chain (proof took 2.7s)[0m
+[90m  [operator] [close] day 20683: chunk 2/2 queued for proving[0m
+[90m  [operator] [main] a tick took 4942ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [close] day 20683: chunk 1 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [main] a tick took 4588ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20683: openings stored + day-close packets written[0m
+[90m  [operator] [main] a tick took 494ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4225ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4232ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4226ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4207ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4231ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4227ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4225ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4226ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4229ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4210ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4209ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4209ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4209ms, longer than expected — sessions may be late[0m
+[32m[demo-ui][0m day 20684: 96/96 sessions opened
+[36m[demo-ui][0m day 20684 is closing, the operator is proving it
+[90m  [operator] [close] day 20684: netput hashes posted + freeze (N=10)[0m
+[90m  [operator] [reveals] stage 1 served: day=20684 slot=1[0m
+[90m  [operator] [main] a tick took 9912ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20684: chunk 1/2 queued for proving[0m
+[90m  [operator] [main] a tick took 510ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 420ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 401ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 412ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 417ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [main] a tick took 415ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20684: chunk 0 verified on-chain (proof took 2.5s)[0m
+[90m  [operator] [close] day 20684: chunk 2/2 queued for proving[0m
+[90m  [operator] [main] a tick took 4987ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[32m[demo-ui][0m day 20684: proof verified on chain, a client keeper will settle it
+[36m[demo-ui][0m --- day 20685 ---
+[90m  [operator] [close] day 20684: chunk 1 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [main] a tick took 4610ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20684: openings stored + day-close packets written[0m
+[90m  [operator] [main] a tick took 505ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4210ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4225ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4205ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4209ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4210ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4209ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[32m[demo-ui][0m day 20685: 96/96 sessions opened
+[36m[demo-ui][0m day 20685 is closing, the operator is proving it
+[90m  [operator] [close] day 20685: netput hashes posted + freeze (N=10)[0m
+[90m  [operator] [reveals] stage 1 served: day=20685 slot=1[0m
+[90m  [operator] [main] a tick took 9905ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20685: chunk 1/2 queued for proving[0m
+[90m  [operator] [main] a tick took 511ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 418ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 415ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 404ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 415ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [close] day 20685: chunk 0 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [close] day 20685: chunk 2/2 queued for proving[0m
+[90m  [operator] [main] a tick took 4960ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[32m[demo-ui][0m day 20685: proof verified on chain, a client keeper will settle it
+[36m[demo-ui][0m --- day 20686 ---
+[90m  [operator] [close] day 20685: chunk 1 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [main] a tick took 4614ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20685: openings stored + day-close packets written[0m
+[90m  [operator] [main] a tick took 519ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4225ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4207ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4240ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4227ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4226ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4225ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4225ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4228ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4210ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4216ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4210ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[32m[demo-ui][0m day 20686: 96/96 sessions opened
+[36m[demo-ui][0m day 20686 is closing, the operator is proving it
+[90m  [operator] [close] day 20686: netput hashes posted + freeze (N=10)[0m
+[90m  [operator] [reveals] stage 1 served: day=20686 slot=1[0m
+[90m  [operator] [main] a tick took 9906ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20686: chunk 1/2 queued for proving[0m
+[90m  [operator] [main] a tick took 508ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 414ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 403ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 409ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 417ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [close] day 20686: chunk 0 verified on-chain (proof took 2.5s)[0m
+[90m  [operator] [close] day 20686: chunk 2/2 queued for proving[0m
+[90m  [operator] [main] a tick took 4978ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[32m[demo-ui][0m day 20686: proof verified on chain, a client keeper will settle it
+[36m[demo-ui][0m --- day 20687 ---
+[90m  [operator] [close] day 20686: chunk 1 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [main] a tick took 4618ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20686: openings stored + day-close packets written[0m
+[90m  [operator] [main] a tick took 486ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4207ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4213ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4208ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4206ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4212ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4226ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4214ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4215ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4217ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4208ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4227ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4220ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4222ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4218ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4230ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4224ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4219ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4221ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4223ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4207ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4192ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4205ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4192ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4190ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4233ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4205ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4207ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[32m[demo-ui][0m day 20687: 96/96 sessions opened
+[36m[demo-ui][0m day 20687 is closing, the operator is proving it
+[90m  [operator] [close] day 20687: netput hashes posted + freeze (N=10)[0m
+[90m  [operator] [reveals] stage 1 served: day=20687 slot=1[0m
+[90m  [operator] [main] a tick took 9716ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20687: chunk 1/2 queued for proving[0m
+[90m  [operator] [main] a tick took 448ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [close] day 20687: chunk 0 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [close] day 20687: chunk 2/2 queued for proving[0m
+[90m  [operator] [main] a tick took 4918ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[32m[demo-ui][0m day 20687: proof verified on chain, a client keeper will settle it
+[36m[demo-ui][0m --- day 20688 ---
+[90m  [operator] [close] day 20687: chunk 1 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [main] a tick took 4598ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20687: openings stored + day-close packets written[0m
+[90m  [operator] [main] a tick took 473ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4206ms, longer than expected — sessions may be late[0m
+[90m  [operator] [reveals] stage 2 queued for proving: day=20687 slot=1[0m
+[90m  [operator] [main] a tick took 4226ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 2 public inputs and 234 fields.[0m
+[90m  [operator] [reveals] stage 2 served: day=20687 slot=1 bal=181699317856196 (proof took 0.2s)[0m
+[90m  [operator] [main] a tick took 4403ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4191ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4208ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4193ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4206ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4187ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4192ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4191ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4189ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4186ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4191ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4193ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [reveals] stage 1 served: day=20688 slot=1[0m
+[90m  [operator] [main] a tick took 8425ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4188ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4190ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[32m[demo-ui][0m day 20688: 96/96 sessions opened
+[36m[demo-ui][0m day 20688 is closing, the operator is proving it
+[90m  [operator] [close] day 20688: netput hashes posted + freeze (N=10)[0m
+[90m  [operator] [main] a tick took 5470ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20688: chunk 1/2 queued for proving[0m
+[90m  [operator] [main] a tick took 489ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [close] day 20688: chunk 0 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [close] day 20688: chunk 2/2 queued for proving[0m
+[90m  [operator] [main] a tick took 4917ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[32m[demo-ui][0m day 20688: proof verified on chain, a client keeper will settle it
+[36m[demo-ui][0m --- day 20689 ---
+[90m  [operator] [close] day 20688: chunk 1 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [main] a tick took 4579ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20688: openings stored + day-close packets written[0m
+[90m  [operator] [main] a tick took 472ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4190ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4193ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4192ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4193ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4189ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4205ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4191ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4194ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4194ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4188ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4208ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4194ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4211ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4193ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4190ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4191ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4192ms, longer than expected — sessions may be late[0m
+[32m[demo-ui][0m day 20689: 96/96 sessions opened
+[36m[demo-ui][0m day 20689 is closing, the operator is proving it
+[90m  [operator] [close] day 20689: netput hashes posted + freeze (N=10)[0m
+[90m  [operator] [reveals] stage 1 served: day=20689 slot=1[0m
+[90m  [operator] [main] a tick took 9769ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20689: chunk 1/2 queued for proving[0m
+[90m  [operator] [main] a tick took 477ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[90m  [operator] [close] day 20689: chunk 0 verified on-chain (proof took 2.4s)[0m
+[90m  [operator] [close] day 20689: chunk 2/2 queued for proving[0m
+[90m  [operator] [main] a tick took 4908ms, longer than expected — sessions may be late[0m
+[90m  [operator] Generated proof for circuit with 450 public inputs and 294 fields.[0m
+[32m[demo-ui][0m day 20689: proof verified on chain, a client keeper will settle it
+[36m[demo-ui][0m --- day 20690 ---
+[90m  [operator] [close] day 20689: chunk 1 verified on-chain (proof took 2.5s)[0m
+[90m  [operator] [main] a tick took 4586ms, longer than expected — sessions may be late[0m
+[90m  [operator] [close] day 20689: openings stored + day-close packets written[0m
+[90m  [operator] [main] a tick took 458ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4194ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4190ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4194ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4207ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4195ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4203ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4194ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4193ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4192ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4200ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4196ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4199ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4197ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4204ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4198ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4201ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4202ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4206ms, longer than expected — sessions may be late[0m
+[90m  [operator] [main] a tick took 4190ms, longer than expected — sessions may be late[0m

@@ -1,0 +1,120 @@
+{
+ "generated_at": "2026-08-17T15:30:01.730730+00:00",
+ "script": "build_profiles.py",
+ "dataset": {
+  "name": "End-Use Load Profiles for the U.S. Building Stock (ResStock)",
+  "publisher": "NREL / U.S. Department of Energy",
+  "landing_page": "https://data.openei.org/submissions/4520",
+  "engine": "EnergyPlus (via OpenStudio-HPXML)",
+  "native_resolution_minutes": 15,
+  "units_in_source": "kWh per interval",
+  "timestamp_convention_in_source": "end of interval",
+  "timezone_in_source": "Eastern Standard Time"
+ },
+ "transformations": [
+  "timestamps shifted back 15 min so the index labels the START of each interval",
+  "kWh per interval converted to average kW by multiplying by 4",
+  "electricity end uses split into generation / flexible / inflexible",
+  "flexible = cooling, heating, hot water; fans and pumps excluded as they are already accounted for inside the equipment they serve",
+  "flexible load aggregated to one energy figure per day, as the solver expects"
+ ],
+ "selection": {
+  "note": "PV penetration in the ResStock baseline reflects the real US stock, so a seller/buyer mix is obtained by FILTERING on building characteristics, not by random sampling. This is a composition choice and must be declared as such.",
+  "state": "MA",
+  "date_range": "2018-07-01:2018-07-05",
+  "building_ids": [
+   "185485",
+   "457879",
+   "278632",
+   "153458",
+   "493042",
+   "397960",
+   "274275",
+   "107843",
+   "60561",
+   "408142"
+  ]
+ },
+ "known_limitations": [
+  "ResStock does not size PV to the dwelling's own consumption, so an oversized array can produce large net surplus; NREL warns that PV-equipped units may skew distributional analysis",
+  "PV is assigned only to single-family detached units, capped at 14 kW DC",
+  "US building stock and US weather; a French collective self-consumption case is not represented"
+ ],
+ "community_totals_kwh_per_day": {
+  "generation": 238.4,
+  "consumption": 353.9,
+  "balance": "deficit"
+ },
+ "sources": [
+  {
+   "agent": "prosumer-0",
+   "building_id": "185485",
+   "file": "185485-0.parquet",
+   "sha256": "98b97d8d935c16495a4d25a51c925e6a06c22dd48ee41de72510351033c27bb7",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-1",
+   "building_id": "457879",
+   "file": "457879-0.parquet",
+   "sha256": "4a61622ae0de97658cd8d9921d3aba1005202afad08c7a99e5695c03b5e9f099",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-2",
+   "building_id": "278632",
+   "file": "278632-0.parquet",
+   "sha256": "58efb52883b9c8efadf3b6cdb200b07fdacb97008910d69a60d0f255fb707311",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-3",
+   "building_id": "153458",
+   "file": "153458-0.parquet",
+   "sha256": "e36dbc7b26c23d774028761216a82e58715bffe08308af2fb640d2a132a65186",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-4",
+   "building_id": "493042",
+   "file": "493042-0.parquet",
+   "sha256": "0372241392cbb0547df51c3d8cc9a1f042c35af26c311833eed03bc688f8123c",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-5",
+   "building_id": "397960",
+   "file": "397960-0.parquet",
+   "sha256": "a4a04683c4a1860d866e70bf0c84906ecbbf58e7575f38e8edf7a53abaedf475",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-6",
+   "building_id": "274275",
+   "file": "274275-0.parquet",
+   "sha256": "852b76a9e41142d1088c769ef0216d2d9edd88ebae9f876143efa40845cb16e2",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-7",
+   "building_id": "107843",
+   "file": "107843-0.parquet",
+   "sha256": "09e315ae06fde7f3ca7fb347ec03f3e8c2296391ff8e8f93a8f64f6730198d61",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-8",
+   "building_id": "60561",
+   "file": "60561-0.parquet",
+   "sha256": "6d506a7e954dd2a4218e07b53ba52fbf9628dd9ef1f1fce6a600abbb2f1c382e",
+   "rows_used": 480
+  },
+  {
+   "agent": "prosumer-9",
+   "building_id": "408142",
+   "file": "408142-0.parquet",
+   "sha256": "35442960d50dff143090b9dd1ae69f9ca5bbc1958696cf959044516b5ce2cc02",
+   "rows_used": 480
+  }
+ ]
+}

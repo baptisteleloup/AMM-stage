@@ -1,8 +1,0 @@
-{
-  "day": 20655,
-  "slot": 40,
-  "newBalance": "50000000000000",
-  "newBlind": "0x0014ef3d4ee036acc2cad02e696a82915cfe26ae6a12dfdbbdb5ce2b3ab0943f",
-  "netputBlind": "0x00e90762498b2d8d57e4f6882a4d36db004bccb113a20e6049e2a89d4b96fef6",
-  "sig": "0x54619aa17a68aaff4111de0fbcbe09b8db2b19c7cc69a71e51a97440ea42333b3e3c75a76bfdff98153d1da277eb54fa014c1e3e456767ba285cedc79cf31a2f1b"
-}

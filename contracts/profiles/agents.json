@@ -1,0 +1,294 @@
+{
+ "sessions_per_day": 96,
+ "days": [
+  "2018-07-01",
+  "2018-07-02",
+  "2018-07-03",
+  "2018-07-04",
+  "2018-07-05"
+ ],
+ "agents": [
+  {
+   "name": "prosumer-0",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 58.14,
+   "base_kwh_per_day": 16.5,
+   "flexible_kwh_per_day": 4.73,
+   "flexible_share": 0.223,
+   "resstock_building_id": "185485"
+  },
+  {
+   "name": "prosumer-1",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 58.14,
+   "base_kwh_per_day": 6.04,
+   "flexible_kwh_per_day": 13.41,
+   "flexible_share": 0.69,
+   "resstock_building_id": "457879"
+  },
+  {
+   "name": "prosumer-2",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 26.95,
+   "base_kwh_per_day": 7.79,
+   "flexible_kwh_per_day": 13.02,
+   "flexible_share": 0.626,
+   "resstock_building_id": "278632"
+  },
+  {
+   "name": "prosumer-3",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 47.57,
+   "base_kwh_per_day": 22.83,
+   "flexible_kwh_per_day": 35.04,
+   "flexible_share": 0.605,
+   "resstock_building_id": "153458"
+  },
+  {
+   "name": "prosumer-4",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 47.57,
+   "base_kwh_per_day": 14.17,
+   "flexible_kwh_per_day": 23.03,
+   "flexible_share": 0.619,
+   "resstock_building_id": "493042"
+  },
+  {
+   "name": "prosumer-5",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 19.89,
+   "flexible_kwh_per_day": 11.59,
+   "flexible_share": 0.368,
+   "resstock_building_id": "397960"
+  },
+  {
+   "name": "prosumer-6",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 13.5,
+   "flexible_kwh_per_day": 20.27,
+   "flexible_share": 0.6,
+   "resstock_building_id": "274275"
+  },
+  {
+   "name": "prosumer-7",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 17.99,
+   "flexible_kwh_per_day": 18.6,
+   "flexible_share": 0.508,
+   "resstock_building_id": "107843"
+  },
+  {
+   "name": "prosumer-8",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 18.02,
+   "flexible_kwh_per_day": 31.48,
+   "flexible_share": 0.636,
+   "resstock_building_id": "60561"
+  },
+  {
+   "name": "prosumer-9",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.cooling.energy_consumption",
+    "out.electricity.heating.energy_consumption",
+    "out.electricity.heating_hp_bkup.energy_consumption",
+    "out.electricity.heating_hp_bkup_fa.energy_consumption",
+    "out.electricity.hot_water.energy_consumption"
+   ],
+   "base_columns_count": 19,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 15.22,
+   "flexible_kwh_per_day": 30.82,
+   "flexible_share": 0.669,
+   "resstock_building_id": "408142"
+  }
+ ],
+ "flex_daily_kwh": {
+  "prosumer-0": {
+   "2018-07-01": 4.83,
+   "2018-07-02": 4.803,
+   "2018-07-03": 4.398,
+   "2018-07-04": 4.803,
+   "2018-07-05": 4.838
+  },
+  "prosumer-1": {
+   "2018-07-01": 12.581,
+   "2018-07-02": 13.935,
+   "2018-07-03": 13.138,
+   "2018-07-04": 13.515,
+   "2018-07-05": 13.86
+  },
+  "prosumer-2": {
+   "2018-07-01": 12.866,
+   "2018-07-02": 13.687,
+   "2018-07-03": 11.39,
+   "2018-07-04": 13.669,
+   "2018-07-05": 13.492
+  },
+  "prosumer-3": {
+   "2018-07-01": 33.967,
+   "2018-07-02": 37.602,
+   "2018-07-03": 32.611,
+   "2018-07-04": 35.369,
+   "2018-07-05": 35.65
+  },
+  "prosumer-4": {
+   "2018-07-01": 19.798,
+   "2018-07-02": 24.863,
+   "2018-07-03": 23.631,
+   "2018-07-04": 23.001,
+   "2018-07-05": 23.879
+  },
+  "prosumer-5": {
+   "2018-07-01": 10.761,
+   "2018-07-02": 11.883,
+   "2018-07-03": 10.975,
+   "2018-07-04": 11.921,
+   "2018-07-05": 12.387
+  },
+  "prosumer-6": {
+   "2018-07-01": 18.868,
+   "2018-07-02": 21.033,
+   "2018-07-03": 19.472,
+   "2018-07-04": 20.692,
+   "2018-07-05": 21.302
+  },
+  "prosumer-7": {
+   "2018-07-01": 17.228,
+   "2018-07-02": 24.131,
+   "2018-07-03": 17.713,
+   "2018-07-04": 15.614,
+   "2018-07-05": 18.305
+  },
+  "prosumer-8": {
+   "2018-07-01": 29.151,
+   "2018-07-02": 33.586,
+   "2018-07-03": 30.95,
+   "2018-07-04": 31.313,
+   "2018-07-05": 32.407
+  },
+  "prosumer-9": {
+   "2018-07-01": 30.732,
+   "2018-07-02": 31.041,
+   "2018-07-03": 30.281,
+   "2018-07-04": 31.133,
+   "2018-07-05": 30.919
+  }
+ }
+}

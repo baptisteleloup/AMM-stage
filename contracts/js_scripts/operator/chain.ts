@@ -25,6 +25,9 @@ const ABI = [
   "function reveals(uint256,uint256) view returns (uint64 stage1Deadline,uint64 stage2Deadline,bool stage1Done,bool stage2Done)",
   "function postEncryptedData(uint256 dayId,uint256 slot,bytes blob)",
   "function clearReveal(uint256 dayId,uint256 slot,uint64 bal,bytes proof)",
+  "function cancelDay(uint256 dayId,uint256 revealSlot,string reason)",
+  "function chunkCountFor(uint256) view returns (uint256)",
+  "function openRevealCount(uint256) view returns (uint256)",
   "event DataRequested(uint256 indexed dayId,uint256 slot,uint8 stage)",
 ];
 
@@ -35,6 +38,7 @@ export type SessionView = {
 
 export type DayCloseView = {
   state: number; chunksVerified: number; prosumerCountAt: number;
+  disputeDeadline: bigint;
 };
 
 export type RevealView = {
@@ -110,7 +114,12 @@ export class Chain {
 
   async dayClose(day: number): Promise<DayCloseView> {
     const r = await this.market.dayCloses(day);
-    return { state: Number(r.state), chunksVerified: Number(r.chunksVerified), prosumerCountAt: Number(r.prosumerCountAt) };
+    return {
+      state: Number(r.state),
+      chunksVerified: Number(r.chunksVerified),
+      prosumerCountAt: Number(r.prosumerCountAt),
+      disputeDeadline: BigInt(r.disputeDeadline),
+    };
   }
 
   async chunkDone(day: number, k: number): Promise<boolean> {
@@ -157,6 +166,30 @@ export class Chain {
   async clearReveal(day: number, slot: number, bal: bigint, proof: Uint8Array): Promise<void> {
     const tx = await this.market.clearReveal(day, slot, bal, ethers.hexlify(proof));
     await tx.wait();
+  }
+
+  async chunkCountFor(day: number): Promise<number> {
+    return Number(await this.market.chunkCountFor(day));
+  }
+
+  async openRevealCount(day: number): Promise<number> {
+    return Number(await this.market.openRevealCount(day));
+  }
+
+  /**
+   * Abandon a day that can no longer be closed. Permissionless by design: the
+   * operator is not the only party who may call it, but it is the one that knows
+   * first, so it should. revealSlot 0 is the general ground — a proof that never
+   * arrived, or a dispute still open past the deadline. No balance moves; the
+   * deposits and withdrawals frozen for the day return to the queue.
+   */
+  async cancelDay(day: number, revealSlot: number, reason: string): Promise<void> {
+    const tx = await this.market.cancelDay(day, revealSlot, reason);
+    await tx.wait();
+  }
+
+  async blockNumber(): Promise<number> {
+    return this.provider.getBlockNumber();
   }
 
   async dataRequests(fromBlock: number): Promise<{ day: number; slot: number; stage: number; block: number }[]> {

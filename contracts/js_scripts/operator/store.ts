@@ -17,6 +17,9 @@ export class Store {
         PRIMARY KEY(day, slot));
       CREATE TABLE IF NOT EXISTS floors(
         slot INTEGER PRIMARY KEY, floor TEXT NOT NULL, blind TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS participation(
+        day INTEGER NOT NULL, slot INTEGER NOT NULL, yes INTEGER NOT NULL,
+        PRIMARY KEY(day, slot));
       CREATE TABLE IF NOT EXISTS spend(
         day INTEGER NOT NULL, slot INTEGER NOT NULL, net TEXT NOT NULL,
         PRIMARY KEY(day, slot));
@@ -83,6 +86,25 @@ export class Store {
   putFloor(slot: number, floor: bigint, blind: bigint): void {
     this.db.prepare("INSERT OR REPLACE INTO floors(slot,floor,blind) VALUES(?,?,?)")
       .run(slot, floor.toString(), blind.toString());
+
+    const dir = path.join(config.receiptsDir, `slot-${slot}`);
+    fs.mkdirSync(dir, { recursive: true });
+    const packet = {
+      slot,
+      floor: floor.toString(),
+      blind: "0x" + blind.toString(16).padStart(64, "0"),
+    };
+    fs.writeFileSync(path.join(dir, "floor-opening.json"), JSON.stringify(packet, null, 2));
+  }
+
+  participationOf(day: number, slot: number): boolean | null {
+    const r = this.db.prepare("SELECT yes FROM participation WHERE day=? AND slot=?").get(day, slot) as { yes: number } | undefined;
+    return r === undefined ? null : r.yes === 1;
+  }
+
+  putParticipation(day: number, slot: number, yes: boolean): void {
+    this.db.prepare("INSERT OR IGNORE INTO participation(day,slot,yes) VALUES(?,?,?)")
+      .run(day, slot, yes ? 1 : 0);
   }
 
   netSpend(day: number, slot: number): bigint {

@@ -20,16 +20,24 @@ export class Sessions {
   ) {}
 
   private participates(day: number, slot: number): boolean {
+    const cached = this.store.participationOf(day, slot);
+    if (cached !== null) return cached;
     const floor = this.store.floorOf(slot) ?? 0n;
-    if (floor === 0n) return true;
     const bal = this.store.balanceOf(day - 1, slot) ?? 0n;
-    return bal >= floor;
+    const yes = floor === 0n ? true : bal >= floor;
+    this.store.putParticipation(day, slot, yes);
+    return yes;
   }
 
   async tick(): Promise<void> {
     const { day, t } = await this.chain.clock();
     const sess = await this.chain.session(day, t);
     if (sess.opened) return;
+
+    if (this.store.participationOf(day, 1) === null
+        && this.store.metaGet(`packets:${day - 1}`) !== "done") {
+      return;
+    }
 
     const prev = physicalOf(day, t);
     const raw = await this.source.read(prev.day, prev.t);

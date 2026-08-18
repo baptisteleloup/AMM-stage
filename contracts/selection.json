@@ -1,0 +1,24 @@
+{
+ "state": "MA",
+ "release": "2024/resstock_amy2018_release_2",
+ "pv_column": "in.pv_system_size",
+ "with_pv_ids": [
+  "185485",
+  "457879",
+  "278632",
+  "153458",
+  "493042"
+ ],
+ "without_pv_ids": [
+  "397960",
+  "274275",
+  "107843",
+  "60561",
+  "408142"
+ ],
+ "selection_rule": "PV group spread evenly across the system-size distribution; no-PV group drawn at random with a fixed seed, restricted to single-family where possible",
+ "seed": 0,
+ "county": "G2500150, G25001600",
+ "geography_note": "all members drawn from one county so that the community plausibly shares a distribution feeder and a wholesale pricing zone",
+ "note": "This is a composition choice, not a representative sample. PV penetration in the ResStock baseline follows the real US stock, so a mixed community must be selected deliberately."
+}

@@ -63,6 +63,17 @@ export class Receipts {
     fs.writeFileSync(path.join(this.dir(slot, day), "day-close.json"), JSON.stringify(packet, null, 2));
   }
 
+  writeFloorOpening(slot: number, floor: bigint, blind: bigint): void {
+    const dir = path.join(config.receiptsDir, `slot-${slot}`);
+    fs.mkdirSync(dir, { recursive: true });
+    const packet = {
+      slot,
+      floor: floor.toString(),
+      blind: ethers.toBeHex(blind, 32),
+    };
+    fs.writeFileSync(path.join(dir, "floor-opening.json"), JSON.stringify(packet, null, 2));
+  }
+  
   writeAlert(day: number, slot: number, tier: string, projected: bigint, floor: bigint): void {
     const line = JSON.stringify({
       day, tier,
