@@ -216,7 +216,7 @@ export async function verifyDay(chain: Chain, id: Identity, store: Store, day: n
     add("meter comparison", discrepancies.length === 0 ? "pass" : "fail",
       discrepancies.length === 0
         ? "committed net positions match the meter on every session"
-        : `${discrepancies.length} session(s) differ from the meter - grounds for a dispute`);
+        : `${discrepancies.length} session(s) differ from the meter - demand your data and keep both records`);
   }
 
   const failed = checks.some((c) => c.status === "fail");

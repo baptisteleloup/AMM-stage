@@ -17,6 +17,7 @@ const FIELD_BYTES = 31;
 // reconstructs. Retrying forever costs a full proof each time and starves
 // everything else. Count the failures, back off, and once the dispute deadline
 // has passed, abandon the day through the route the protocol already provides.
+const SETTLE_RETRY_MS = Number(process.env.SETTLE_RETRY_MS ?? 15_000);
 const MAX_PROOF_ATTEMPTS = Number(process.env.MAX_PROOF_ATTEMPTS ?? 3);
 const RETRY_BACKOFF_MS = Number(process.env.PROOF_RETRY_BACKOFF_MS ?? 30000);
 
@@ -106,6 +107,68 @@ export class Close {
     }
   }
 
+  private settledAnchor = new Map<number, number | null>();
+
+  // Walk back from target-1 to the most recent day the contract finalized.
+  // Cancelled days are skipped; a day still Closing here means the schedule is
+  // broken (deadline + grace must fit inside 24 h) and is reported loudly.
+  // null means no day has ever settled — the bootstrap case, opening is zero.
+  private async lastSettledBefore(target: number): Promise<number | null> {
+    const cached = this.settledAnchor.get(target);
+    if (cached !== undefined) return cached;
+    let found: number | null = null;
+    for (let d = target - 1; d >= 0 && d > target - 60; d--) {
+      const st = (await this.chain.dayClose(d)).state;
+      if (st === 2) { found = d; break; }
+      if (st === 1) {
+        console.error(`[close] day ${d} is still Closing while day ${target} is being proven — its opening commitments are not final; is PROOF_WINDOW + SETTLEMENT_GRACE below 24 h?`);
+        continue;
+      }
+      // Pending with no freeze = before this market existed: stop looking.
+      if (st === 0 && !(await this.chain.netputHashesPosted(d))) break;
+    }
+    this.settledAnchor.set(target, found);
+    return found;
+  }
+
+  // A fully proven day should settle at its deadline; the operator does not
+  // wait for a keeper to do it. If settlement itself reverts and the grace
+  // period is over, the day is cancelled rather than left to poison every day
+  // after it. Returns true when the day is no longer Closing.
+  private nextSettleAt = new Map<number, number>();
+
+  private async settleOrCancel(day: number, dc: { chunksVerified: number; disputeDeadline: bigint }): Promise<boolean> {
+    const now = BigInt(await this.chain.now());
+    if (now < dc.disputeDeadline) return false;
+    if (await this.chain.openRevealCount(day) > 0) return false;
+    // Settlement is permissionless and a keeper may beat us to it; one attempt
+    // every SETTLE_RETRY_MS is plenty and keeps the log readable.
+    if (Date.now() < (this.nextSettleAt.get(day) ?? 0)) return false;
+    this.nextSettleAt.set(day, Date.now() + SETTLE_RETRY_MS);
+    try {
+      await this.chain.finalizeDay(day);
+      console.log(`[close] day ${day}: settled`);
+      return true;
+    } catch (e) {
+      // Someone else settled or cancelled it between our read and our call.
+      if ((await this.chain.dayClose(day)).state >= 2) return true;
+      const why = (e as Error).message.slice(0, 160);
+      const grace = await this.chain.settlementGrace();
+      if (now <= dc.disputeDeadline + grace) {
+        console.error(`[close] day ${day}: settlement reverted (${why}); retrying until the grace period ends`);
+        return false;
+      }
+      try {
+        await this.chain.cancelDay(day, 0, `settlement impossible: ${why.slice(0, 80)}`);
+        console.error(`[close] day ${day}: CANCELLED — settlement kept failing past the grace period (${why})`);
+        return true;
+      } catch (e2) {
+        console.error(`[close] day ${day}: cancelDay refused — ${(e2 as Error).message.slice(0, 120)}`);
+        return false;
+      }
+    }
+  }
+
   async tick(): Promise<void> {
     const { day } = await this.chain.clock();
     const target = day - 1;
@@ -114,10 +177,28 @@ export class Close {
     // Nothing to do on a day already settled or cancelled, nor on one whose
     // packets are written and whose chunks are all in — leave before touching
     // the chain again.
-    if (this.store.metaGet(`packets:${target}`) === "done") return;
+    // The contract refuses to close a day while the previously closed one is
+    // still Closing. If we were down and an older day is hanging, drive it to
+    // settlement or cancellation first; only then does today's close proceed.
+    const prev = await this.chain.lastClosedDay();
+    if (prev > 0 && prev < target) {
+      const pdc = await this.chain.dayClose(prev);
+      if (pdc.state === 1) {
+        console.error(`[close] day ${prev} is still Closing while day ${target} waits — settling or cancelling it first`);
+        await this.settleOrCancel(prev, pdc);
+        return;
+      }
+    }
 
     const dc = await this.chain.dayClose(target);
     if (dc.state >= 2) return;
+
+    // Packets written and every chunk in: the only thing left is settlement.
+    // Do that (or, past the grace, cancel) and touch nothing else.
+    if (this.store.metaGet(`packets:${target}`) === "done") {
+      await this.settleOrCancel(target, dc);
+      return;
+    }
 
     if (!this.padding) this.padding = await this.chain.paddingConstants();
 
@@ -195,8 +276,13 @@ export class Close {
   private async slotState(target: number, slot: number, row: { sells: bigint[]; buys: bigint[] }, prices: { r: bigint; c: bigint }[]): Promise<SlotDay> {
     const blinds = this.store.dayBlinds(target, slot);
     if (!blinds) throw new Error(`missing day blinds for slot ${slot}`);
-    const oldBal = this.store.balanceOf(target - 1, slot) ?? 0n;
-    const oldBlind = this.store.blindOf(target - 1, slot) ?? 0n;
+    // The chain's current commitment for this slot is the one staged by the
+    // last day that actually SETTLED. A cancelled day left it untouched, so
+    // its stored opening must be skipped, otherwise the witness starts from a
+    // balance the contract never adopted and the proof can only fail.
+    const anchor = await this.lastSettledBefore(target);
+    const oldBal = anchor === null ? 0n : (this.store.balanceOf(anchor, slot) ?? 0n);
+    const oldBlind = anchor === null ? 0n : (this.store.blindOf(anchor, slot) ?? 0n);
     const floor = this.store.floorOf(slot) ?? 0n;
     const floorBlind = this.store.floorBlindOf(slot) ?? 0n;
     const deposit = await this.chain.snapDeposit(target, slot);

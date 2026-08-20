@@ -41,3 +41,9 @@ netputs_nice.json
 
 # --- Deployment ---
 .env*
+
+# demo runtime state and bulky caches
+contracts/demo/state/
+contracts/demo/data/raw/
+contracts/demo/data/profiles/
+contracts/__pycache__/

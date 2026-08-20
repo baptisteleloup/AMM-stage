@@ -15,7 +15,16 @@ contract MarketV4 {
     uint256 public constant WEI_PER_UNIT = 1e6;
     uint256 public constant PROOF_WINDOW = 12 hours; 
     uint256 public constant REVEAL_WINDOW = 4 hours; 
-    uint256 public constant DISPUTE_BOND = 50e12 * WEI_PER_UNIT;
+    // Once the objection deadline has passed and every proof is in, the day is
+    // meant to settle. If settlement itself keeps failing — the grid account
+    // has no funds or no approval, or a transfer reverts — the day would sit
+    // in Closing forever, its balance commitments never advancing, and every
+    // later day would become unprovable. After this extra delay anyone may
+    // cancel such a day instead. Everything must fit inside 24 h so the next
+    // day always finds its predecessor either settled or cancelled:
+    // PROOF_WINDOW + 2 * REVEAL_WINDOW (a late stage 1 then a stage 2) and
+    // PROOF_WINDOW + SETTLEMENT_GRACE must both stay under a day.
+    uint256 public constant SETTLEMENT_GRACE = 6 hours;
     uint256 public constant MAX_UNIT = type(uint32).max; 
 
     bytes32 public immutable EMPTY_NETPUT_HASH;
@@ -86,7 +95,11 @@ contract MarketV4 {
     mapping(uint256 => mapping(uint256 => RevealRequest)) public reveals; 
     mapping(uint256 => uint256) public openRevealCount;
 
-    mapping(uint256 => address) public disputerOf;
+    // Days must close in order, and a day may only close once the previous
+    // closed day is settled or cancelled. Two days closing at once would both
+    // be proven against the same balance commitments, and whichever settled
+    // second would silently overwrite the trades of the first.
+    uint256 public lastClosedDay;
 
     uint256 public dustPot;
 
@@ -98,7 +111,6 @@ contract MarketV4 {
     event DataRequested(uint256 indexed dayId, uint256 slot, uint8 stage);
     event EncryptedDataPosted(uint256 indexed dayId, uint256 slot, bytes blob);
     event BalanceRevealed(uint256 indexed dayId, uint256 slot, uint64 bal);
-    event DayDisputed(uint256 indexed dayId, address disputer);
     event DustAccrued(uint256 indexed dayId, uint256 amount);
     event DustSwept(uint256 amount);
     event FloorProposed(uint256 indexed slot, bytes32 floorCommit);
@@ -213,6 +225,8 @@ contract MarketV4 {
     function postNetputHashes(uint256 dayId, bytes32[] calldata hashes) external onlyOperator {
         require(dayId < currentDayId(), "day not over");
         require(!netputHashesPosted[dayId], "posted");
+        require(dayId > lastClosedDay, "out of order");
+        require(lastClosedDay == 0 || dayCloses[lastClosedDay].state != DayState.Closing, "previous day still closing");
         require(hashes.length == prosumerCount, "len");
     
         for (uint256 i = 0; i < hashes.length; i++) {
@@ -223,6 +237,7 @@ contract MarketV4 {
             snapFloorCommit[dayId][slot] = floorCommitOf[slot];
         }
         netputHashesPosted[dayId] = true;
+        lastClosedDay = dayId;
         dayCloses[dayId].prosumerCountAt = prosumerCount;
         dayCloses[dayId].state = DayState.Closing;
         dayCloses[dayId].disputeDeadline = (dayId + 1) * 1 days + PROOF_WINDOW;
@@ -273,7 +288,6 @@ contract MarketV4 {
         require(dc.state == DayState.Closing, "state");
         require(dc.chunksVerified == chunkCountFor(dayId), "chunks");
         require(block.timestamp >= dc.disputeDeadline, "dispute window");
-        require(disputerOf[dayId] == address(0), "disputed");
         _requireNoPendingReveals(dayId);
 
         uint32[SESSIONS] storage aS = accS[dayId];
@@ -327,8 +341,10 @@ contract MarketV4 {
         require(dc.state == DayState.Closing, "state");
         bool timeout = block.timestamp > dc.disputeDeadline && dc.chunksVerified < chunkCountFor(dayId);
         bool revealTimeout = revealSlot != 0 && _revealTimedOut(dayId, revealSlot);
-        bool disputed = disputerOf[dayId] != address(0) && block.timestamp > dc.disputeDeadline;
-        require(timeout || revealTimeout || disputed, "no ground");
+        // The proofs are all in, the deadline is long gone, and the day is still
+        // not settled: settlement is failing for a reason no proof can fix.
+        bool stuck = block.timestamp > dc.disputeDeadline + SETTLEMENT_GRACE && openRevealCount[dayId] == 0;
+        require(timeout || revealTimeout || stuck, "no ground");
         dc.state = DayState.Cancelled;
         emit DayCancelled(dayId, reason);
     }
@@ -341,6 +357,10 @@ contract MarketV4 {
         // deadline would expire long before the day closed, _revealTimedOut
         // would then be true, and anyone could cancel that day for free.
         require(dayCloses[dayId].state == DayState.Closing, "state");
+        // The window is the time to object. A request lodged after it would
+        // only push settlement back, and every day must be settled or
+        // cancelled before the next one closes.
+        require(block.timestamp < dayCloses[dayId].disputeDeadline, "objection window closed");
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage1Deadline == 0, "requested");
         r.stage1Deadline = uint64(block.timestamp + REVEAL_WINDOW);
@@ -360,6 +380,9 @@ contract MarketV4 {
         uint256 slot = slotOf[msg.sender];
         require(slot != 0, "not registered");
         require(dayCloses[dayId].state == DayState.Closing, "state");
+        // Stage 2 can only follow a served stage 1, which may itself land up
+        // to REVEAL_WINDOW after the deadline; allow that much extra.
+        require(block.timestamp < dayCloses[dayId].disputeDeadline + REVEAL_WINDOW, "objection window closed");
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage1Done && r.stage2Deadline == 0, "stage1 first");
         r.stage2Deadline = uint64(block.timestamp + REVEAL_WINDOW);
@@ -378,15 +401,6 @@ contract MarketV4 {
         r.stage2Done = true;
         openRevealCount[dayId] -= 1;
         emit BalanceRevealed(dayId, slot, bal);
-    }
-
-    function disputeDay(uint256 dayId) external {
-        require(slotOf[msg.sender] != 0, "not registered");
-        require(dayCloses[dayId].state == DayState.Closing, "state");
-        require(disputerOf[dayId] == address(0), "disputed");
-        require(eeur.transferFrom(msg.sender, address(this), DISPUTE_BOND), "bond");
-        disputerOf[dayId] = msg.sender;
-        emit DayDisputed(dayId, msg.sender);
     }
 
     function sweepDust() external {

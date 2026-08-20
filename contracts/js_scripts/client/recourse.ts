@@ -14,7 +14,6 @@ export type RecourseResult = {
   next: string;
 };
 
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 async function slotOrThrow(chain: Chain, id: Identity, store: Store): Promise<number> {
   const slot = store.slot || (await chain.slotOf(id.address));
@@ -32,15 +31,29 @@ async function closingOnly(
   chain: Chain, action: string, day: number, slot: number,
 ): Promise<RecourseResult | null> {
   const dc = await chain.dayClose(day);
-  if (DAY_STATE[dc.state] === "Closing") return null;
   const state = DAY_STATE[dc.state];
-  return {
-    action, day, slot, tx: null,
-    outcome: `day ${day} is ${state}, and recourse only applies while a day is closing`,
-    next: state === "Pending"
-      ? "wait for the day to close, then check your packet against the operator's"
-      : "this day is finished; nothing about it can be challenged now",
-  };
+  if (state !== "Closing") {
+    return {
+      action, day, slot, tx: null,
+      outcome: `day ${day} is ${state}, and recourse only applies while a day is closing`,
+      next: state === "Pending"
+        ? "wait for the day to close, then check your packet against the operator's"
+        : "this day is finished; nothing about it can be challenged now",
+    };
+  }
+  // The objection window bounds the first request; the second gets one reveal
+  // window more, since it can only follow an answered first request.
+  const now = await chain.now();
+  const deadline = Number(dc.disputeDeadline);
+  const extra = action === "requestClearReveal" ? Number((await chain.market.REVEAL_WINDOW()) as bigint) : 0;
+  if (now >= deadline + extra) {
+    return {
+      action, day, slot, tx: null,
+      outcome: `the time to object on day ${day} has passed`,
+      next: "the day will settle as proven; keep your records if you still disagree",
+    };
+  }
+  return null;
 }
 
 export async function requestData(chain: Chain, id: Identity, store: Store, day: number): Promise<RecourseResult> {
@@ -135,7 +148,7 @@ export async function readRevealed(chain: Chain, id: Identity, store: Store, day
       ? "no local packet to compare against"
       : agrees
         ? "matches the packet you hold"
-        : `DISAGREES with your packet (${peurToEur(BigInt(held.balance))} EUR) - grounds for a dispute`,
+        : `DISAGREES with your packet (${peurToEur(BigInt(held.balance))} EUR) - keep the revealed value and the packet as evidence`,
   };
 }
 
@@ -158,38 +171,7 @@ export async function cancel(chain: Chain, id: Identity, store: Store, day: numb
     action: "cancel", day, slot, tx: rc.hash,
     outcome: mineTimedOut
       ? "day cancelled on your own unanswered request"
-      : "day cancelled on a general ground (proof timeout or open dispute)",
+      : "day cancelled on a general ground (proof timeout, or settlement still failing past the grace period)",
     next: "no balance moved; the frozen deposits and withdrawals return to the queue for the next close",
-  };
-}
-
-export async function dispute(chain: Chain, id: Identity, store: Store, day: number): Promise<RecourseResult> {
-  const slot = await slotOrThrow(chain, id, store);
-  const dc = await chain.dayClose(day);
-  if (dc.state !== 1) {
-    return { action: "dispute", day, slot, tx: null, outcome: `day is ${DAY_STATE[dc.state]}, disputes are only possible while closing`, next: "nothing to do" };
-  }
-  const existing = (await chain.market.disputerOf(day)) as string;
-  if (existing !== ZERO_ADDR) {
-    return { action: "dispute", day, slot, tx: null, outcome: "a dispute is already open for this day", next: "settlement is already blocked" };
-  }
-
-  const bond = (await chain.market.DISPUTE_BOND()) as bigint;
-  const token = await chain.eeur();
-  const held = (await token.balanceOf(id.address)) as bigint;
-  if (held < bond) {
-    throw new Error(`bond is ${peurToEur(bond / 1000000n)} EUR (${bond} wei) but you hold ${held} wei`);
-  }
-  const allowance = (await token.allowance(id.address, chain.market.target)) as bigint;
-  if (allowance < bond) {
-    await (await token.approve(chain.market.target, bond)).wait();
-  }
-
-  const tx = await chain.market.disputeDay(day);
-  const rc = await tx.wait();
-  return {
-    action: "dispute", day, slot, tx: rc.hash,
-    outcome: `bond of ${peurToEur(bond / 1000000n)} EUR locked; settlement of this day is blocked`,
-    next: "adjudication happens off chain against the network operator's metering record; the bond is returned or forfeited accordingly",
   };
 }

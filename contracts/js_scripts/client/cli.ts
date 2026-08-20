@@ -7,7 +7,7 @@ import { ReceiptInbox } from "./receipts.js";
 import { verifyDay } from "./verify.js";
 import { dayView, coverage } from "./clock.js";
 import { marginState, shouldNotify } from "./margin.js";
-import { requestData, fetchData, requestClearReveal, readRevealed, cancel, dispute } from "./recourse.js";
+import { requestData, fetchData, requestClearReveal, readRevealed, cancel } from "./recourse.js";
 import { actionTick, tryFinalize, trySweep } from "./actions.js";
 import { config, envReady } from "./config.js";
 
@@ -22,7 +22,7 @@ const USAGE = `usage: client <command>
   receipts    sync [day] | sync-onchain <day> | coverage [day]
   checking    verify <day> | day [day] | margin [day]
   recourse    request-data <day> | fetch-data <day> | request-clear <day>
-              revealed <day> | cancel <day> [reason] | dispute <day>
+              revealed <day> | cancel <day> [reason]
   keeping     finalize <day> | sweep
   daemon      watch
 
@@ -36,7 +36,7 @@ environment:
 const COMMANDS = new Set([
   "register", "status", "whoami", "deposit", "withdraw", "position",
   "sync", "sync-onchain", "coverage", "verify", "day", "margin",
-  "request-data", "fetch-data", "request-clear", "revealed", "cancel", "dispute",
+  "request-data", "fetch-data", "request-clear", "revealed", "cancel",
   "finalize", "sweep", "watch",
 ]);
 
@@ -151,9 +151,6 @@ async function main(): Promise<void> {
       print(await cancel(chain, id, store, Number(arg), process.argv[4] ?? "client-initiated"));
       break;
 
-    case "dispute":
-      if (!arg) throw new Error("usage: dispute <dayId>");
-      print(await dispute(chain, id, store, Number(arg)));
       break;
 
     case "finalize":

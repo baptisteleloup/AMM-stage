@@ -26,6 +26,9 @@ const ABI = [
   "function postEncryptedData(uint256 dayId,uint256 slot,bytes blob)",
   "function clearReveal(uint256 dayId,uint256 slot,uint64 bal,bytes proof)",
   "function cancelDay(uint256 dayId,uint256 revealSlot,string reason)",
+  "function finalizeDay(uint256 dayId)",
+  "function SETTLEMENT_GRACE() view returns (uint256)",
+  "function lastClosedDay() view returns (uint256)",
   "function chunkCountFor(uint256) view returns (uint256)",
   "function openRevealCount(uint256) view returns (uint256)",
   "event DataRequested(uint256 indexed dayId,uint256 slot,uint8 stage)",
@@ -183,6 +186,19 @@ export class Chain {
    * arrived, or a dispute still open past the deadline. No balance moves; the
    * deposits and withdrawals frozen for the day return to the queue.
    */
+  async finalizeDay(day: number): Promise<void> {
+    const tx = await this.market.finalizeDay(day);
+    await tx.wait();
+  }
+
+  async lastClosedDay(): Promise<number> {
+    return Number(await this.market.lastClosedDay());
+  }
+
+  async settlementGrace(): Promise<bigint> {
+    return BigInt(await this.market.SETTLEMENT_GRACE());
+  }
+
   async cancelDay(day: number, revealSlot: number, reason: string): Promise<void> {
     const tx = await this.market.cancelDay(day, revealSlot, reason);
     await tx.wait();

@@ -22,7 +22,6 @@ export type DayView = {
   myNetputHashPosted: boolean;
   deadlines: Deadline[];
   openRequests: { stage: number; deadline: number; secondsLeft: number; answered: boolean }[];
-  disputeOpen: boolean;
   cancellable: { possible: boolean; ground: string | null };
   actionable: string[];
 };
@@ -53,9 +52,7 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
     // it is your time to check the day and object before any money moves. Named
     // from your side, because that is whose window it is.
     deadlines.push(mk("time to object", Number(dc.disputeDeadline), now,
-      "until then nothing is paid: check the day, demand your data, or dispute. "
-      + "After it, a fully proven day can be settled by anyone, and a day still "
-      + "missing a batch can be cancelled by anyone"));
+      "nothing is paid before this; check the day and object if it does not add up"));
   }
 
   const r = await chain.revealOf(day, slot);
@@ -67,7 +64,7 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
     });
     if (!r.stage1Done) {
       deadlines.push(mk("data request", Number(r.stage1Deadline), now,
-        "the operator must publish your encrypted data before this; past it you may cancel the day"));
+        "operator must publish your data before this, or the day can be cancelled"));
     }
   }
   if (r.stage2Deadline > 0n) {
@@ -77,14 +74,13 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
     });
     if (!r.stage2Done) {
       deadlines.push(mk("clear-balance request", Number(r.stage2Deadline), now,
-        "the operator must open your balance in the clear before this"));
+        "operator must reveal your balance before this, or the day can be cancelled"));
     }
   }
 
-  const disputer = (await chain.market.disputerOf(day)) as string;
-  const disputeOpen = disputer !== "0x0000000000000000000000000000000000000000";
-
   const pastDeadline = dc.disputeDeadline > 0n && now > Number(dc.disputeDeadline);
+  const grace = Number((await chain.market.SETTLEMENT_GRACE()) as bigint);
+  const pastGrace = dc.disputeDeadline > 0n && now > Number(dc.disputeDeadline) + grace;
   const proofsMissing = dc.chunksVerified < expected;
   const stage1Timeout = r.stage1Deadline > 0n && !r.stage1Done && now > Number(r.stage1Deadline);
   const stage2Timeout = r.stage2Deadline > 0n && !r.stage2Done && now > Number(r.stage2Deadline);
@@ -93,7 +89,7 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
   if (state === "Closing") {
     if (pastDeadline && proofsMissing) ground = "proof timeout";
     else if (stage1Timeout || stage2Timeout) ground = "unanswered disclosure request";
-    else if (disputeOpen && pastDeadline) ground = "dispute open past the deadline";
+    else if (pastGrace) ground = "settlement still failing past the grace period";
   }
 
   const actionable: string[] = [];
@@ -116,7 +112,7 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
     chunksExpected: expected.toString(),
     netputHashesPosted: posted,
     myNetputHashPosted: myHash !== ZERO32,
-    deadlines, openRequests, disputeOpen,
+    deadlines, openRequests,
     cancellable: { possible: ground !== null, ground },
     actionable,
   };

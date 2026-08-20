@@ -145,6 +145,28 @@
   .btn.danger { color: var(--bad); border-color: var(--bad); }
 
   .note { font-size: 13.5px; color: var(--ink-soft); margin: 10px 0 0; }
+  /* (i) — a short explanation on demand instead of a sentence on screen.
+     A button and its (i) are wrapped together so the mark hugs the action it
+     explains; the popover resets the heading styles it would otherwise inherit
+     (uppercase, tracking, display font) and is raised above its neighbours. */
+  .act { display: inline-flex; align-items: center; gap: 4px; }
+  .info { position: relative; display: inline-flex; align-items: center; }
+  .info > button {
+    width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line);
+    background: transparent; color: var(--ink-soft); font: 600 11px/16px var(--mono);
+    cursor: pointer; padding: 0; text-align: center; text-transform: none; letter-spacing: 0;
+  }
+  .info > button:hover, .info.open > button { color: var(--ink); border-color: var(--ink-soft); }
+  .info > .tip {
+    display: none; position: absolute; z-index: 50; left: 0; top: 26px; width: 300px;
+    padding: 10px 12px; background: #fff; border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(0,0,0,.10);
+    font: 400 13.5px/1.45 var(--serif); color: var(--ink);
+    text-transform: none; letter-spacing: 0; text-align: left; white-space: normal;
+  }
+  .info.open > .tip { display: block; }
+  .info.right > .tip { left: auto; right: 0; }
+  .panel > h2 .info { margin-left: 6px; vertical-align: middle; }
   .actionable { margin: 0; padding-left: 18px; font-size: 14px; }
   .actionable li { margin-bottom: 4px; }
 
@@ -328,6 +350,16 @@ function marginPanel(m) {
   </div>`;
 }
 
+// (i) popover: the text sits in data-tip, one open at a time, closes on outside click.
+function info(text, cls) {
+  return `<span class="info${cls ? " " + cls : ""}"><button type="button" data-info aria-label="What this does">i</button><span class="tip">${esc(text)}</span></span>`;
+}
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-info]");
+  document.querySelectorAll(".info.open").forEach((el) => { if (!btn || el !== btn.parentElement) el.classList.remove("open"); });
+  if (btn) { btn.parentElement.classList.toggle("open"); e.stopPropagation(); }
+});
+
 async function renderOverview() {
   const o = overviewData = await api("GET", "/api/overview");
   $("#slot").textContent = o.registration.registered ? "slot " + o.registration.slot : "—";
@@ -367,7 +399,7 @@ async function renderOverview() {
       <div class="actions">
         <button class="btn" data-act="openday" data-day="${o.clock.day - 1}">Open day ${o.clock.day - 1}</button>
         <button class="btn" data-act="sync" data-day="${o.clock.day - 1}">Collect receipts for day ${o.clock.day - 1}</button>
-        <button class="btn" data-act="sync" data-day="${o.clock.day}">Collect today's</button>
+        <span class="act"><button class="btn" data-act="sync" data-day="${o.clock.day}">Collect today's</button>${info("Receipts arrive session by session; collecting keeps your local copy complete so a check later has everything it needs.", "right")}</span>
       </div>
     </div>`;
   }
@@ -412,10 +444,20 @@ async function renderDays() {
 async function renderDay(day) {
   const d = await api("GET", "/api/day?day=" + day);
   const v = d.view;
+  // Seconds are hard to read past a few minutes; show h/m/s. The meaning of
+  // each deadline goes behind an (i) instead of a sentence on the row.
+  const fmtLeft = (sec) => {
+    if (sec <= 0) return "expired";
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = sec % 60;
+    const parts = [];
+    if (h) parts.push(h + "h");
+    if (h || m) parts.push(m + "m");
+    if (!h) parts.push(s2 + "s");
+    return parts.join(" ") + " left";
+  };
   const deadlines = v.deadlines.map((x) => `<tr>
-      <td>${esc(x.label)}</td>
-      <td class="num">${x.expired ? "expired" : Math.max(0, x.secondsLeft) + "s left"}</td>
-      <td>${esc(x.meaning)}</td>
+      <td>${esc(x.label)}${info(x.meaning)}</td>
+      <td class="num">${x.expired ? "expired" : fmtLeft(Math.max(0, x.secondsLeft))}</td>
     </tr>`).join("");
 
   const actionable = v.actionable.length
@@ -436,24 +478,22 @@ async function renderDay(day) {
       <h2>What you can do</h2>
       ${actionable}
       <div class="actions" style="margin-top:14px">
-        <button class="btn" data-act="sync" data-day="${day}">Collect receipts</button>
-        <button class="btn primary" data-act="verify" data-day="${day}">Check this day</button>
-        <button class="btn" data-act="finalize" data-day="${day}">Settle it</button>
+        <span class="act"><button class="btn" data-act="sync" data-day="${day}">Collect receipts</button>${info("Fetches the session receipts and the day-close packet the operator signed for you, so this client holds its own copy.")}</span>
+        <span class="act"><button class="btn primary" data-act="verify" data-day="${day}">Check this day</button>${info("Recomputes the day from your receipts and compares it with the operator's packet: balance, payout, and what the chain recorded.")}</span>
+        <span class="act"><button class="btn" data-act="finalize" data-day="${day}">Settle it</button>${info("Applies the proven day on chain: balances move, queued deposits and withdrawals are paid. Anyone may do this once the objection window has passed.")}</span>
       </div>
     </div>
 
     ${deadlines ? `<div class="panel"><h2>Deadlines</h2><table><tbody>${deadlines}</tbody></table></div>` : ""}
 
     <div class="panel">
-      <h2>If the operator goes quiet</h2>
-      <p class="note">These steps escalate in order. Each one is recorded on the market contract and blocks settlement of this day until it is answered.</p>
+      <h2>If the operator goes quiet ${info("These steps escalate in order. Each request is recorded on the market contract and holds up settlement of this day until the operator answers it.")}</h2>
       <div class="actions" style="margin-top:12px">
-        <button class="btn" data-act="request-data" data-day="${day}">Demand my data</button>
-        <button class="btn" data-act="fetch-data" data-day="${day}">Decrypt what was published</button>
-        <button class="btn" data-act="request-clear" data-day="${day}">Demand my balance in the clear</button>
-        <button class="btn" data-act="revealed" data-day="${day}">Read the revealed balance</button>
-        <button class="btn danger" data-act="dispute" data-day="${day}">Open a dispute</button>
-        <button class="btn danger" data-act="cancel" data-day="${day}">Cancel the day</button>
+        <span class="act"><button class="btn" data-act="request-data" data-day="${day}">Demand my data</button>${info("Asks the operator to publish your receipts and opening balance for this day, encrypted to your key. Only you can read them. The operator has a fixed window to answer.")}</span>
+        <span class="act"><button class="btn" data-act="fetch-data" data-day="${day}">Decrypt what was published</button>${info("Downloads and decrypts what the operator published for you, and compares it with the receipts you already hold.")}</span>
+        <span class="act"><button class="btn" data-act="request-clear" data-day="${day}">Demand my balance in the clear</button>${info("Only after your data was served. The operator must publish your end-of-day balance in plain, with a proof that it matches the commitment. The number becomes public and stays public.")}</span>
+        <span class="act"><button class="btn" data-act="revealed" data-day="${day}">Read the revealed balance</button>${info("Reads the balance the operator revealed on chain and compares it with your own packet.")}</span>
+        <span class="act"><button class="btn danger" data-act="cancel" data-day="${day}">Cancel the day</button>${info("Undoes this day for the whole community: trades are erased, queued deposits and withdrawals go back in the queue. Only possible if the operator missed a deadline or settlement keeps failing.", "right")}</span>
       </div>
     </div>
 
@@ -487,19 +527,17 @@ async function renderMoney() {
   $("#main").innerHTML = `<h1>Money</h1>
     <p class="sub">Deposits and withdrawals queue up and are applied when a day settles.</p>
     ${p ? `<div class="panel">
-      <h2>Position</h2>
+      <h2>Position ${info("Your balance is never public: the market holds only a commitment to it. The figure shown comes from the packets the operator signed for you.")}</h2>
       <div class="figures">
         <div class="figure"><div class="label">Last known balance</div><div class="value">${eur(p.knownBalanceEur)}</div></div>
         <div class="figure"><div class="label">Deposit still to apply</div><div class="value">${eur(p.depositStillToApplyEur)}</div></div>
         <div class="figure"><div class="label">Withdrawal queued</div><div class="value">${eur(p.pendingWithdrawalEur)}</div></div>
       </div>
-      <p class="note">Your balance itself is never public: the market holds only a commitment to it, and the figure above comes from the packets the operator signed for you.</p>
     </div>` : ""}
     <div class="panel">
       <h2>Move money</h2>
-      <div class="field"><label for="depAmt">Deposit</label><input id="depAmt" placeholder="10.5"><button class="btn" data-act="deposit">Deposit</button></div>
-      <div class="field"><label for="wdrAmt">Withdraw</label><input id="wdrAmt" placeholder="5"><button class="btn" data-act="withdraw">Request withdrawal</button></div>
-      <p class="note">A withdrawal is a request, not a promise: settlement pays whichever is smaller, what you asked for or what you have. A capped payout is visible on chain and tells everyone your balance was exactly the amount paid.</p>
+      <div class="field"><label for="depAmt">Deposit</label><input id="depAmt" placeholder="10.5"><span class="act"><button class="btn" data-act="deposit">Deposit</button>${info("Moves EUR from your wallet into the market. It joins the queue and is added to your balance when the current day settles.")}</span></div>
+      <div class="field"><label for="wdrAmt">Withdraw</label><input id="wdrAmt" placeholder="5"><span class="act"><button class="btn" data-act="withdraw">Request withdrawal</button>${info("Queues a payout for the next settlement. It pays the smaller of what you asked and what you have above your floor; the rest stays queued.")}</span></div>
     </div>`;
 }
 
@@ -534,7 +572,6 @@ const NEEDS_DAY = {
   "fetch-data": "Decryption",
   "request-clear": "Clear-balance demand",
   revealed: "Revealed balance",
-  dispute: "Dispute",
   cancel: "Cancellation",
 };
 

@@ -4,6 +4,11 @@ import { Store } from "./store.js";
 import { config } from "./config.js";
 import { peurToEur } from "./units.js";
 
+// Two decimals for sentences; the raw figure stays in the numeric fields.
+function eur2(peur: bigint): string {
+  return Number(peurToEur(peur)).toFixed(2);
+}
+
 export type MarginState = {
   day: number;
   slot: number;
@@ -93,10 +98,10 @@ export async function marginState(chain: Chain, id: Identity, store: Store, dayA
   const headroom = conservative - f;
   const message =
     tier === "critical"
-      ? `projected balance is below the requirement: trading would stop at the next close (headroom ${peurToEur(headroom)} EUR)`
+      ? `below the requirement by ${eur2(-headroom)} EUR: trading stops at the next close`
       : tier === "warning"
-        ? `projected balance is within 20% of the requirement (headroom ${peurToEur(headroom)} EUR): consider depositing`
-        : `projected balance clears the requirement with ${peurToEur(headroom)} EUR of headroom`;
+        ? `${eur2(headroom)} EUR above the requirement: consider depositing`
+        : `${eur2(headroom)} EUR above the requirement`;
 
   return {
     day, slot, sessionsCounted: counted,

@@ -297,14 +297,158 @@ contract MarketV4Test is Test {
         market.finalizeDay(dayId);
     }
 
-    function test_Dispute_BlocksFinalize() public {
+    // A day whose proofs are all in but whose settlement keeps reverting must
+    // not stay in Closing forever: that would freeze balance commitments and
+    // make every later day unprovable. Here the grid account withdraws its
+    // approval, so the market cannot collect what the grid owes.
+    function _dayWhereGridOwes() internal returns (uint256 pOut, uint256 pIn) {
+        _openSession(10, 200, 100); // more sold than bought: the grid buys the surplus
+
+        (,, uint32 r10, uint32 c10,,,) = market.sessions(dayId, 10);
+        uint32[96] memory pS;
+        uint32[96] memory pD;
+        pS[10] = 200;
+        pD[10] = 100;
+        pOut = uint256(r10) * 200;
+        pIn = uint256(c10) * 100;
+
+        bytes32[] memory nc = new bytes32[](BATCH);
+        nc[0] = keccak256("alice_new_commit");
+        nc[1] = keccak256("bob_new_commit");
+        for (uint256 i = 2; i < BATCH; i++) nc[i] = ZERO_BAL_COMMIT;
+
+        vm.warp((dayId + 1) * DAY + 1);
+        bytes32[] memory hashes = new bytes32[](2);
+        hashes[0] = keccak256("alice_netputs");
+        hashes[1] = keccak256("bob_netputs");
+        vm.prank(operator);
+        market.postNetputHashes(dayId, hashes);
+
+        market.submitChunk(dayId, 0, MarketV4.ChunkSubmission(nc, _noWithdrawals(), pS, pD, pOut, pIn), "proof");
+    }
+
+    function test_Stuck_GridShortfall_CannotCancelBeforeGrace() public {
+        _dayWhereGridOwes();
+        vm.prank(grid);
+        eeur.approve(address(market), 0);
+        _warpPastDeadline();
+
+        vm.expectRevert(); // the token reverts first, with its own error
+        market.finalizeDay(dayId);
+
+        // proofs are complete, so the ordinary timeout ground does not apply yet
+        vm.expectRevert(bytes("no ground"));
+        market.cancelDay(dayId, 0, "stuck");
+    }
+
+    function test_Stuck_GridShortfall_CancelAfterGrace() public {
+        _dayWhereGridOwes();
+        vm.prank(grid);
+        eeur.approve(address(market), 0);
+        (,,,, uint256 deadline,) = market.dayCloses(dayId);
+        vm.warp(deadline + market.SETTLEMENT_GRACE() + 1);
+
+        vm.expectRevert(); // the token reverts first, with its own error
+        market.finalizeDay(dayId);
+
+        market.cancelDay(dayId, 0, "settlement impossible");
+        (MarketV4.DayState st,,,,,) = market.dayCloses(dayId);
+        assertEq(uint8(st), uint8(MarketV4.DayState.Cancelled));
+        // nothing was consumed: the deposit is still queued for a later day
+        assertEq(market.pendingDeposit(1), 1 ether / UNIT);
+    }
+
+    function test_Stuck_GridShortfall_RecoversIfFundedInTime() public {
+        _dayWhereGridOwes();
+        vm.prank(grid);
+        eeur.approve(address(market), 0);
+        _warpPastDeadline();
+        vm.expectRevert(); // the token reverts first, with its own error
+        market.finalizeDay(dayId);
+
+        // the grid fixes its approval before the grace runs out
+        vm.prank(grid);
+        eeur.approve(address(market), type(uint256).max);
+        market.finalizeDay(dayId);
+        (MarketV4.DayState st,,,,,) = market.dayCloses(dayId);
+        assertEq(uint8(st), uint8(MarketV4.DayState.Finalized));
+    }
+
+    // Deadline + grace must stay under a day, otherwise the next day starts
+    // proving before its predecessor is either settled or cancelled and its
+    // opening commitments are wrong.
+    function test_GraceKeepsSettlementWithinTheDay() public view {
+        assertLt(market.PROOF_WINDOW() + market.SETTLEMENT_GRACE(), 1 days);
+        // a stage-1 request at the last second, served late, then a stage 2:
+        // even that must resolve before the next day closes
+        assertLt(market.PROOF_WINDOW() + 2 * market.REVEAL_WINDOW(), 1 days);
+    }
+
+    function test_Request_AfterDeadline_Reverts() public {
+        _submitHonestChunk();
+        _warpPastDeadline();
+        vm.prank(alice);
+        vm.expectRevert(bytes("objection window closed"));
+        market.requestData(dayId);
+    }
+
+    function test_Request_OnFutureDay_Reverts() public {
+        vm.prank(alice);
+        vm.expectRevert(bytes("state"));
+        market.requestData(dayId + 3);
+    }
+
+    function test_ClearRequest_ShortlyAfterDeadline_StillAllowed() public {
         _submitHonestChunk();
         vm.prank(alice);
-        market.disputeDay(dayId);
+        market.requestData(dayId);
+        vm.prank(operator);
+        market.postEncryptedData(dayId, 1, hex"aa");
+        _warpPastDeadline(); // stage 1 was answered; the prosumer may still escalate
+        vm.prank(alice);
+        market.requestClearReveal(dayId);
+        assertEq(market.openRevealCount(dayId), 1);
+    }
+
+    function test_Stuck_NotWhileARevealIsOpen() public {
+        _dayWhereGridOwes();
+        vm.prank(alice);
+        market.requestData(dayId);
+        (,,,, uint256 deadline,) = market.dayCloses(dayId);
+        vm.warp(deadline + market.SETTLEMENT_GRACE() + 1);
+        // the open request is the ground to use (via revealSlot), not "stuck"
+        vm.expectRevert(bytes("no ground"));
+        market.cancelDay(dayId, 0, "stuck");
+        market.cancelDay(dayId, 1, "operator withheld data");
+    }
+
+    function test_CloseDays_MustBeInOrder() public {
+        _honestDay(); // dayId closed
+        bytes32[] memory hashes = new bytes32[](2);
+        vm.prank(operator);
+        vm.expectRevert(bytes("out of order"));
+        market.postNetputHashes(dayId - 1, hashes);
+    }
+
+    function test_CloseNextDay_WhilePreviousStillClosing_Reverts() public {
+        _submitHonestChunk(); // dayId proven but not settled
+        vm.warp((dayId + 2) * DAY + 1);
+        bytes32[] memory hashes = new bytes32[](2);
+        vm.prank(operator);
+        vm.expectRevert(bytes("previous day still closing"));
+        market.postNetputHashes(dayId + 1, hashes);
+    }
+
+    function test_CloseNextDay_AfterPreviousSettled_Works() public {
+        _submitHonestChunk();
         _warpPastDeadline();
-        vm.expectRevert(bytes("disputed"));
         market.finalizeDay(dayId);
-        market.cancelDay(dayId, 0, "disputed");
+        vm.warp((dayId + 2) * DAY + 1);
+        bytes32[] memory hashes = new bytes32[](2);
+        vm.prank(operator);
+        market.postNetputHashes(dayId + 1, hashes);
+        (MarketV4.DayState st,,,,,) = market.dayCloses(dayId + 1);
+        assertEq(uint8(st), uint8(MarketV4.DayState.Closing));
     }
 
     function test_Withdrawal_PaidAtFinalize() public {

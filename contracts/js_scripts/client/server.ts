@@ -251,7 +251,6 @@ const routes: Record<string, Handler> = {
   "POST /api/request-clear": async (b) => recourse.requestClearReveal(chain, id, store, Number(b.day)),
   "POST /api/revealed": async (b) => recourse.readRevealed(chain, id, store, Number(b.day)),
   "POST /api/cancel": async (b) => recourse.cancel(chain, id, store, Number(b.day), String(b.reason ?? "client-initiated")),
-  "POST /api/dispute": async (b) => recourse.dispute(chain, id, store, Number(b.day)),
 
   "POST /api/finalize": async (b) => tryFinalize(chain, id, store, Number(b.day)),
   "POST /api/sweep": async () => trySweep(chain),
@@ -265,7 +264,7 @@ const routes: Record<string, Handler> = {
 const LOGGED = new Set([
   "POST /api/register", "POST /api/deposit", "POST /api/withdraw",
   "POST /api/request-data", "POST /api/fetch-data", "POST /api/request-clear",
-  "POST /api/cancel", "POST /api/dispute", "POST /api/finalize", "POST /api/sweep",
+  "POST /api/cancel", "POST /api/finalize", "POST /api/sweep",
 ]);
 
 function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {

@@ -28,7 +28,19 @@ export const config = {
   storePath: process.env.CLIENT_STORE ?? path.join(dataDir, "state.json"),
   inboxDir: process.env.CLIENT_INBOX ?? path.join(dataDir, "inbox"),
   transport: (process.env.RECEIPT_TRANSPORT ?? "fs") as "fs" | "http",
-  receiptsDir: process.env.RECEIPTS_DIR ?? "./operator-data/receipts",
+  get receiptsDir(): string {
+    const v = process.env.RECEIPTS_DIR;
+    if (!v) {
+      throw new Error(
+        "missing env RECEIPTS_DIR\n"
+        + "  where this client reads the receipts the operator published for it.\n"
+        + "  On one machine that is the operator's receipts directory; in a pilot\n"
+        + "  it is wherever they are delivered. Set RECEIPT_TRANSPORT=http and\n"
+        + "  RECEIPTS_URL instead to fetch them over the network.",
+      );
+    }
+    return v;
+  },
   receiptsUrl: process.env.RECEIPTS_URL ?? "",
   meterPath: process.env.METER_PATH ?? "",
   compressedKey: process.env.COMPRESSED_KEY === "1",
@@ -38,10 +50,9 @@ export const config = {
   // First rung of the recourse ladder, on by default. It costs only gas, it is
   // reversible in effect, and it is the standard remedy for a day that will not
   // verify. The rungs above it are not automated: revealing a balance in the
-  // clear is irreversible and public, a dispute locks a bond, and cancelling a
-  // day undoes trading for the whole community — none of those should follow
-  // from one local check, which can fail for a corrupted file as easily as for
-  // a dishonest operator.
+  // clear is irreversible and public, and cancelling a day undoes trading for
+  // the whole community — neither should follow from one local check, which can
+  // fail for a corrupted file as easily as for a dishonest operator.
   autoRequestData: process.env.AUTO_REQUEST_DATA !== "0",
   autoFetchData: process.env.AUTO_FETCH_DATA !== "0",
   pollMs: Number(process.env.CLIENT_POLL_MS ?? 30000),
@@ -58,5 +69,8 @@ export function envReady(): { ok: boolean; missing: string[] } {
   const missing: string[] = [];
   if (!process.env.PROSUMER_KEY) missing.push("PROSUMER_KEY");
   if (!process.env.MARKET_ADDRESS) missing.push("MARKET_ADDRESS");
+  const transport = process.env.RECEIPT_TRANSPORT ?? "fs";
+  if (transport === "fs" && !process.env.RECEIPTS_DIR) missing.push("RECEIPTS_DIR");
+  if (transport === "http" && !process.env.RECEIPTS_URL) missing.push("RECEIPTS_URL");
   return { ok: missing.length === 0, missing };
 }

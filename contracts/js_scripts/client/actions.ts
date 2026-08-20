@@ -26,10 +26,6 @@ export async function tryFinalize(chain: Chain, id: Identity, store: Store, day:
   if (now < Number(dc.disputeDeadline)) {
     return { action: "finalizeDay", day, attempted: false, tx: null, reason: `deadline in ${Number(dc.disputeDeadline) - now}s` };
   }
-  const disputer = (await chain.market.disputerOf(day)) as string;
-  if (disputer !== "0x0000000000000000000000000000000000000000") {
-    return { action: "finalizeDay", day, attempted: false, tx: null, reason: "a dispute is open" };
-  }
   const open = (await chain.market.openRevealCount(day)) as bigint;
   if (open > 0n) {
     return { action: "finalizeDay", day, attempted: false, tx: null, reason: `${open} disclosure request(s) unanswered` };
@@ -39,7 +35,19 @@ export async function tryFinalize(chain: Chain, id: Identity, store: Store, day:
     const rc = await (await chain.market.finalizeDay(day)).wait();
     return { action: "finalizeDay", day, attempted: true, tx: rc.hash, reason: "settled" };
   } catch (e) {
-    return { action: "finalizeDay", day, attempted: true, tx: null, reason: `reverted: ${(e as Error).message.slice(0, 120)}` };
+    const why = (e as Error).message.slice(0, 120);
+    // Settlement itself is failing. Past the grace period the contract lets
+    // anyone cancel such a day so it cannot freeze the ones after it.
+    const grace = Number((await chain.market.SETTLEMENT_GRACE()) as bigint);
+    if (now > Number(dc.disputeDeadline) + grace) {
+      try {
+        const rc = await (await chain.market.cancelDay(day, 0, `settlement impossible: ${why.slice(0, 80)}`)).wait();
+        return { action: "cancelDay", day, attempted: true, tx: rc.hash, reason: `settlement kept failing past the grace period (${why}); day cancelled so later days can proceed` };
+      } catch (e2) {
+        return { action: "cancelDay", day, attempted: true, tx: null, reason: `settlement failing (${why}) and cancel refused: ${(e2 as Error).message.slice(0, 80)}` };
+      }
+    }
+    return { action: "finalizeDay", day, attempted: true, tx: null, reason: `reverted: ${why}` };
   }
 }
 
@@ -89,7 +97,7 @@ export async function trySweep(chain: Chain): Promise<ActionAttempt> {
  * Doing it automatically matters because of when it matters: settlement is
  * permissionless, so abstaining protects nobody — someone else will settle the
  * day regardless. What the check buys is the alert, raised while the window to
- * demand data or open a dispute is still open.
+ * demand data or cancel is still open.
  */
 export async function tryVerify(chain: Chain, id: Identity, store: Store, day: number): Promise<ActionAttempt> {
   if (!store.opening(day)) {
@@ -107,7 +115,7 @@ export async function tryVerify(chain: Chain, id: Identity, store: Store, day: n
     return {
       action: "verify", day, attempted: true, tx: null,
       reason: r.verdict === "mismatch"
-        ? `MISMATCH — ${failed.join(", ")}. Demand your data or open a dispute before the day settles.`
+        ? `MISMATCH — ${failed.join(", ")}. Demand your data before the day settles.`
         : r.verdict === "verified"
           ? `verified, net ${r.amountEur} EUR`
           : "incomplete: something is still missing, will retry",
