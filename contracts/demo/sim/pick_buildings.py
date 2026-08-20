@@ -1,17 +1,3 @@
-"""
-pick_buildings.py — choose the ResStock building IDs for the community.
-
-Downloads one state's metadata file, finds which dwellings have rooftop PV and
-which do not, and prints two lists of IDs you can paste into build_profiles.py.
-
-PV penetration in ResStock follows the real US stock, so a mixed community is
-obtained by FILTERING, not by random sampling. That is a composition choice and
-the script records it so you can declare it.
-
-Usage:
-    python pick_buildings.py --state MA --with-pv 5 --without-pv 5
-"""
-
 import argparse
 import json
 import os
@@ -94,10 +80,7 @@ def main():
             print(f"restricted the no-PV group to single-family for comparability "
                   f"({len(without_pv)} left)")
 
-    # A collective self-consumption community is a neighbourhood: its members
-    # share a distribution feeder and, for pricing, a load zone. Ten dwellings
-    # scattered across a state are not a community. Pick the county that can
-    # supply the whole panel and take everyone from there.
+
     county_col = find_col(df, [r"in\.county_and_puma", r"in\.county"], required=False)
     chosen_county = None
     if county_col and not args.any_county:
@@ -119,8 +102,6 @@ def main():
     if len(with_pv) < args.with_pv:
         raise SystemExit(f"only {len(with_pv)} dwellings with PV available")
 
-    # Spread the PV group across system sizes rather than taking the top of the
-    # file, so the community is not made of ten identical roofs.
     with_pv = with_pv.sort_values(pv_col)
     idx = [int(round(i * (len(with_pv) - 1) / max(1, args.with_pv - 1)))
            for i in range(args.with_pv)]

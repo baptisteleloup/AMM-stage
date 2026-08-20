@@ -1,37 +1,3 @@
-"""
-make_netputs.py — run the paper's own rolling-horizon driver on the ResStock
-profiles and emit the netputs the chain settles.
-
-This calls runRH from the paper's rollingHorizon.py. Nothing is reimplemented:
-the optimisation, the lookahead, the battery carry-over and the flexible-load
-accounting are the authors' code.
-
-Method, as in the paper. Each prosumer optimises against s_others / d_others,
-the aggregate supply and demand it faces, taken as given. In the paper that
-aggregate is a population of about a million households, so price-taking is the
-natural assumption. Here the community is small, so the aggregate used is the
-community's own raw surplus and deficit before anyone optimises. That is the
-same assumption, stated rather than hidden: with a handful of members each one
-does move the aggregate it faces, and this run does not account for that.
-Iterating to a fixed point instead does not converge — the AMM price curve is
-kinked and the best-response map is not a contraction.
-
-Two departures from the notebook, both deliberate and both recorded:
-
-  T = 96 instead of 24. The chain settles 96 quarter-hours a day and the load
-  data is natively quarter-hourly, so aggregating to hourly would discard
-  resolution the rest of the stack has.
-
-  Flexible load comes from each building's end-use breakdown (cooling, heating,
-  hot water) instead of a flat 30% of daily demand. runRH is used unmodified for
-  this: it computes alpha_flex as pct_flex times the daily total of the demand
-  profile it is handed, so it is handed the flexible series with pct_flex = 1.
-
-Usage:
-    python make_netputs.py --profiles profiles --reference /path/to/reference
-    python make_netputs.py --profiles profiles --reference ... --prices prices.json
-"""
-
 import argparse
 import json
 import os
@@ -98,11 +64,6 @@ def main():
     time_interval = 24.0 / T
     L = args.lookahead
     sim_days = days[:max(1, len(days) - L)]
-
-    # Trade cap. The per-step constraint forces a dwelling to buy at least its own
-    # base load every step, so a base-load peak above the cap makes the day
-    # infeasible. The paper's 5 kW fits its synthetic profiles, which are an
-    # aggregate curve divided by a thousand; metered dwellings peak far higher.
     peak_base = max(float(series[n]["alpha_base_kw"].max()) for n in names)
     peak_gen = max(float(series[n]["omega_kw"].max()) for n in names)
     if args.trade_kw <= 0:
@@ -110,7 +71,6 @@ def main():
         print(f"trade cap sized from the data: peak base load {peak_base:.2f} kW, "
               f"peak generation {peak_gen:.2f} kW  ->  X = {args.trade_kw} kW")
 
-    # Tariffs: either the real day-ahead feed, or the deployment's flat schedule.
     price_feed = None
     flat_under = flat_over = None
     if args.prices:
@@ -133,7 +93,6 @@ def main():
                         flat_over[t] = lam_peak
         print(f"tariffs: feed-in {lam_u:.4f}, off-peak {lam_off:.4f}, peak {lam_peak:.4f} per kWh")
 
-    # The aggregate each prosumer faces, taken as given, as in the paper.
     stacked = np.vstack([(series[n]["omega_kw"] - series[n]["alpha_base_kw"]).values for n in names])
     agg_s = pd.DataFrame({"supply_kw": np.maximum(stacked, 0).sum(axis=0)}, index=index)
     agg_d = pd.DataFrame({"demand_kw": np.maximum(-stacked, 0).sum(axis=0)}, index=index)
@@ -149,9 +108,6 @@ def main():
         s = series[n]
         omega = pd.DataFrame({"supply_kw": s["omega_kw"].values}, index=index)
         alpha_base = pd.Series(s["alpha_base_kw"].values, index=index)
-        # runRH computes alpha_flex as pct_flex times the daily total of the demand
-        # profile it is given. Hand it the flexible series with pct_flex = 1 and it
-        # uses the building's own flexible energy, with no change to its code.
         flex_profile = pd.DataFrame({"demand_kw": s["flex_kw"].values}, index=index)
         total_demand = pd.DataFrame(
             {"demand_kw": (s["alpha_base_kw"] + s["flex_kw"]).values}, index=index)
@@ -170,9 +126,7 @@ def main():
             else:
                 lam_under, lam_over = flat_under, flat_over
 
-            # One day at a time, because runRH tiles a single tariff vector across
-            # its whole run and each day here has its own day-ahead prices. The
-            # battery state is carried forward exactly as runRH does internally.
+        
             try:
                 res = runRH(
                     T, 1, alpha_base.loc[window], b0, L,
@@ -201,11 +155,6 @@ def main():
         for n, d, why in failures[:6]:
             print(f"    {n} on {d}: {why}")
 
-    # solve_horizon bounds x_pos by X * time_interval and by
-    # (omega - alpha_base) * time_interval, so x_pos and x_neg are ENERGY PER
-    # INTERVAL in kWh, not power — despite runRH naming the output column
-    # net_grid_trade_kw. Multiplying by time_interval again would divide every
-    # settlement by four.
     profiles = {}
     totals = {"sold": 0, "bought": 0}
     for n in names:
@@ -263,9 +212,6 @@ def main():
     with open(os.path.join(args.profiles, "solver_manifest.json"), "w") as f:
         json.dump(manifest, f, indent=1)
 
-    # Energy balance check. Over a day the battery returns near its starting
-    # state, so the community's net purchase must be roughly its consumption
-    # minus its generation. A large mismatch means a unit error somewhere.
     gen = sum(float(series[n]["omega_kw"].sum()) for n in names) * time_interval
     con = sum(float((series[n]["alpha_base_kw"] + series[n]["flex_kw"]).sum()) for n in names) * time_interval
     n_days_data = len(days)

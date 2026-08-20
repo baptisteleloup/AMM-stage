@@ -15,15 +15,6 @@ contract MarketV4 {
     uint256 public constant WEI_PER_UNIT = 1e6;
     uint256 public constant PROOF_WINDOW = 12 hours; 
     uint256 public constant REVEAL_WINDOW = 4 hours; 
-    // Once the objection deadline has passed and every proof is in, the day is
-    // meant to settle. If settlement itself keeps failing — the grid account
-    // has no funds or no approval, or a transfer reverts — the day would sit
-    // in Closing forever, its balance commitments never advancing, and every
-    // later day would become unprovable. After this extra delay anyone may
-    // cancel such a day instead. Everything must fit inside 24 h so the next
-    // day always finds its predecessor either settled or cancelled:
-    // PROOF_WINDOW + 2 * REVEAL_WINDOW (a late stage 1 then a stage 2) and
-    // PROOF_WINDOW + SETTLEMENT_GRACE must both stay under a day.
     uint256 public constant SETTLEMENT_GRACE = 6 hours;
     uint256 public constant MAX_UNIT = type(uint32).max; 
 
@@ -94,13 +85,7 @@ contract MarketV4 {
     }
     mapping(uint256 => mapping(uint256 => RevealRequest)) public reveals; 
     mapping(uint256 => uint256) public openRevealCount;
-
-    // Days must close in order, and a day may only close once the previous
-    // closed day is settled or cancelled. Two days closing at once would both
-    // be proven against the same balance commitments, and whichever settled
-    // second would silently overwrite the trades of the first.
     uint256 public lastClosedDay;
-
     uint256 public dustPot;
 
     event SessionOpened(uint256 indexed dayId, uint256 t, uint32 s, uint32 d, uint32 r, uint32 c);
@@ -341,8 +326,6 @@ contract MarketV4 {
         require(dc.state == DayState.Closing, "state");
         bool timeout = block.timestamp > dc.disputeDeadline && dc.chunksVerified < chunkCountFor(dayId);
         bool revealTimeout = revealSlot != 0 && _revealTimedOut(dayId, revealSlot);
-        // The proofs are all in, the deadline is long gone, and the day is still
-        // not settled: settlement is failing for a reason no proof can fix.
         bool stuck = block.timestamp > dc.disputeDeadline + SETTLEMENT_GRACE && openRevealCount[dayId] == 0;
         require(timeout || revealTimeout || stuck, "no ground");
         dc.state = DayState.Cancelled;
@@ -352,14 +335,7 @@ contract MarketV4 {
     function requestData(uint256 dayId) external {
         uint256 slot = slotOf[msg.sender];
         require(slot != 0, "not registered");
-        // Only a day that is closing can be challenged. Without this a prosumer
-        // could request data on a day that has not happened yet: the reveal
-        // deadline would expire long before the day closed, _revealTimedOut
-        // would then be true, and anyone could cancel that day for free.
         require(dayCloses[dayId].state == DayState.Closing, "state");
-        // The window is the time to object. A request lodged after it would
-        // only push settlement back, and every day must be settled or
-        // cancelled before the next one closes.
         require(block.timestamp < dayCloses[dayId].disputeDeadline, "objection window closed");
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage1Deadline == 0, "requested");
@@ -380,8 +356,6 @@ contract MarketV4 {
         uint256 slot = slotOf[msg.sender];
         require(slot != 0, "not registered");
         require(dayCloses[dayId].state == DayState.Closing, "state");
-        // Stage 2 can only follow a served stage 1, which may itself land up
-        // to REVEAL_WINDOW after the deadline; allow that much extra.
         require(block.timestamp < dayCloses[dayId].disputeDeadline + REVEAL_WINDOW, "objection window closed");
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage1Done && r.stage2Deadline == 0, "stage1 first");

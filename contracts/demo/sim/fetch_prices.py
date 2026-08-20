@@ -48,7 +48,6 @@ def find_workbook(year, cache, local):
         if os.path.exists(cached):
             print(f"using {cached}")
             return cached
-    # a stray download sitting in the usual place
     for guess in (os.path.expanduser(f"~/Downloads/{year}_smd_hourly.xlsx"),
                   f"./{year}_smd_hourly.xlsx"):
         if os.path.exists(guess):

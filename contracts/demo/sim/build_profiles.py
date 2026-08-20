@@ -17,8 +17,7 @@ BASE_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"
             "resstock_amy2018_release_2/timeseries_individual_buildings/"
             "by_state/upgrade=0/state={state}/{bid}-0.parquet")
 
-# End uses whose timing can be shifted without changing the service delivered.
-# Thermal mass (building envelope, water tank) is the physical justification.
+
 FLEXIBLE_PATTERNS = [
     r"\.cooling",
     r"\.heating",
@@ -26,8 +25,6 @@ FLEXIBLE_PATTERNS = [
     r"\.water_systems",
 ]
 
-# Explicitly NOT flexible even though the name may match above: fans and pumps
-# follow the equipment they serve, and are already counted inside it.
 FLEXIBLE_EXCLUDE = [
     r"_fans_pumps",
     r"\.total",
@@ -83,10 +80,6 @@ def load_building(path, day_from, day_to):
     tcol = "timestamp" if "timestamp" in df.columns else df.columns[0]
     df[tcol] = pd.to_datetime(df[tcol])
     df = df.set_index(tcol).sort_index()
-
-    # ResStock stamps the END of each 15-minute interval: "12:15" is the energy
-    # used between 12:00 and 12:15. Shift back so the index labels the START,
-    # which is what every downstream calculation assumes.
     df.index = df.index - pd.Timedelta(minutes=15)
 
     df = df.loc[day_from:day_to]
@@ -97,16 +90,10 @@ def load_building(path, day_from, day_to):
 
 def build_agent(df, name):
     pv_cols, flex_cols, base_cols = classify(df.columns)
-
-    # kWh per 15-min interval -> kW (average power over the interval).
     to_kw = 4.0
-
     pv_kwh = df[pv_cols].sum(axis=1) if pv_cols else pd.Series(0.0, index=df.index)
     flex_kwh = df[flex_cols].sum(axis=1) if flex_cols else pd.Series(0.0, index=df.index)
     base_kwh = df[base_cols].sum(axis=1) if base_cols else pd.Series(0.0, index=df.index)
-
-    # ResStock reports PV as consumption, i.e. negative. Generation is positive
-    # for the solver, so take the magnitude and record the sign convention seen.
     pv_sign = "negative" if float(pv_kwh.sum()) < 0 else "positive"
     omega_kw = pv_kwh.abs() * to_kw
 

@@ -297,10 +297,6 @@ contract MarketV4Test is Test {
         market.finalizeDay(dayId);
     }
 
-    // A day whose proofs are all in but whose settlement keeps reverting must
-    // not stay in Closing forever: that would freeze balance commitments and
-    // make every later day unprovable. Here the grid account withdraws its
-    // approval, so the market cannot collect what the grid owes.
     function _dayWhereGridOwes() internal returns (uint256 pOut, uint256 pIn) {
         _openSession(10, 200, 100); // more sold than bought: the grid buys the surplus
 
@@ -374,13 +370,8 @@ contract MarketV4Test is Test {
         assertEq(uint8(st), uint8(MarketV4.DayState.Finalized));
     }
 
-    // Deadline + grace must stay under a day, otherwise the next day starts
-    // proving before its predecessor is either settled or cancelled and its
-    // opening commitments are wrong.
     function test_GraceKeepsSettlementWithinTheDay() public view {
         assertLt(market.PROOF_WINDOW() + market.SETTLEMENT_GRACE(), 1 days);
-        // a stage-1 request at the last second, served late, then a stage 2:
-        // even that must resolve before the next day closes
         assertLt(market.PROOF_WINDOW() + 2 * market.REVEAL_WINDOW(), 1 days);
     }
 
@@ -416,7 +407,6 @@ contract MarketV4Test is Test {
         market.requestData(dayId);
         (,,,, uint256 deadline,) = market.dayCloses(dayId);
         vm.warp(deadline + market.SETTLEMENT_GRACE() + 1);
-        // the open request is the ground to use (via revealSlot), not "stuck"
         vm.expectRevert(bytes("no ground"));
         market.cancelDay(dayId, 0, "stuck");
         market.cancelDay(dayId, 1, "operator withheld data");
