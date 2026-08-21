@@ -104,6 +104,58 @@ They come *from* the circuit, so they match Poseidon2 by construction: never rec
 - Verifiers are ~23.7 KB each  (close to EIP-170); the genesis `contractSizeLimit` is the guardrail on the consortium chain.
 - The `MarketV4` constructor takes **10 arguments** (token, two verifiers, tariff, operator, grid, floorAdmin, reserve, two padding constants).
 
+## The demo
+
+`./demo/run.sh` runs the whole market on measured building data and real wholesale
+prices, on a local chain. The point is not that it runs, but what it runs on: the
+gains from sharing depend entirely on members *not* producing and consuming at the
+same moment, so a demo built on identical synthetic profiles would measure nothing.
+
+**Dwellings.** [ResStock](https://www.nrel.gov/buildings/resstock.html), from NREL's
+[End-Use Load Profiles for the U.S. Building Stock](https://www.nrel.gov/buildings/end-use-load-profiles.html)
+project. ResStock characterises the U.S. housing stock as conditional probability
+distributions drawn from a dozen public and private sources (census, RECS, AHS,
+utility data), samples representative dwellings from that parameter space by
+deterministic quota sampling, builds an OpenStudio model for each one, and simulates
+it in EnergyPlus at a sub-hourly timestep. The published profiles were calibrated
+against measured utility and submetered data over a three-year validation effort.
+Roughly 550,000 residential models cover the country, about one per few hundred
+existing dwellings.
+
+Two consequences matter here. Each dwelling has its own envelope, equipment,
+occupancy schedule and PV capacity, so two neighbours peak at different moments,
+which is exactly the diversity a sharing market monetises. And the output is broken
+down by end use, which is what lets `build_profiles.py` separate the flexible part
+of demand (space conditioning, water heating, whose thermal mass allows shifting)
+from the inflexible part, rather than declaring a flat percentage flexible.
+
+Release: `2024/resstock_amy2018_release_2`, upgrade 0 (baseline stock, no retrofit).
+`amy2018` means *actual meteorological year 2018*, the weather as it was actually
+observed, not a typical year. Data portal: [OEDI submission 4520](https://data.openei.org/submissions/4520).
+`pick_buildings.py` reads the state metadata file to select dwellings in one county,
+with and without PV; `build_profiles.py` downloads one timeseries parquet per
+selected dwelling and turns it into the three series the solver needs (gross
+production, inflexible demand, daily flexible energy), writing a `manifest.json`
+that records the source URLs, checksums and every transformation applied.
+
+**Prices.** ISO New England
+[SMD Hourly Data](https://www.iso-ne.com/isoexpress/web/reports/load-and-demand/-/tree/zone-info),
+one annual workbook with a tab per load zone, hourly day-ahead locational marginal
+prices alongside system load. The demo uses WCMA (Western/Central Massachusetts) to
+match the dwellings. `fetch_prices.py` holds each hourly price flat across its four
+quarter-hours and adds a delivery adder to approximate a retail tariff.
+
+Same year and same region for both sources, so load and price move together: the
+heatwave that drives air conditioning also drives the wholesale price. The workbook
+sits behind a captcha, so it is cached in `demo/data/raw/` and downloaded once.
+
+**Netputs.** `make_netputs.py` imports `solve_horizon` from the paper's own
+repository rather than reimplementing it, and runs it at 96 steps a day. One
+departure from the paper is deliberate: it treats the other members' aggregates as a
+fixed point solved by damped best response, instead of taking them as exogenous. At
+a community of a few dozen, each member visibly moves the aggregate that sets the
+price, so the price-taking assumption of the mean-field setting does not hold.
+
 ## Status
 
 - Contracts + circuits: **complete and green**.The mock suite plus the full FFI cycle (real UltraHonk proofs verified on-chain).
