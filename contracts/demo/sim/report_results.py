@@ -1,3 +1,26 @@
+#!/usr/bin/env python3
+"""Results report for the ResStock demo.
+
+Reads demo/data/netputs_resstock.json and demo/data/prices.json and writes a
+PDF with tables and charts: market volumes, prices, community gains and
+individual gains, all measured against the status quo in which every kWh is
+traded with the grid alone (exports paid the wholesale price, imports paid
+the retail price).
+
+Prices per session follow src/Pricing.sol exactly:
+    rho = (low + high) / 2
+    c   = rho + (high - rho) * max(0, 1 - S/D)     price paid by buyers
+    r   = rho - (rho - low)  * max(0, 1 - D/S)     price received by sellers
+with S and D the community aggregates of the session. The identity
+r*S + (high - c)*D - low*S = (high - low) * min(S, D) makes the community
+gain equal to the tariff spread times the locally matched volume.
+
+This file lives in demo/sim/ and resolves its defaults relative to itself,
+so it runs from anywhere:
+    python3 demo/sim/report_results.py
+    python3 demo/sim/report_results.py --out somewhere/else.pdf
+"""
+
 import argparse
 import json
 from pathlib import Path
@@ -157,8 +180,6 @@ def main():
     per_day["covered %"] = 100 * matched_day / bought_day
     per_day["absorbed %"] = 100 * matched_day / sold_day
     per_day["gain EUR"] = gain_day
-    flat_spread = float(spread.mean())
-    spread_is_flat = float(spread.std()) < 1e-12
 
     with PdfPages(args.out) as pdf:
 
@@ -175,7 +196,6 @@ def main():
             ("Period", f"{n_days} trading days, {dates[0]} to {dates[-1]}, {T} sessions of 15 minutes per day"),
             ("Prices", f"ISO New England day-ahead LMP, zone {feed.get('zone', '?')}, retail = wholesale + {feed.get('delivery_adder', 0)} EUR/kWh delivery adder"),
             ("Status quo", "every kWh traded with the grid alone: exports paid low (wholesale), imports paid high (retail)"),
-            ("AMM rule", "sellers receive r, buyers pay c, both between low and high as in src/Pricing.sol; the residual settles at grid prices"),
         ]
         for label, txt in lines:
             ax.text(0.02, y, label, fontsize=10.5, weight="bold", color=INK)
@@ -194,7 +214,6 @@ def main():
             f"buyers paid {fmt(100 * w_c, 2)} c/kWh against {fmt(100 * w_high, 2)} retail",
             f"Spread high - low = the {fmt(100 * (high - low).mean(), 0)} c/kWh delivery adder in every session, "
             "so the gain is 0.12 EUR per matched kWh and matching volume is the only lever",
-            "Every member gains or breaks even by construction: r >= low and c <= high in every session",
         ]
         import textwrap
         for txt in heads:
@@ -204,13 +223,7 @@ def main():
         pdf.savefig(fig)
         plt.close(fig)
 
-        table_page(
-            pdf, per_day, "Daily market summary",
-            "Volumes in kWh. Matched = sum over sessions of min(supply, demand). "
-            "Covered = matched / demanded, absorbed = matched / offered. "
-            f"The spread high - low is the delivery adder, {100 * flat_spread:.0f} c/kWh in every session, "
-            "so the gain of a day is exactly the spread times its matched volume.",
-        )
+        table_page(pdf, per_day, "Daily market summary")
 
         fig, ax = plt.subplots(figsize=PAGE)
         ax.plot(x, flat_S, color=SOLD, lw=1.1, label="supply offered")
@@ -349,46 +362,6 @@ def main():
         ax.set_title("Local coverage per day", loc="left", fontsize=13)
         ax.legend(loc="upper right", frameon=False, fontsize=9)
         fig.tight_layout()
-        pdf.savefig(fig)
-        plt.close(fig)
-
-        fig, ax = plt.subplots(figsize=PAGE)
-        ax.axis("off")
-        ax.set_title("Method and caveats", fontsize=15, loc="left", pad=18, color=INK)
-        notes = [
-            "Inputs: demo/data/netputs_resstock.json (per member, per day, 96 sessions of [sell, buy] in Wh, "
-            "the solver's output) and demo/data/prices.json (ISO-NE day-ahead low and retail high in EUR/kWh); "
-            "paths resolved relative to this script, overridable with --netputs and --prices.",
-            "Session prices reproduce src/Pricing.sol in floating point. The contract rounds r down and c up "
-            "at a scale of about 1e-7 c/kWh, negligible here.",
-            "Baseline: the same physical quantities traded with the grid alone. The comparison isolates the "
-            "settlement rule; behaviour is held fixed, so any demand response the tariff itself would trigger "
-            "without a market is not counted.",
-            "The community gain equals the tariff spread times the matched volume, verified numerically at "
-            "machine precision in this script. Under net metering (export credited at retail) the spread is "
-            "zero and the market has no value to distribute.",
-            "Floors, deposits and withdrawal queues are ignored: with the reference DEPOSIT_EUR=200 no member "
-            "was ever excluded by its floor during the run.",
-            "Gains are split into a seller side (r - low on energy sold) and a buyer side (high - c on energy "
-            "bought). Both are non negative in every session, so no member is ever worse off than the status quo.",
-            "The panel is a composition choice, not a representative sample: 5 dwellings with PV and 5 without, "
-            "drawn from one county so the community plausibly shares a feeder and a pricing zone.",
-            "Coverage is measured at 15 minute simultaneity, which is the binding constraint: daily energy "
-            "volumes overlap far more than sessions do. The solver moves flexible load and battery charging "
-            "to the cheap night hours, away from the midday PV, so the tariff that creates the spread also "
-            "desynchronises demand from local supply.",
-            "This report uses the pairing the solver optimised against: load day d with price day d. In the "
-            "on-chain demo, post_prices.ts cycles the 5 dates of prices.json anchored at the deployment day "
-            "while the operator cycles the 4 netput days by absolute day number, so the load/price pairing "
-            "rotates across the run and client balances differ from this report on most days.",
-        ]
-        import textwrap
-        y = 0.9
-        for txt in notes:
-            wrapped = textwrap.fill(txt, 128)
-            ax.text(0.02, y, "\u2022", fontsize=11, color=INK, va="top")
-            ax.text(0.045, y, wrapped, fontsize=10.5, color=INK, va="top")
-            y -= 0.05 + 0.033 * wrapped.count("\n")
         pdf.savefig(fig)
         plt.close(fig)
 
