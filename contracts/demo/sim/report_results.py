@@ -23,7 +23,6 @@ so it runs from anywhere:
 
 import argparse
 import json
-import math
 from pathlib import Path
 
 import numpy as np
@@ -184,21 +183,6 @@ def main():
     per_day["covered %"] = 100 * matched_day / bought_day
     per_day["absorbed %"] = 100 * matched_day / sold_day
     per_day["gain EUR"] = gain_day
-
-    rng = np.random.default_rng(0)
-    sizes = np.arange(2, n + 1)
-    sub_mean = np.zeros(len(sizes))
-    sub_std = np.zeros(len(sizes))
-    adder = float(spread.mean())
-    for j, Nsub in enumerate(sizes):
-        draws = min(2000, 10 * math.comb(n, int(Nsub))) if Nsub < n else 1
-        vals = np.empty(draws)
-        for k in range(draws):
-            idx = rng.choice(n, size=int(Nsub), replace=False)
-            m = np.minimum(sell[idx].sum(axis=0), buy[idx].sum(axis=0)).sum()
-            vals[k] = adder * m / Nsub / n_days
-        sub_mean[j] = vals.mean()
-        sub_std[j] = vals.std()
 
     with PdfPages(args.out) as pdf:
 
@@ -384,19 +368,6 @@ def main():
         pdf.savefig(fig)
         plt.close(fig)
 
-        fig, ax = plt.subplots(figsize=PAGE)
-        ax.errorbar(sizes, 100 * sub_mean, yerr=100 * sub_std, color=GAIN, lw=1.6,
-                    marker="o", ms=4, capsize=3)
-        ax.set_xlabel("community size (households drawn from the panel)")
-        ax.set_ylabel("gain per household, cents per day")
-        ax.set_xticks(sizes)
-        ax.set_title("Average gain per household by community size, over random sub-communities "
-                     "(net positions held fixed, as price-taking makes them composition independent)",
-                     loc="left", fontsize=12)
-        fig.tight_layout()
-        pdf.savefig(fig)
-        plt.close(fig)
-
 
     if args.figdir:
         figdir = Path(args.figdir)
@@ -480,14 +451,6 @@ def main():
         ax.set_ylabel("EUR over the run")
         ax.legend(loc="upper right", frameon=False, fontsize=7)
         save(fig, "fig_decomposition.pdf")
-
-        fig, ax = plt.subplots(figsize=(W, 2.9))
-        ax.errorbar(sizes, 100 * sub_mean, yerr=100 * sub_std, color=GAIN, lw=1.3,
-                    marker="o", ms=3.5, capsize=3)
-        ax.set_xlabel("community size")
-        ax.set_ylabel("gain per household, c/day")
-        ax.set_xticks(sizes)
-        save(fig, "fig_size.pdf")
 
         def fr(v, dec=2):
             return f"{v:.{dec}f}".replace(".", ",")

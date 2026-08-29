@@ -25,7 +25,7 @@ fn main(
     deposits: pub [Field; BATCH],         // public deposits for the day (pEUR)
     withdrawals: pub [Field; BATCH],      // withdrawal REQUESTS frozen for the day (pEUR)
     withdrawals_paid: pub [Field; BATCH], // what is actually paid = min(request, available)
-    floor_commits: pub [Field; BATCH],    // [D9 + RGPD] commit(floor, blind), from storage,
+    floor_commits: pub [Field; BATCH],    // commit(floor, blind), from storage,
                                           // frozen at postNetputHashes. Replaces the
                                           // former public `floors` (leaked subscribed power).
     partial_s: pub [Field; SESSIONS],     // chunk's partial supply sums
