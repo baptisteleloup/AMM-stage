@@ -167,14 +167,14 @@ def main():
     per_agent = pd.DataFrame(index=slots)
     per_agent["sold kWh"] = sell.sum(axis=(1, 2))
     per_agent["bought kWh"] = buy.sum(axis=(1, 2))
-    per_agent["grid only EUR"] = base.sum(axis=(1, 2))
-    per_agent["with AMM EUR"] = amm.sum(axis=(1, 2))
-    per_agent["gain EUR"] = gain.sum(axis=(1, 2))
+    per_agent["grid only USD"] = base.sum(axis=(1, 2))
+    per_agent["with AMM USD"] = amm.sum(axis=(1, 2))
+    per_agent["gain USD"] = gain.sum(axis=(1, 2))
     per_agent["gain seller side"] = gain_sell.sum(axis=(1, 2))
     per_agent["gain buyer side"] = gain_buy.sum(axis=(1, 2))
     traded = per_agent["sold kWh"] + per_agent["bought kWh"]
-    per_agent["gain c/kWh traded"] = 100 * per_agent["gain EUR"] / traded.replace(0, np.nan)
-    per_agent["share of gain %"] = 100 * per_agent["gain EUR"] / per_agent["gain EUR"].sum()
+    per_agent["gain c/kWh traded"] = 100 * per_agent["gain USD"] / traded.replace(0, np.nan)
+    per_agent["share of gain %"] = 100 * per_agent["gain USD"] / per_agent["gain USD"].sum()
 
     per_day = pd.DataFrame(index=day_labels)
     per_day["offered kWh"] = sold_day
@@ -182,7 +182,7 @@ def main():
     per_day["matched kWh"] = matched_day
     per_day["covered %"] = 100 * matched_day / bought_day
     per_day["absorbed %"] = 100 * matched_day / sold_day
-    per_day["gain EUR"] = gain_day
+    per_day["gain USD"] = gain_day
 
     with PdfPages(args.out) as pdf:
 
@@ -197,7 +197,7 @@ def main():
         lines = [
             ("Community", f"{n} prosumers (5 with rooftop PV, 5 without), single Massachusetts county, ResStock amy2018 release 2"),
             ("Period", f"{n_days} trading days, {dates[0]} to {dates[-1]}, {T} sessions of 15 minutes per day"),
-            ("Prices", f"ISO New England day-ahead LMP, zone {feed.get('zone', '?')}, retail = wholesale + {feed.get('delivery_adder', 0)} EUR/kWh delivery adder"),
+            ("Prices", f"ISO New England day-ahead LMP, zone {feed.get('zone', '?')}, retail = wholesale + {feed.get('delivery_adder', 0)} USD/kWh delivery adder"),
             ("Status quo", "every kWh traded with the grid alone: exports paid low (wholesale), imports paid high (retail)"),
         ]
         for label, txt in lines:
@@ -208,15 +208,15 @@ def main():
         ax.text(0.02, y, "Headline results", fontsize=14, weight="bold", color=INK)
         y -= 0.055
         heads = [
-            f"Community gain over {n_days} days: {fmt(community_gain.sum())} EUR "
-            f"({fmt(community_gain.sum() / n_days)} EUR/day), entirely the delivery spread earned on locally matched energy",
+            f"Community gain over {n_days} days: {fmt(community_gain.sum())} USD "
+            f"({fmt(community_gain.sum() / n_days)} USD/day), entirely the delivery spread earned on locally matched energy",
             f"Locally matched energy: {fmt(matched.sum(), 1)} kWh of {fmt(D.sum(), 1)} kWh demanded, "
             f"{fmt(100 * matched.sum() / D.sum(), 1)} % of demand served locally "
             f"({fmt(100 * matched.sum() / S.sum(), 1)} % of the surplus absorbed locally)",
             f"Sellers received on average {fmt(100 * w_r, 2)} c/kWh against {fmt(100 * w_low, 2)} wholesale; "
             f"buyers paid {fmt(100 * w_c, 2)} c/kWh against {fmt(100 * w_high, 2)} retail",
             f"Spread high - low = the {fmt(100 * (high - low).mean(), 0)} c/kWh delivery adder in every session, "
-            "so the gain is 0.12 EUR per matched kWh and matching volume is the only lever",
+            "so the gain is 0.12 USD per matched kWh and matching volume is the only lever",
         ]
         import textwrap
         for txt in heads:
@@ -249,13 +249,13 @@ def main():
         fig, axes = plt.subplots(2, 1, figsize=PAGE, sharex=True,
                                  gridspec_kw={"height_ratios": [1.0, 1.6]})
         axes[0].bar(x, flat_gain, width=1.0, color=GAIN, alpha=0.8)
-        axes[0].set_ylabel("EUR per session")
+        axes[0].set_ylabel("USD per session")
         axes[0].set_title("Community gain per session versus the status quo", loc="left", fontsize=12)
         axes[1].plot(x, np.cumsum(flat_gain), color=GAIN, lw=1.6)
         for d in range(1, n_days):
             axes[0].axvline(d * T, color=GRID, lw=0.7, ls=":")
             axes[1].axvline(d * T, color=GRID, lw=0.7, ls=":")
-        axes[1].set_ylabel("EUR cumulative")
+        axes[1].set_ylabel("USD cumulative")
         axes[1].set_xlabel("session")
         axes[1].set_xticks([d * T + T // 2 for d in range(n_days)])
         axes[1].set_xticklabels(day_labels)
@@ -293,7 +293,7 @@ def main():
         table_page(
             pdf, per_agent.drop(columns=["gain seller side", "gain buyer side"]),
             "Individual results over the whole run",
-            "Cash flows in EUR, negative = net payment. Gain = with AMM - grid only; "
+            "Cash flows in USD, negative = net payment. Gain = with AMM - grid only; "
             "it is non negative for every member in every session.",
             dec={"gain c/kWh traded": 3, "share of gain %": 1},
         )
@@ -307,7 +307,7 @@ def main():
             ax.axvline(d * T, color=GRID, lw=0.7, ls=":")
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels(day_labels)
-        ax.set_ylabel("EUR cumulative")
+        ax.set_ylabel("USD cumulative")
         ax.set_title("Individual gains versus the status quo, cumulative across sessions",
                      loc="left", fontsize=13)
         ax.legend(loc="upper left", frameon=False, fontsize=9, ncol=2)
@@ -326,7 +326,7 @@ def main():
         ax.axhline(0, color=INK, lw=0.6)
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels(day_labels)
-        ax.set_ylabel("EUR cumulative")
+        ax.set_ylabel("USD cumulative")
         ax.set_title("Net cash position per member, with the AMM (solid) and grid only (dashed)",
                      loc="left", fontsize=13)
         ax.legend(loc="lower left", frameon=False, fontsize=9, ncol=2)
@@ -342,7 +342,7 @@ def main():
         ax.bar(idx, gb, bottom=gs, color=BOUGHT, label="saved buying below retail")
         ax.set_xticks(idx)
         ax.set_xticklabels(slots, rotation=0)
-        ax.set_ylabel("EUR over the run")
+        ax.set_ylabel("USD over the run")
         ax.set_title("Where each member's gain comes from", loc="left", fontsize=13)
         ax.legend(loc="upper right", frameon=False, fontsize=9)
         for i in idx:
@@ -395,7 +395,7 @@ def main():
         ax.plot(x, np.cumsum(flat_gain), color=GAIN, lw=1.4)
         for d in range(1, n_days):
             ax.axvline(d * T, color=GRID, lw=0.6, ls=":")
-        ax.set_ylabel("EUR, cumulative")
+        ax.set_ylabel("USD, cumulative")
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels([dt for dt in dates], fontsize=8)
         save(fig, "fig_gain.pdf")
@@ -419,7 +419,7 @@ def main():
             ax.plot(x, cg[i], lw=1.0, color=cmap2(i % 10), label=slots[i])
         for d in range(1, n_days):
             ax.axvline(d * T, color=GRID, lw=0.6, ls=":")
-        ax.set_ylabel("EUR, cumulative")
+        ax.set_ylabel("USD, cumulative")
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels([dt for dt in dates], fontsize=8)
         ax.legend(loc="upper left", frameon=False, fontsize=6.5, ncol=2)
@@ -434,7 +434,7 @@ def main():
         ax.axhline(0, color=INK, lw=0.5)
         for d in range(1, n_days):
             ax.axvline(d * T, color=GRID, lw=0.6, ls=":")
-        ax.set_ylabel("EUR, cumulative")
+        ax.set_ylabel("USD, cumulative")
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels([dt for dt in dates], fontsize=8)
         ax.legend(loc="lower left", frameon=False, fontsize=6.5, ncol=2)
@@ -448,7 +448,7 @@ def main():
         ax.bar(idx2, gbv, bottom=gsv, color=BOUGHT, label="saved buying below retail")
         ax.set_xticks(idx2)
         ax.set_xticklabels(slots, fontsize=7)
-        ax.set_ylabel("EUR over the run")
+        ax.set_ylabel("USD over the run")
         ax.legend(loc="upper right", frameon=False, fontsize=7)
         save(fig, "fig_decomposition.pdf")
 
@@ -457,7 +457,7 @@ def main():
 
         lines = ["\\begin{tabular}{lrrrrrr}", "\\toprule",
                  "Jour & Offert & Demand\\'e & Appari\\'e & Couverture & Absorption & Gain \\\\",
-                 " & (kWh) & (kWh) & (kWh) & (\\%) & (\\%) & (EUR) \\\\",
+                 " & (kWh) & (kWh) & (kWh) & (\\%) & (\\%) & (USD) \\\\",
                  "\\midrule"]
         for i, lab in enumerate(day_labels):
             dt = dates[i]
@@ -473,20 +473,20 @@ def main():
 
         lines = ["\\begin{tabular}{lrrrrrr}", "\\toprule",
                  "M\\'enage & Vendu & Achet\\'e & R\\'eseau seul & Avec AMM & Gain & Part du gain \\\\",
-                 " & (kWh) & (kWh) & (EUR) & (EUR) & (EUR) & (\\%) \\\\",
+                 " & (kWh) & (kWh) & (USD) & (USD) & (USD) & (\\%) \\\\",
                  "\\midrule"]
-        tot_g = per_agent["gain EUR"].sum()
+        tot_g = per_agent["gain USD"].sum()
         for i, slot in enumerate(slots):
             row = per_agent.iloc[i]
             lines.append(f"{i + 1} & {fr(row['sold kWh'], 1)} & {fr(row['bought kWh'], 1)} & "
-                         f"{fr(row['grid only EUR'])} & {fr(row['with AMM EUR'])} & {fr(row['gain EUR'])} & "
-                         f"{fr(100 * row['gain EUR'] / tot_g, 1)} \\\\")
+                         f"{fr(row['grid only USD'])} & {fr(row['with AMM USD'])} & {fr(row['gain USD'])} & "
+                         f"{fr(100 * row['gain USD'] / tot_g, 1)} \\\\")
         lines += ["\\bottomrule", "\\end{tabular}"]
         (figdir / "table_households.tex").write_text("\n".join(lines), encoding="utf-8")
         print(f"exported figures and tables to {figdir}")
 
     print(f"wrote {args.out}")
-    print(f"community gain: {community_gain.sum():.2f} EUR over {n_days} days, "
+    print(f"community gain: {community_gain.sum():.2f} USD over {n_days} days, "
           f"{100 * matched.sum() / D.sum():.1f} % of demand served locally")
 
 
