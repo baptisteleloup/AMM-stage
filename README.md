@@ -4,7 +4,6 @@ A local energy community trades surplus production between members at prices com
 
 **Stack**: Solidity on a permissioned [Besu](https://besu.hyperledger.org/) network (QBFT, free gas) · circuits in [Noir](https://noir-lang.org/) · proving/verification with UltraHonk ([Barretenberg](https://github.com/AztecProtocol/aztec-packages)), **no per-circuit trusted setup**.
 
-→ Full design: Archi4.md
 
 ---
 
