@@ -67,16 +67,9 @@ function bootstrapEnv(): void {
 
 const CATCH_UP_DAYS = Number(process.env.CLIENT_CATCH_UP_DAYS ?? 7);
 
-/**
- * Collecting only today is not enough. A day that closes while the keeper is
- * stopped, or while its tick is busy, is never picked up again — and a missing
- * day-close packet makes the FOLLOWING day unverifiable too, because the balance
- * transition has nothing to chain from. So on every pass, look back over the
- * recent days and fetch whatever is still missing.
- */
 async function catchUp(today: number): Promise<void> {
   for (let d = today - 1; d >= Math.max(0, today - CATCH_UP_DAYS); d--) {
-    if (store.opening(d)) continue;          // already complete for that day
+    if (store.opening(d)) continue;          
     const r = await inbox.tick(d);
     if (r.dayCloseIngested) {
       note("keeper", `caught up: day-close packet for day ${d}`);
@@ -110,9 +103,6 @@ async function keeperTick(): Promise<void> {
       }
 
       for (const a of await actionTick(chain, id, store)) {
-        // A day that does not verify is the one thing in this loop that needs
-        // the prosumer's attention, so it is raised as an alert rather than
-        // buried among the routine action lines.
         const kind = a.reason.startsWith("MISMATCH") ? "alert" : "action";
         note(kind, `${a.action}${a.day !== undefined ? ` day ${a.day}` : ""}: ${a.reason}`, a);
       }

@@ -86,6 +86,8 @@ bb write_vk -b target/day_chunk.json -o target --oracle_hash keccak
 bb write_solidity_verifier -k target/vk -o ../../src/DayChunkVerifier.sol
 ```
 
+
+
 ### Padding constants
 
 `EMPTY_NETPUT_HASH` and `ZERO_BAL_COMMIT` are printed by the circuit itself and injected at deployment:
@@ -103,6 +105,8 @@ They come *from* the circuit, so they match Poseidon2 by construction: never rec
 - The generated verifier **reverts** with custom errors (`SumcheckFailed`, `PublicInputsLengthWrong`, …). It never returns `false`. The most common failure, `SumcheckFailed`, means one public input differs between prover and contract.
 - Verifiers are ~23.7 KB each  (close to EIP-170); the genesis `contractSizeLimit` is the guardrail on the consortium chain.
 - The `MarketV4` constructor takes **10 arguments** (token, two verifiers, tariff, operator, grid, floorAdmin, reserve, two padding constants).
+
+
 
 ## The demo
 
@@ -133,11 +137,17 @@ prices alongside system load. The demo uses WCMA (Western/Central Massachusetts)
 match the dwellings. `fetch_prices.py` holds each hourly price flat across its four
 quarter-hours and adds a delivery adder to approximate a retail tariff.
 
-**Netputs.** `make_netputs.py` imports `solve_horizon` and runs it at 96 steps a day. One
-departure from the paper is deliberate: it treats the other members' aggregates as a
-fixed point solved by damped best response, instead of taking them as exogenous. At
-a community of a few dozen, each member visibly moves the aggregate that sets the
-price, so the price-taking assumption of the mean-field setting does not hold.
+**Netputs.** `make_netputs.py` imports `solve_horizon` and runs it at 96 steps a day.
+Each prosumer optimises alone, against the community aggregate taken as given, as
+the paper does; the aggregate is the members' raw surplus and deficit, before any
+optimisation. In the paper the aggregate is a population of about a million, so
+price-taking is natural. In a community of ten each member moves the aggregate that
+sets its own price, and this run does not account for that. The solver is called
+one day at a time so each day carries its own day-ahead prices, with the battery
+state carried forward. Two departures from the paper's notebook: 96 quarter-hourly
+steps instead of 24 hourly ones, matching the settlement period and the native
+resolution of the load data, and flexible load taken from each building's end-use
+breakdown instead of a flat 30% of daily demand.
 
 ## Status
 

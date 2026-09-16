@@ -86,27 +86,12 @@ export async function trySweep(chain: Chain): Promise<ActionAttempt> {
   }
 }
 
-/**
- * Check a closed day, at most once per verdict, and remember the result.
- *
- * Nothing on chain does this for you. The proof binds the settlement to the
- * fingerprints the operator posted; it says nothing about whether those
- * fingerprints match the receipts he signed and sent to you. That link is only
- * ever tested here, by you, against your own copy.
- *
- * Doing it automatically matters because of when it matters: settlement is
- * permissionless, so abstaining protects nobody — someone else will settle the
- * day regardless. What the check buys is the alert, raised while the window to
- * demand data or cancel is still open.
- */
 export async function tryVerify(chain: Chain, id: Identity, store: Store, day: number): Promise<ActionAttempt> {
   if (!store.opening(day)) {
     return { action: "verify", day, attempted: false, tx: null, reason: "no day-close packet held yet" };
   }
   const prior = store.verdict(`day-${day}`) as { verdict?: string } | undefined;
   if (prior && prior.verdict !== "incomplete") {
-    // A settled verdict does not change. An incomplete one can, once the
-    // missing piece arrives, so that case is retried.
     return { action: "verify", day, attempted: false, tx: null, reason: `already ${prior.verdict}` };
   }
   try {
@@ -125,20 +110,7 @@ export async function tryVerify(chain: Chain, id: Identity, store: Store, day: n
   }
 }
 
-/**
- * First rung of the ladder, walked without the prosumer.
- *
- * A recourse window is only a right if it can be exercised while it is open.
- * Days close at midnight and the window runs on chain time, so a person who
- * looks at their app in the evening has already missed it. Demanding data costs
- * only gas and blocks settlement until answered, so a keeper can do it on its
- * own; the rungs above cannot, because they are irreversible, cost a bond, or
- * affect the whole community.
- *
- * Two triggers: a day that will not verify, and a day whose closing packet never
- * arrived. Both are answered the same way — ask the operator, on chain, and
- * decrypt what comes back.
- */
+
 async function tryRecourse(
   chain: Chain, id: Identity, store: Store, day: number, needsData: boolean,
 ): Promise<ActionAttempt[]> {
@@ -159,9 +131,6 @@ async function tryRecourse(
     return out;
   }
 
-  // The request is already open. Once the operator has answered, take what was
-  // published — it arrives through the chain, so it works even with the
-  // operator's own server unreachable.
   if (r.stage1Done && config.autoFetchData && !store.opening(day)) {
     try {
       const res = await fetchData(chain, id, store, day);
@@ -178,14 +147,10 @@ export async function actionTick(chain: Chain, id: Identity, store: Store): Prom
   const clock = await chain.clock();
 
   for (const day of [clock.day - 1, clock.day - 2]) {
-    // Check before settling, so a bad day is flagged while there is still time
-    // to act on it rather than after the money has moved.
     const v = await tryVerify(chain, id, store, day);
     if (v.attempted) out.push(v);
     const bad = v.attempted && v.reason.startsWith("MISMATCH");
 
-    // Only escalate on a day that is actually closing — a settled or cancelled
-    // day cannot be acted on, and asking would just waste gas.
     const dc = await chain.dayClose(day);
     if (DAY_STATE[dc.state] === "Closing") {
       const needsData = bad || !store.opening(day);

@@ -44,11 +44,6 @@ async function main(): Promise<void> {
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 
-  // Sessions come first and are the only step that is time-critical: a session
-  // that fails to open in its quarter-hour cannot be recovered, and its absence
-  // makes the whole day unprovable. Close and reveals never block on a proof —
-  // they hand the work to the prover process and collect it on a later tick —
-  // so this order is enough to keep session opening punctual.
   for (;;) {
     const started = Date.now();
 

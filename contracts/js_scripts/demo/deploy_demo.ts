@@ -88,10 +88,6 @@ async function main(): Promise<void> {
     winStart: wins.map((w) => w[0]),
     winEnd: wins.map((w) => w[1]),
   };
-  // Schedule mode: one feed-in rate and a peak/off-peak retail split, set once.
-  // Feed mode: a 96-slot price vector posted per day by reporters, finalised on
-  // quorum. The schedule passed here is only the constructor's initial value and
-  // is never read in feed mode.
   const tariff = feedMode
     ? await deploy("GridTariff", deployer, [1, roles.grid.address, schedule, reporters.map((w) => w.address), QUORUM])
     : await deploy("GridTariff", deployer, [0, roles.grid.address, schedule, [], 0]);

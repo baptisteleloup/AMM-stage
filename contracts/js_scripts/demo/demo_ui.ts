@@ -269,12 +269,6 @@ async function main(): Promise<void> {
     let opened = 0;
 
     for (let t = 0; t < SESSIONS; t++) {
-      // The clock must not run while you are exercising recourse by hand. A
-      // disclosure request makes the operator prove something, which blocks its
-      // tick loop for seconds; sessions missed in that window can never be
-      // proven, because close.ts rebuilds all 96 from the source while the chain
-      // only holds the ones that opened. Create a file named PAUSE to freeze
-      // time, delete it to resume.
       let paused = false;
       while (fs.existsSync("PAUSE")) {
         if (!paused) {

@@ -103,17 +103,8 @@ export type Position = {
   knownBalanceEur: string | null;
   knownAtDay: number | null;
   tokenBalanceWei: string;
-  // How much of the queued deposit is already inside knownBalance. A deposit is
-  // frozen for a day at that day's close, and the packet for that day already
-  // adds it in — but the on-chain queue only empties at settlement, which is a
-  // whole objection window later. Between the two the same money shows up in
-  // both figures, and adding them would count it twice.
   depositAlreadyInBalancePeur: string;
   depositAlreadyInBalanceEur: string;
-  // What is still to come: the queue minus the part the packet already counted.
-  // This is the figure to show, because it is the one that changes the balance
-  // from here on. The raw queue stays available above for anyone comparing the
-  // screen with the chain.
   depositStillToApplyPeur: string;
   depositStillToApplyEur: string;
 };

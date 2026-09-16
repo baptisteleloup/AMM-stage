@@ -154,11 +154,6 @@ export async function verifyDay(chain: Chain, id: Identity, store: Store, day: n
   const newBal = afterTrade - paid;
   const claimed = BigInt(opening.balance);
 
-  // The transition can only be checked against a known opening balance. Without
-  // the previous day's packet there is nothing to chain from, and assuming zero
-  // would turn a gap in what we hold into an accusation that the operator lied.
-  // Report what is missing instead, and say what opening the packet implies so
-  // it can be cross-checked by other means.
   if (!prevOpening) {
     const implied: bigint =
       claimed + paid + paidIn - BigInt(snap.deposit) - paidOut;

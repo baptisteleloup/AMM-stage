@@ -8,9 +8,6 @@ import type { Store } from "./store.js";
 import type { Prover } from "./prover.js";
 
 export class Reveals {
-  // Requests whose proof is in flight. The cursor is only advanced past a
-  // request once it is served or definitively abandoned, so nothing is lost if
-  // the daemon restarts mid-proof.
   private pending = new Set<string>();
 
   constructor(private chain: Chain, private store: Store, private prover: Prover) {}
@@ -24,11 +21,6 @@ export class Reveals {
     let last = cursor;
     let blocked = false;
 
-    // Nothing asked in the blocks scanned: move the cursor to the tip so the
-    // next tick does not scan them again. Without this the scan restarts from
-    // the same block forever, grows with the chain, and by itself is enough to
-    // push a tick past the session period — the sessions then arrive late, one
-    // is missed, and the day can no longer be proven.
     if (events.length === 0) {
       this.store.metaSet("revealCursor", String(latest));
       return;
@@ -37,23 +29,16 @@ export class Reveals {
     for (const ev of events) {
       let served = true;
       try {
-        // Stage 1 is a hash and a transaction: cheap, done here and now.
-        // Stage 2 needs a proof, so it is handed to the prover and collected on
-        // a later tick. Either way this method returns promptly.
         served = ev.stage === 1
           ? await this.stage1(ev.day, ev.slot)
           : await this.stage2(ev.day, ev.slot);
       } catch (e) {
         console.error(`[reveals] day=${ev.day} slot=${ev.slot} stage=${ev.stage}:`, (e as Error).message);
       }
-      // Do not step the cursor past a request still waiting on its proof, or a
-      // restart would forget it was ever asked.
+      
       if (!served) blocked = true;
       if (!blocked && ev.block > last) last = ev.block;
     }
-    // Everything scanned was served: the cursor can go all the way to the tip,
-    // not just to the last event. Something still pending keeps it just before
-    // that request so it is seen again next tick.
     if (!blocked) last = latest;
     if (last > cursor) this.store.metaSet("revealCursor", String(last));
   }
@@ -67,11 +52,6 @@ export class Reveals {
       }
     }
     const opening = this.store.openingOf(day, slot);
-    // The opening holds a balance and blinding factors as BigInt, which
-    // JSON.stringify refuses outright. Without this replacer the whole disclosure
-    // fails before anything is encrypted — the prosumer asks, nothing is ever
-    // published, and the request stays open. Decimal strings are also what the
-    // client's own receipt files use, so it reads them back unchanged.
     return Buffer.from(
       JSON.stringify(
         { day, slot, receipts: files, opening },

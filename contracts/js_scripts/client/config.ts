@@ -47,12 +47,6 @@ export const config = {
   autoFinalize: process.env.AUTO_FINALIZE !== "0",
   autoCancelOwn: process.env.AUTO_CANCEL_OWN === "1",
   autoSweep: process.env.AUTO_SWEEP === "1",
-  // First rung of the recourse ladder, on by default. It costs only gas, it is
-  // reversible in effect, and it is the standard remedy for a day that will not
-  // verify. The rungs above it are not automated: revealing a balance in the
-  // clear is irreversible and public, and cancelling a day undoes trading for
-  // the whole community — neither should follow from one local check, which can
-  // fail for a corrupted file as easily as for a dishonest operator.
   autoRequestData: process.env.AUTO_REQUEST_DATA !== "0",
   autoFetchData: process.env.AUTO_FETCH_DATA !== "0",
   pollMs: Number(process.env.CLIENT_POLL_MS ?? 30000),

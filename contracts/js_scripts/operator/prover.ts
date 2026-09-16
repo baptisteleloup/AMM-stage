@@ -3,19 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ChunkWitness } from "./prove.js";
 
-/**
- * prover.ts — hands proof generation to a separate process and never blocks.
- *
- * Everything that calls this asks for a job by name and gets one of four
- * answers back immediately: idle, running, done, or failed. Nothing here waits
- * for a proof. Callers submit on one tick and collect on a later one, which is
- * what keeps session opening on time while a proof is in flight.
- *
- * The worker is restarted if it dies or overruns, and a job that overruns is
- * reported as failed rather than left hanging, so the caller can count it and
- * eventually give up.
- */
-
 export type JobState =
   | { state: "idle" }
   | { state: "running"; sinceMs: number }

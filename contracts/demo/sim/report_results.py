@@ -1,25 +1,4 @@
 #!/usr/bin/env python3
-"""Results report for the ResStock demo.
-
-Reads demo/data/netputs_resstock.json and demo/data/prices.json and writes a
-PDF with tables and charts: market volumes, prices, community gains and
-individual gains, all measured against the status quo in which every kWh is
-traded with the grid alone (exports paid the wholesale price, imports paid
-the retail price).
-
-Prices per session follow src/Pricing.sol exactly:
-    rho = (low + high) / 2
-    c   = rho + (high - rho) * max(0, 1 - S/D)     price paid by buyers
-    r   = rho - (rho - low)  * max(0, 1 - D/S)     price received by sellers
-with S and D the community aggregates of the session. The identity
-r*S + (high - c)*D - low*S = (high - low) * min(S, D) makes the community
-gain equal to the tariff spread times the locally matched volume.
-
-This file lives in demo/sim/ and resolves its defaults relative to itself,
-so it runs from anywhere:
-    python3 demo/sim/report_results.py
-    python3 demo/sim/report_results.py --out somewhere/else.pdf
-"""
 
 import argparse
 import json

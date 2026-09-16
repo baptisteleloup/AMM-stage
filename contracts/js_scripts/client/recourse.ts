@@ -21,12 +21,6 @@ async function slotOrThrow(chain: Chain, id: Identity, store: Store): Promise<nu
   return slot;
 }
 
-/**
- * Recourse only applies to a day that is closing: before that there is nothing
- * to challenge, after it the day is settled or cancelled and nothing can be
- * changed. The contract enforces this too — checking here turns a raw revert
- * into a sentence.
- */
 async function closingOnly(
   chain: Chain, action: string, day: number, slot: number,
 ): Promise<RecourseResult | null> {
@@ -41,8 +35,6 @@ async function closingOnly(
         : "this day is finished; nothing about it can be challenged now",
     };
   }
-  // The objection window bounds the first request; the second gets one reveal
-  // window more, since it can only follow an answered first request.
   const now = await chain.now();
   const deadline = Number(dc.disputeDeadline);
   const extra = action === "requestClearReveal" ? Number((await chain.market.REVEAL_WINDOW()) as bigint) : 0;

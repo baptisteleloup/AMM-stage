@@ -3,8 +3,6 @@ import { Identity } from "./identity.js";
 import { Store } from "./store.js";
 import { config } from "./config.js";
 import { peurToEur } from "./units.js";
-
-// Two decimals for sentences; the raw figure stays in the numeric fields.
 function eur2(peur: bigint): string {
   return Number(peurToEur(peur)).toFixed(2);
 }
@@ -70,12 +68,6 @@ export async function marginState(chain: Chain, id: Identity, store: Store, dayA
 
   const opening = BigInt(prev.balance);
   const snap = await chain.pending(slot);
-
-  // The queue holds money that may already be inside `opening`. A deposit is
-  // frozen for a day at that day's close and the packet for that day adds it in
-  // straight away, but the on-chain queue only empties at settlement — a whole
-  // objection window later. Adding the raw queue to the opening counts the same
-  // euros twice, which is how a 200 EUR account came to show 399 EUR projected.
   let alreadyIn = 0n;
   if (snap.deposit > 0n) {
     try {
