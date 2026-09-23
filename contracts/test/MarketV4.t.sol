@@ -682,4 +682,70 @@ contract MarketV4PathologicalTariffTest is MarketV4Test {
     function _expectedDustIsZero() internal view override returns (bool) {
         return false;
     }
+
+    function test_Request_NotAMemberThatDay_Reverts() public {
+        _honestDay();
+        address carol = makeAddr("carol");
+        vm.prank(carol);
+        market.register(bytes.concat(hex"02", bytes32("carol_pk")));
+        vm.prank(carol);
+        vm.expectRevert(bytes("not a member that day"));
+        market.requestData(dayId);
+    }
+
+    function test_Escape_NotRightAfterDeployment() public {
+        vm.prank(alice);
+        vm.expectRevert(bytes("operator active"));
+        market.escape(0, "proof");
+    }
+
+    function test_Escape_AfterInactivity_ReturnsBalanceAndQueuedDeposit() public {
+        vm.warp((dayId + market.ESCAPE_DELAY_DAYS() + 1) * DAY + 1);
+        uint256 before = eeur.balanceOf(alice);
+        vm.prank(alice);
+        market.escape(0, "proof");
+        assertEq(eeur.balanceOf(alice), before + 1 ether);
+        assertEq(market.pendingDeposit(1), 0);
+        assertEq(market.balCommitOf(1), ZERO_BAL_COMMIT);
+    }
+
+    function test_Escape_PaysTheProvenBalance() public {
+        _submitHonestChunk();
+        _warpPastDeadline();
+        market.finalizeDay(dayId);
+        vm.warp((dayId + market.ESCAPE_DELAY_DAYS() + 2) * DAY + 1);
+        uint256 before = eeur.balanceOf(alice);
+        vm.prank(alice);
+        market.escape(700_000, "proof");
+        assertEq(eeur.balanceOf(alice), before + 700_000 * UNIT);
+    }
+
+    function test_Escape_BlockedByARecentSettlement() public {
+        _submitHonestChunk();
+        _warpPastDeadline();
+        market.finalizeDay(dayId);
+        vm.warp((dayId + 5) * DAY + 1);
+        vm.prank(alice);
+        vm.expectRevert(bytes("operator active"));
+        market.escape(0, "proof");
+    }
+
+    function test_Escape_BlockedWhileADayIsClosing_ThenAllowedOnceCancelled() public {
+        _honestDay();
+        vm.warp((dayId + market.ESCAPE_DELAY_DAYS() + 1) * DAY + 1);
+        vm.prank(alice);
+        vm.expectRevert(bytes("operator active"));
+        market.escape(0, "proof");
+        market.cancelDay(dayId, 0, "no proof");
+        vm.prank(alice);
+        market.escape(0, "proof");
+    }
+
+    function test_Escape_InvalidProof_Reverts() public {
+        vm.warp((dayId + market.ESCAPE_DELAY_DAYS() + 1) * DAY + 1);
+        revealVerifier.set(false);
+        vm.prank(alice);
+        vm.expectRevert(bytes("invalid reveal"));
+        market.escape(0, "proof");
+    }
 }

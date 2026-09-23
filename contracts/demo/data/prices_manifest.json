@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-17T15:30:02.161954+00:00",
+ "generated_at": "2026-09-22T12:10:35.188734+00:00",
  "source": {
   "name": "ISO New England SMD hourly data, 2018",
   "zone": "WCMA",
@@ -13,7 +13,7 @@
   "clock shifted back 1h from Eastern Prevailing Time to the Eastern Standard Time ResStock uses all year",
   "$/MWh converted to currency per kWh",
   "each hourly day-ahead price held flat across its four quarter hours, as day-ahead settlement does",
-  "buyer price = day-ahead LMP + 0.12/kWh delivery adder"
+  "buyer price = day-ahead LMP + 0.17/kWh delivery adder"
  ],
  "modelling_choice": {
   "regime": "export paid at wholesale, import paid at retail",
@@ -44,12 +44,6 @@
    "min": 0.0227,
    "max": 0.0501,
    "mean": 0.0329
-  },
-  {
-   "day": "2018-07-05",
-   "min": 0.0218,
-   "max": 0.0633,
-   "mean": 0.0397
   }
  ]
 }

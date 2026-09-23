@@ -150,6 +150,41 @@ contract GridTariffTest is Test {
         assertFalse(feed.isStale(uint256(day) * 86400));
     }
 
+    function test_schedule_secondRevisionKeepsFirstInForce() public {
+        GridTariff.Schedule memory a = _frenchSchedule();
+        a.retailPeak = UD60x18.wrap(25e18);
+        vm.prank(admin);
+        schedule.setSchedule(a);
+
+        vm.warp(DAY0 + 3 * 86400);
+        GridTariff.Schedule memory b = _frenchSchedule();
+        b.retailPeak = UD60x18.wrap(30e18);
+        vm.prank(admin);
+        schedule.setSchedule(b);
+
+        (, UD60x18 today_) = schedule.getPrices(DAY0 + 3 * 86400 + 9 * 3600);
+        (, UD60x18 tomorrow_) = schedule.getPrices(DAY0 + 4 * 86400 + 9 * 3600);
+        assertEq(today_.unwrap(), 25e18);
+        assertEq(tomorrow_.unwrap(), 30e18);
+    }
+
+    function test_feed_neverFallsBackToAFutureDay() public {
+        uint32 today = uint32(DAY0 / 86400);
+        (UD60x18[96] memory lo1, UD60x18[96] memory hi1) = _vector(10e18);
+        (UD60x18[96] memory lo2, UD60x18[96] memory hi2) = _vector(20e18);
+        for (uint256 i = 0; i < 2; i++) {
+            vm.prank(reporters[i]);
+            feed.submitDailyPrices(today, lo1, hi1);
+            vm.prank(reporters[i]);
+            feed.submitDailyPrices(today + 2, lo2, hi2);
+        }
+
+        uint256 ts = (uint256(today) + 1) * 86400 + 5 * 900;
+        (UD60x18 l,) = feed.getPrices(ts);
+        assertEq(l.unwrap(), 10e18);
+        assertTrue(feed.isStale(ts));
+    }
+
     function test_feed_onlyReporters() public {
         (UD60x18[96] memory lo, UD60x18[96] memory hi) = _vector(10e18);
         vm.prank(mallory);
