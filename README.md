@@ -21,7 +21,7 @@ Inside `contracts/`:
 
 | Path | Content |
 |---|---|
-| `src/` | `MarketV4.sol` (sessions, midnight freeze, batch verification, recourse, settlement), `Pricing.sol` (MMR, SDR and hyperbolic rules), `GridTariff.sol` (tariff band, schedule and feed modes), `EnergyEuro.sol` (demo settlement token), generated verifiers |
+| `src/` | `MarketV4.sol` (sessions, midnight freeze, batch verification, recourse, settlement), `Pricing.sol` (MMR, SDR and hyperbolic rules), `GridTariff.sol` (tariff band, schedule and feed modes), `EnergyEuro.sol` (demo settlement token; its name is historical, the experiments use USD prices), generated verifiers |
 | `test/` | Foundry tests: mock suite and FFI suite with real proofs |
 | `circuits/` | `day_chunk` (one day for a batch of 8 members), `reveal` (opens a balance commitment), `poseidon_helper` (off-circuit hashes) |
 | `js_scripts/operator/` | operator daemon (configured only through environment variables) |
@@ -178,15 +178,17 @@ python demo/econ/equilibrium.py --rule <rule>             # out/nash_<rule>.json
 python demo/econ/equilibrium.py --rule <rule> --init planner   # out/nash_<rule>_from_planner.json
 python demo/econ/campaign.py                              # out/ms, out/stab, out/cert (several hours)
 python demo/econ/summarize.py                             # tables: multiple starts, stability, fine-grid check
-python demo/econ/check_potential.py --rule <rule>         # witness that the game has no exact potential
+python demo/econ/check_potential.py --rule <rule> demo/econ/out/nash_<rule>_from_planner.json   # witnesses reported in the manuscript
 python demo/econ/plots.py                                 # figures/fig_eq_*.pdf
 python demo/econ/plot_grid_overlay.py                     # figures/fig_eq_grid_overlay_mmr.pdf
 ```
 
 `campaign.py` runs `equilibrium.py` many times (multiple starts, stability test, check on a
 2 001-point grid); it skips runs already done, so it can be stopped and restarted. The log of the
-manuscript's run is `demo/econ/out/campaign.log`. `plots.py` and `plot_grid_overlay.py` take
-`--rule` (default `mmr`) for the profile figures.
+manuscript's run is `demo/econ/out/campaign.log`. `check_potential.py` without file arguments
+searches all committed profiles and stops at the first witness it finds, which need not be the one
+reported in the manuscript. `plots.py` and `plot_grid_overlay.py` take `--rule` (default `mmr`)
+for the profile figures.
 
 ## Reference figures
 
@@ -198,11 +200,13 @@ Use them to check a reproduction.
 - Strategic study: households optimising alone 100.22 USD, social planner 68.03 USD, Nash
   equilibria 72.88 (MMR), 72.96 (SDR) and 73.33 USD (hyperbolic), with a certificate
   epsilon of 0.00008, 0.00100 and 0.00504 USD on the 2 001-point grid.
+- No exact potential: the restricted-game cross derivatives differ, -0.000841 and +0.000841
+  (MMR), 0.241910 and 0.251382 (SDR), 0.095092 and 0.105220 USD/kWh² (hyperbolic).
 
 ## Extension outside the manuscript
 
-`demo/econ/extensions/` computes mixed-strategy Nash equilibria by double oracle. It is not part of
-the manuscript and is kept for reference.
+`demo/econ/extensions/` computes mixed-strategy Nash equilibria of the ten-household game. It is
+not part of the manuscript and is kept for reference.
 
 ```
 python demo/econ/extensions/mixed.py --rule <rule>        # extensions/out/mixed_<rule>.json
@@ -211,6 +215,6 @@ python demo/econ/extensions/plots_mixed.py                # extensions/figures/f
 
 ## External data
 
-- NREL ResStock, release `resstock_amy2018_release_2` (2024 release, AMY 2018 weather), from the
-  OEDI data lake (https://data.openei.org/submissions/4520).
+- NREL ResStock, release `resstock_amy2018_release_2` (AMY 2018 weather), from the OEDI data lake
+  (https://data.openei.org/submissions/4520).
 - ISO New England, SMD hourly data 2018 (day-ahead zonal LMP, zone WCMA).
