@@ -12,7 +12,7 @@ fn commit_balance(bal: Field, blind: Field) -> Field {
     poseidon2([bal, blind])
 }
 
-// Commitment to a member's 96 positions, equation (2) of the paper. Seeded with the slot and a
+// Commitment to a member's 96 positions, the hash chain of the paper. Seeded with the slot and a
 // random seed (an idle day is not guessable), then chained so no position can change or move.
 fn hash_netputs(slot: Field, nblind: Field, sell: [Field; SESSIONS], buy: [Field; SESSIONS]) -> Field {
     let mut acc: Field = poseidon2([slot, nblind]);

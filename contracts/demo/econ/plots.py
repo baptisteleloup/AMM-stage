@@ -93,7 +93,7 @@ for j, (rule, run) in enumerate(nash.items()):
     gain = [solo["bills"][n]["solo"] - run["payments"][n] for n in names]  # gain over optimising alone
     ax1.bar(x + (j - (len(nash) - 1) / 2) * w, gain, w, label=LABEL[rule])
 ax1.set_xticks(x)
-ax1.set_xticklabels([str(i + 1) for i in range(len(names))])  # numbering of the paper's tables
+ax1.set_xticklabels([str(i + 1) for i in range(len(names))])  # numbering of the paper's household-gains figure
 ax1.set_xlabel("household")
 ax1.set_ylabel("gain over optimising alone (USD)")
 ax1.legend(fontsize=8)

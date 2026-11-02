@@ -34,7 +34,7 @@ library PricingLib {
         return _hyperbolic(s, d, lambdaLow, lambdaHigh);
     }
 
-    // Mid-market rate, rule (1) of the paper.
+    // Mid-market rate, as in the pricing rules recap of the paper.
     function _midMarket(UD60x18 s, UD60x18 d, UD60x18 lo, UD60x18 hi)
         private
         pure
@@ -47,7 +47,7 @@ library PricingLib {
         c = rho.add(hi.sub(rho).mul(v)); // pulled up towards hi by the shortfall
     }
 
-    // Supply-demand ratio, rule (3) of the paper.
+    // Supply-demand ratio, as in the pricing rules recap of the paper.
     function _supplyDemandRatio(UD60x18 s, UD60x18 d, UD60x18 lo, UD60x18 hi)
         private
         pure
@@ -60,7 +60,7 @@ library PricingLib {
         c = y.mul(r).add(ONE.sub(y).mul(hi)); // c = y r + (1 - y) hi, budget balance
     }
 
-    // Hyperbolic rule, rule (2) of the paper, with a = sqrt(lo), b = sqrt(hi), chi = ab / (b - a).
+    // Hyperbolic rule, as in the pricing rules recap of the paper, with a = sqrt(lo), b = sqrt(hi), chi = ab / (b - a).
     function _hyperbolic(UD60x18 s, UD60x18 d, UD60x18 lo, UD60x18 hi)
         private
         pure
