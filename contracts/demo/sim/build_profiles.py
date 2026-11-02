@@ -1,4 +1,8 @@
-
+# Builds the household profiles from ResStock 15-minute load curves: PV output, base load, flexible
+# load (hot water, pool and spa pumps) and appliance cycles (dishwasher, washer, dryer). Downloads
+# each building once into --cache; writes prosumer-<i>.parquet, agents.json, cycles.json and
+# manifest.json to --out. Run from contracts/ (ids from selection.json):
+#   python3 demo/sim/build_profiles.py --ids <id,...> --state MA --days 2018-07-01:2018-07-05 --out demo/data/profiles
 import argparse
 import hashlib
 import json
@@ -11,33 +15,34 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-SESSIONS = 96
-BASE_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"
+SESSIONS = 96  # fifteen-minute sessions per day
+BASE_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"  # one parquet per building, baseline (upgrade 0)
             "end-use-load-profiles-for-us-building-stock/2024/"
             "resstock_amy2018_release_2/timeseries_individual_buildings/"
             "by_state/upgrade=0/state={state}/{bid}-0.parquet")
 
 
-FLEXIBLE_PATTERNS = [
+FLEXIBLE_PATTERNS = [  # daily energy that can move freely within the day
     r"\.hot_water",
     r"\.water_systems",
     r"\.pool_pump",
     r"\.permanent_spa_pump",
 ]
 
-CYCLE_APPS = ["dishwasher", "clothes_washer", "clothes_dryer"]
+CYCLE_APPS = ["dishwasher", "clothes_washer", "clothes_dryer"]  # appliances run as cycles whose start can move
 CYCLE_PATTERN = r"\.(" + "|".join(CYCLE_APPS) + r")\."
-WASH_DRY_MAX_GAP = pd.Timedelta(hours=4)
+WASH_DRY_MAX_GAP = pd.Timedelta(hours=4)  # a dryer this soon after a washer is paired with it
 
-FLEXIBLE_EXCLUDE = [
+FLEXIBLE_EXCLUDE = [  # never flexible: fans and pumps, totals
     r"_fans_pumps",
     r"\.total",
     r"\.net",
 ]
 
-PV_PATTERNS = [r"\.pv\b", r"photovoltaic", r"\.pv_"]
+PV_PATTERNS = [r"\.pv\b", r"photovoltaic", r"\.pv_"]  # PV output columns
 
 
+# Hash of a source file, recorded in the manifest.
 def sha256(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -79,20 +84,20 @@ def detect_cycles(df, cyc_cols, name, to_kw):
         on = kw > 0
         if not on.any():
             continue
-        run_id = (on != on.shift()).cumsum()[on]
+        run_id = (on != on.shift()).cumsum()[on]  # one id per uninterrupted run
         for _, run in kw[on].groupby(run_id):
             start = run.index[0]
-            if start == df.index[0] or run.index[-1] == df.index[-1]:
+            if start == df.index[0] or run.index[-1] == df.index[-1]:  # runs cut by the window are incomplete
                 print(f"  {name}: {app} cycle at {start} cut by the window, left out")
                 continue
             date = start.normalize()
             cycles.append({
                 "appliance": app,
                 "date": date.date().isoformat(),
-                "observed_step": int((start - date) / pd.Timedelta(minutes=15)),
+                "observed_step": int((start - date) / pd.Timedelta(minutes=15)),  # start session within its day
                 "profile_kw": [round(float(v), 4) for v in run.values],
                 "energy_kwh": round(float(run.sum()) / to_kw, 4),
-                "_start": start,
+                "_start": start,  # internal, removed below
             })
     cycles.sort(key=lambda c: c["_start"])
     for i, c in enumerate(cycles):
@@ -101,7 +106,7 @@ def detect_cycles(df, cyc_cols, name, to_kw):
         c["min_lag_steps"] = 0
 
     used = set()
-    for dryer in (c for c in cycles if c["appliance"] == "clothes_dryer"):
+    for dryer in (c for c in cycles if c["appliance"] == "clothes_dryer"):  # pair each dryer with the latest unpaired washer of its day
         washers = [w for w in cycles
                    if w["appliance"] == "clothes_washer"
                    and w["id"] not in used
@@ -111,7 +116,7 @@ def detect_cycles(df, cyc_cols, name, to_kw):
         if washers:
             w = washers[-1]
             used.add(w["id"])
-            dryer["after"] = w["id"]
+            dryer["after"] = w["id"]  # the dryer must start after this washer
             dryer["min_lag_steps"] = int((dryer["_start"] - w["_start"])
                                          / pd.Timedelta(minutes=15))
     for c in cycles:
@@ -119,6 +124,7 @@ def detect_cycles(df, cyc_cols, name, to_kw):
     return cycles
 
 
+# Downloads one building's load curve once, then reuses the cached copy.
 def fetch(bid, state, cache_dir):
     os.makedirs(cache_dir, exist_ok=True)
     dest = os.path.join(cache_dir, f"{bid}-0.parquet")
@@ -133,12 +139,13 @@ def fetch(bid, state, cache_dir):
     return dest, True
 
 
+# Load curve of one building over the run, indexed by interval start.
 def load_building(path, day_from, day_to):
     df = pd.read_parquet(path)
     tcol = "timestamp" if "timestamp" in df.columns else df.columns[0]
     df[tcol] = pd.to_datetime(df[tcol])
     df = df.set_index(tcol).sort_index()
-    df.index = df.index - pd.Timedelta(minutes=15)
+    df.index = df.index - pd.Timedelta(minutes=15)  # ResStock labels the end of each interval
 
     df = df.loc[day_from:day_to]
     if len(df) == 0:
@@ -146,28 +153,29 @@ def load_building(path, day_from, day_to):
     return df
 
 
+# Splits one building into PV, base, flexible and cycle series, in kW.
 def build_agent(df, name):
     pv_cols, flex_cols, cyc_cols, base_cols = classify(df.columns)
-    to_kw = 4.0
+    to_kw = 4.0  # kWh per 15 min -> average kW
     zero = pd.Series(0.0, index=df.index)
     pv_kwh = df[pv_cols].sum(axis=1) if pv_cols else zero
     flex_kwh = df[flex_cols].sum(axis=1) if flex_cols else zero
     cyc_kwh = df[cyc_cols].sum(axis=1) if cyc_cols else zero
     base_kwh = df[base_cols].sum(axis=1) if base_cols else zero
-    flex_cap_kw = float(sum(df[c].max() for c in flex_cols)) * to_kw if flex_cols else 0.0
+    flex_cap_kw = float(sum(df[c].max() for c in flex_cols)) * to_kw if flex_cols else 0.0  # max flexible power: sum of each end use's peak
     cycles = detect_cycles(df, cyc_cols, name, to_kw)
-    pv_sign = "negative" if float(pv_kwh.sum()) < 0 else "positive"
-    omega_kw = pv_kwh.abs() * to_kw
+    pv_sign = "negative" if float(pv_kwh.sum()) < 0 else "positive"  # ResStock may report PV as negative consumption
+    omega_kw = pv_kwh.abs() * to_kw  # PV output, kW, positive
 
     alpha_base_kw = base_kwh * to_kw
-    flex_daily_kwh = flex_kwh.groupby(flex_kwh.index.normalize()).sum()
+    flex_daily_kwh = flex_kwh.groupby(flex_kwh.index.normalize()).sum()  # flexible energy per day
 
     out = pd.DataFrame({
         "omega_kw": omega_kw.values,
         "alpha_base_kw": alpha_base_kw.values,
         "flex_kw": flex_kwh.values * to_kw,
         "flex_cap_kw": flex_cap_kw,
-        "cycle_kw": cyc_kwh.values * to_kw,
+        "cycle_kw": cyc_kwh.values * to_kw,  # observed cycles, kept so the recorded net position is unchanged
     }, index=df.index)
 
     stats = {
@@ -201,7 +209,7 @@ def main():
     args = ap.parse_args()
 
     day_from, day_to = args.days.split(":")
-    day_to_end = pd.Timestamp(day_to) + pd.Timedelta(days=1) - pd.Timedelta(minutes=15)
+    day_to_end = pd.Timestamp(day_to) + pd.Timedelta(days=1) - pd.Timedelta(minutes=15)  # last quarter hour of the last day
 
     if args.local:
         paths = sorted(os.path.join(args.local, f)
@@ -227,7 +235,7 @@ def main():
     all_cycles = {}
 
     for bid, path in zip(ids, paths):
-        name = f"prosumer-{len(agents)}"
+        name = f"prosumer-{len(agents)}"  # anonymous name, in selection order
         print(f"[{name}] building {bid}")
         df = load_building(path, day_from, day_to_end)
         series, flex, cycles, stats = build_agent(df, name)
@@ -249,7 +257,7 @@ def main():
               f"cycles {stats['cycle_kwh_per_day']:>6} kWh/d in {stats['cycles']} runs "
               f"({stats['flexible_share']:.0%} shiftable)")
 
-    days = sorted({d.date().isoformat() for d in next(iter(frames.values())).index})
+    days = sorted({d.date().isoformat() for d in next(iter(frames.values())).index})  # days covered by the profiles
     n_expected = len(days) * SESSIONS
     for name, series in frames.items():
         if len(series) != n_expected:
@@ -257,7 +265,7 @@ def main():
                              f"({len(days)} days x {SESSIONS}). Gaps in the source?")
         series.to_parquet(os.path.join(args.out, f"{name}.parquet"))
 
-    with open(os.path.join(args.out, "agents.json"), "w") as f:
+    with open(os.path.join(args.out, "agents.json"), "w") as f:  # per-household stats and daily flexible energy
         json.dump({
             "sessions_per_day": SESSIONS,
             "days": days,
@@ -267,7 +275,7 @@ def main():
                                for n, s in flex_daily.items()},
         }, f, indent=1)
 
-    with open(os.path.join(args.out, "cycles.json"), "w") as f:
+    with open(os.path.join(args.out, "cycles.json"), "w") as f:  # appliance cycles, read by the econ models
         json.dump({
             "step_minutes": 15,
             "days": days,
@@ -279,7 +287,7 @@ def main():
     community_load = sum(a["base_kwh_per_day"] + a["flexible_kwh_per_day"]
                          + a["cycle_kwh_per_day"] for a in agents)
 
-    manifest = {
+    manifest = {  # provenance and modelling choices
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "script": os.path.basename(__file__),
         "dataset": {

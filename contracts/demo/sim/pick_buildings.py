@@ -1,3 +1,7 @@
+# Picks the community from NREL ResStock (AMY 2018): PV dwellings spread over system sizes, no-PV
+# dwellings drawn at random, all from one county when possible. Downloads the state metadata once
+# into --cache and writes the selection (ids, rule, county) to --out. Run from contracts/:
+#   python3 demo/sim/pick_buildings.py --state MA --with-pv 5 --without-pv 5 --out demo/data/selection.json
 import argparse
 import json
 import os
@@ -6,12 +10,13 @@ import subprocess
 
 import pandas as pd
 
-RELEASE = "2024/resstock_amy2018_release_2"
-META_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"
+RELEASE = "2024/resstock_amy2018_release_2"  # ResStock release used by the paper
+META_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"  # per-state metadata, one row per dwelling
             "end-use-load-profiles-for-us-building-stock/{release}/metadata_and_annual_results/"
             "by_state/state={state}/parquet/{state}_baseline_metadata_and_annual_results.parquet")
 
 
+# Downloads the state metadata parquet once, then reuses the cached copy.
 def fetch(state, release, cache):
     os.makedirs(cache, exist_ok=True)
     dest = os.path.join(cache, f"{state}_metadata.parquet")
@@ -20,9 +25,9 @@ def fetch(state, release, cache):
         return dest
     url = META_URL.format(state=state, release=release)
     print(f"downloading state metadata (this is a few hundred MB)\n  {url}")
-    r = subprocess.run(["curl", "-fL", "--progress-bar", "-o", dest, url])
+    r = subprocess.run(["curl", "-fL", "--progress-bar", "-o", dest, url])  # curl shows progress on a large file
     if r.returncode != 0:
-        os.path.exists(dest) and os.remove(dest)
+        os.path.exists(dest) and os.remove(dest)  # drop a partial download
         raise SystemExit(
             "download failed. The release path moves between publications — open\n"
             "https://data.openei.org/submissions/4520 , find the current\n"
@@ -30,6 +35,7 @@ def fetch(state, release, cache):
     return dest
 
 
+# First column matching one of the patterns, since column names vary between releases.
 def find_col(df, patterns, required=True, label=""):
     for p in patterns:
         for c in df.columns:
@@ -68,28 +74,28 @@ def main():
 
     print(f"PV column: {pv_col}")
 
-    has_pv = df[pv_col].astype(str).str.lower().isin(["none", "nan", "0", "0.0", "false", ""])
-    with_pv = df[~has_pv].copy()
+    has_pv = df[pv_col].astype(str).str.lower().isin(["none", "nan", "0", "0.0", "false", ""])  # True where the dwelling has NO PV (misleading name, kept as is)
+    with_pv = df[~has_pv].copy()  # dwellings with an array
     without_pv = df[has_pv].copy()
     print(f"{len(with_pv)} with PV, {len(without_pv)} without")
 
     if type_col:
-        sf = without_pv[type_col].astype(str).str.contains("Single-Family", case=False, na=False)
+        sf = without_pv[type_col].astype(str).str.contains("Single-Family", case=False, na=False)  # single-family, comparable to the PV group
         if sf.sum() >= args.without_pv:
             without_pv = without_pv[sf]
             print(f"restricted the no-PV group to single-family for comparability "
                   f"({len(without_pv)} left)")
 
 
-    county_col = find_col(df, [r"in\.county_and_puma", r"in\.county"], required=False)
+    county_col = find_col(df, [r"in\.county_and_puma", r"in\.county"], required=False)  # one county: shared feeder and price zone
     chosen_county = None
     if county_col and not args.any_county:
         counts = with_pv.groupby(county_col).size()
         no_counts = without_pv.groupby(county_col).size()
-        feasible = [c for c in counts.index
+        feasible = [c for c in counts.index  # counties that can supply both groups
                     if counts[c] >= args.with_pv and no_counts.get(c, 0) >= args.without_pv]
         if feasible:
-            chosen_county = max(feasible, key=lambda c: counts[c])
+            chosen_county = max(feasible, key=lambda c: counts[c])  # the county with the most PV dwellings
             with_pv = with_pv[with_pv[county_col] == chosen_county]
             without_pv = without_pv[without_pv[county_col] == chosen_county]
             print(f"all {args.with_pv + args.without_pv} dwellings drawn from one county: "
@@ -102,13 +108,13 @@ def main():
     if len(with_pv) < args.with_pv:
         raise SystemExit(f"only {len(with_pv)} dwellings with PV available")
 
-    with_pv = with_pv.sort_values(pv_col)
-    idx = [int(round(i * (len(with_pv) - 1) / max(1, args.with_pv - 1)))
+    with_pv = with_pv.sort_values(pv_col)  # by system size
+    idx = [int(round(i * (len(with_pv) - 1) / max(1, args.with_pv - 1)))  # evenly spaced ranks over the size distribution
            for i in range(args.with_pv)]
     sel_pv = with_pv.iloc[idx]
-    sel_no = without_pv.sample(args.without_pv, random_state=args.seed)
+    sel_no = without_pv.sample(args.without_pv, random_state=args.seed)  # random no-PV dwellings, fixed seed
 
-    id_col = "bldg_id" if "bldg_id" in df.columns else df.index.name or df.columns[0]
+    id_col = "bldg_id" if "bldg_id" in df.columns else df.index.name or df.columns[0]  # building id column, or the index
 
     def ids(frame):
         return [str(v) for v in (frame[id_col] if id_col in frame.columns else frame.index)]
@@ -129,7 +135,7 @@ def main():
     print("paste this:")
     print(f"  --ids {','.join(all_ids)} --state {args.state}")
 
-    with open(args.out, "w") as f:
+    with open(args.out, "w") as f:  # selection.json, read by run.sh and build_profiles.py
         json.dump({
             "state": args.state,
             "release": args.release,

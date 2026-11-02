@@ -1,3 +1,7 @@
+# Prints, per household, the daily kWh of each ResStock electricity end use over the run, labelled
+# pv / FLEX / base as in build_profiles.py, to check the flexible split. Reads --agents and the raw
+# parquet files in --raw, writes nothing. Run from contracts/:
+#   python3 demo/sim/end_use_breakdown.py --start 2018-07-01 --days 4
 import argparse
 import json
 import re
@@ -15,15 +19,16 @@ ap.add_argument("--start", default="2018-07-01")
 ap.add_argument("--days", type=int, default=4)
 args = ap.parse_args()
 
-FLEX = [r"\.cooling", r"\.heating", r"\.hot_water", r"\.water_systems"]
-EXCLUDE = [r"_fans_pumps", r"\.total", r"\.net"]
-PV = [r"\.pv\b", r"photovoltaic", r"\.pv_"]
+FLEX = [r"\.cooling", r"\.heating", r"\.hot_water", r"\.water_systems"]  # end uses shown as flexible
+EXCLUDE = [r"_fans_pumps", r"\.total", r"\.net"]  # never flexible: fans and pumps, totals
+PV = [r"\.pv\b", r"photovoltaic", r"\.pv_"]  # PV output columns
 
 
 def matches(name, patterns):
     return any(re.search(p, name) for p in patterns)
 
 
+# Class of an end use column, for display.
 def label(col):
     if matches(col, PV):
         return "pv"
@@ -34,7 +39,7 @@ def label(col):
 
 agents = json.loads(args.agents.read_text())["agents"]
 start = pd.Timestamp(args.start)
-end = start + pd.Timedelta(days=args.days) - pd.Timedelta(minutes=15)
+end = start + pd.Timedelta(days=args.days) - pd.Timedelta(minutes=15)  # last quarter hour of the window
 
 table = {}
 for a in agents:
@@ -43,16 +48,16 @@ for a in agents:
     tcol = "timestamp" if "timestamp" in df.columns else df.columns[0]
     df[tcol] = pd.to_datetime(df[tcol])
     df = df.set_index(tcol).sort_index()
-    df.index = df.index - pd.Timedelta(minutes=15)
+    df.index = df.index - pd.Timedelta(minutes=15)  # label each interval by its start, as build_profiles.py
     df = df.loc[start:end]
     cols = [c for c in df.columns
             if c.startswith("out.electricity.") and c.endswith("energy_consumption")
             and not matches(c, [r"\.total", r"\.net"])]
-    per_day = df[cols].sum() / args.days
+    per_day = df[cols].sum() / args.days  # kWh per day of each end use
     table[a["name"]] = per_day
 
 res = pd.DataFrame(table).fillna(0.0)
-res = res[(res.abs() > 0.05).any(axis=1)]
+res = res[(res.abs() > 0.05).any(axis=1)]  # drop negligible end uses
 res.index = [f"{label(c):4} {c.removeprefix('out.electricity.').removesuffix('.energy_consumption')}"
              for c in res.index]
 res = res.sort_index()

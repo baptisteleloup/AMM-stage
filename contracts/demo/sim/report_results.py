@@ -1,31 +1,10 @@
 #!/usr/bin/env python3
-"""Results report for the ResStock demo.
+"""Results report of the fixed-profile demo under one pricing rule.
 
-Reads demo/data/netputs_raw.json and demo/data/prices.json and writes a
-PDF with tables and charts: market volumes, prices, community gains and
-individual gains, all measured against the status quo in which every kWh is
-traded with the grid alone (exports paid the wholesale price, imports paid
-the retail price).
-
-Prices per session follow src/Pricing.sol exactly, under the rule chosen
-with --rule (mmr, sdr or hyperbolic), with S and D the community aggregates
-of the session and y = S/D:
-    mmr         rho = (low + high)/2, c = rho + (high - rho)(1 - y)^+,
-                r = rho - (rho - low)(1 - 1/y)^+
-    sdr         y <= 1: r = high*low / ((high - low) y + low), c = y r + (1 - y) high
-                y > 1:  r = c = low
-    hyperbolic  a = sqrt(low), b = sqrt(high), chi = ab/(b - a)
-                y <= 1: r = ab, c = y ab + (1 - y) high
-                y > 1:  u = 1 - 1/y, z = chi/(u + chi/b), c = a z, r = chi (z - a) + u low
-A session with no seller or no buyer is priced (r, c) = (low, high) under every
-rule, as in the contract. All three rules are exactly budget balanced, so the
-community gain is the tariff spread times the locally matched volume whatever
-the rule; the rules differ in how that gain is split between the two sides.
-
-This file lives in demo/sim/ and resolves its defaults relative to itself,
-so it runs from anywhere:
-    python3 demo/sim/report_results.py
-    python3 demo/sim/report_results.py --out somewhere/else.pdf
+Reads --netputs and --prices and writes a PDF report (--out, default demo/results_raw_<rule>.pdf)
+and, with --figdir, the paper's standalone figures and LaTeX tables. Session prices follow
+src/Pricing.sol; gains are measured against trading with the grid alone. Run from contracts/:
+    python3 demo/sim/report_results.py --rule mmr --figdir demo/figures_raw_mmr
 """
 
 import argparse
@@ -40,16 +19,17 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-SOLD = "#c08214"
+SOLD = "#c08214"  # colours shared with plot_prices_rules.py
 BOUGHT = "#3b5ba9"
 MATCHED = "#2e7d5b"
 GAIN = "#2e7d5b"
 GRID = "#9a9a9a"
 INK = "#222222"
 
-PAGE = (11.69, 8.27)
+PAGE = (11.69, 8.27)  # A4 landscape, inches
 
 
+# Netputs as kWh arrays [member, day, session] and the band of each day.
 def load(netputs_path, prices_path):
     with open(netputs_path) as f:
         net = json.load(f)
@@ -67,10 +47,10 @@ def load(netputs_path, prices_path):
         prof = net["profiles"][name]
         for d in range(n_days):
             arr = np.asarray(prof[str(d)], dtype=float)
-            sell[i, d, :] = arr[:, 0] / 1000.0
+            sell[i, d, :] = arr[:, 0] / 1000.0  # Wh -> kWh
             buy[i, d, :] = arr[:, 1] / 1000.0
 
-    dates = [feed["days"][d % len(feed["days"])] for d in range(n_days)]
+    dates = [feed["days"][d % len(feed["days"])] for d in range(n_days)]  # price day of each netput day
     low = np.array([feed["prices"][dt]["low"] for dt in dates])
     high = np.array([feed["prices"][dt]["high"] for dt in dates])
 
@@ -84,20 +64,20 @@ def session_prices(S, D, low, high, rule="mmr"):
     """Seller and buyer rates per session under one of the three rules, element-wise."""
     rho = (low + high) / 2.0
     with np.errstate(divide="ignore", invalid="ignore"):
-        y = np.where(D > 0, S / np.where(D > 0, D, 1.0), 0.0)
+        y = np.where(D > 0, S / np.where(D > 0, D, 1.0), 0.0)  # supply-demand ratio, guarded against D = 0
         if rule == "mmr":
-            u = np.clip(1.0 - np.where(S > 0, D / np.where(S > 0, S, 1.0), 0.0), 0.0, None)
-            v = np.clip(1.0 - y, 0.0, None)
+            u = np.clip(1.0 - np.where(S > 0, D / np.where(S > 0, S, 1.0), 0.0), 0.0, None)  # share of supply sold to the grid
+            v = np.clip(1.0 - y, 0.0, None)  # share of demand bought from the grid
             r = rho - (rho - low) * u
             c = rho + (high - rho) * v
         elif rule == "sdr":
-            Dd = (high - low) * np.minimum(y, 1.0) + low
+            Dd = (high - low) * np.minimum(y, 1.0) + low  # denominator of r in excess demand
             r_dem = np.where(Dd > 0, high * low / np.where(Dd > 0, Dd, 1.0), 0.0)
             r = np.where(y > 1.0, low, r_dem)
             c = np.where(y > 1.0, low, y * r_dem + (1.0 - y) * high)
         elif rule == "hyperbolic":
             a, b = np.sqrt(low), np.sqrt(high)
-            gap = np.where(b > a, b - a, 1.0)
+            gap = np.where(b > a, b - a, 1.0)  # b - a, guarded for a flat band
             chi = a * b / gap
             ab = a * b
             u = np.clip(1.0 - np.where(y > 0, 1.0 / np.where(y > 0, y, 1.0), 0.0), 0.0, None)
@@ -161,10 +141,12 @@ def price_impacts(sell, buy, low, high, rule, h=1e-6):
     }
 
 
+# Number with thin thousands separators.
 def fmt(x, dec=2):
     return f"{x:,.{dec}f}".replace(",", " ")
 
 
+# One PDF page holding a table.
 def table_page(pdf, df, title, subtitle="", col_w=None, dec=None):
     fig, ax = plt.subplots(figsize=PAGE)
     ax.axis("off")
@@ -209,26 +191,26 @@ def main():
                          "tables (booktabs) into this folder, sized for a report")
     args = ap.parse_args()
     if args.out is None:
-        args.out = str(demo / f"results_raw_{args.rule}.pdf")
+        args.out = str(demo / f"results_raw_{args.rule}.pdf")  # default depends on the rule
 
     names, sell, buy, dates, low, high, feed = load(args.netputs, args.prices)
     n, n_days, T = sell.shape
-    slots = [f"slot {i + 1}" for i in range(n)]
+    slots = [f"slot {i + 1}" for i in range(n)]  # members as the chain numbers them
 
     S = sell.sum(axis=0)
     D = buy.sum(axis=0)
-    matched = np.minimum(S, D)
-    spread = high - low
+    matched = np.minimum(S, D)  # energy matched locally per session
+    spread = high - low  # gain per matched kWh
     r, c, rho = session_prices(S, D, low, high, args.rule)
 
-    amm = r[None, :, :] * sell - c[None, :, :] * buy
-    base = low[None, :, :] * sell - high[None, :, :] * buy
-    gain = amm - base
-    gain_sell = (r - low)[None, :, :] * sell
-    gain_buy = (high - c)[None, :, :] * buy
+    amm = r[None, :, :] * sell - c[None, :, :] * buy  # cash flows with the market
+    base = low[None, :, :] * sell - high[None, :, :] * buy  # cash flows with the grid alone
+    gain = amm - base  # member gain per session
+    gain_sell = (r - low)[None, :, :] * sell  # earned selling above feed-in
+    gain_buy = (high - c)[None, :, :] * buy  # saved buying below retail
 
     community_gain = gain.sum(axis=0)
-    check = np.abs(community_gain - spread * matched).max()
+    check = np.abs(community_gain - spread * matched).max()  # budget balance: community gain = spread x matched
     assert check < 1e-9, f"settlement identity violated by {check}"
     impacts = price_impacts(sell, buy, low, high, args.rule)
 
@@ -246,12 +228,12 @@ def main():
     matched_day = matched.sum(axis=1)
     gain_day = community_gain.sum(axis=1)
 
-    w_r = np.divide((r * S).sum(), S.sum()) if S.sum() > 0 else 0.0
+    w_r = np.divide((r * S).sum(), S.sum()) if S.sum() > 0 else 0.0  # volume-weighted prices over the run
     w_c = np.divide((c * D).sum(), D.sum()) if D.sum() > 0 else 0.0
     w_low = (low * S).sum() / S.sum() if S.sum() > 0 else 0.0
     w_high = (high * D).sum() / D.sum() if D.sum() > 0 else 0.0
 
-    per_agent = pd.DataFrame(index=slots)
+    per_agent = pd.DataFrame(index=slots)  # per-member table
     per_agent["sold kWh"] = sell.sum(axis=(1, 2))
     per_agent["bought kWh"] = buy.sum(axis=(1, 2))
     per_agent["grid only USD"] = base.sum(axis=(1, 2))
@@ -263,12 +245,12 @@ def main():
     per_agent["gain c/kWh traded"] = 100 * per_agent["gain USD"] / traded.replace(0, np.nan)
     per_agent["share of gain %"] = 100 * per_agent["gain USD"] / per_agent["gain USD"].sum()
 
-    per_day = pd.DataFrame(index=day_labels)
+    per_day = pd.DataFrame(index=day_labels)  # per-day table
     per_day["offered kWh"] = sold_day
     per_day["demanded kWh"] = bought_day
     per_day["matched kWh"] = matched_day
-    per_day["covered %"] = 100 * matched_day / bought_day
-    per_day["absorbed %"] = 100 * matched_day / sold_day
+    per_day["covered %"] = 100 * matched_day / bought_day  # share of demand served locally
+    per_day["absorbed %"] = 100 * matched_day / sold_day  # share of supply sold locally
     per_day["gain USD"] = gain_day
 
     with PdfPages(args.out) as pdf:
@@ -276,6 +258,7 @@ def main():
         fig, ax = plt.subplots(figsize=PAGE)
         ax.axis("off")
         y = 0.95
+        # Page 1: setting and headline results.
         ax.text(0.02, y, f"ResStock demo, market results ({args.rule})", fontsize=22, color=INK, weight="bold")
         y -= 0.07
         ax.text(0.02, y, "Local energy sharing AMM on measured building data and real day-ahead prices",
@@ -313,6 +296,7 @@ def main():
         pdf.savefig(fig)
         plt.close(fig)
 
+        # Pages of the report, one figure or table each.
         table_page(pdf, per_day, "Daily market summary")
 
         fig, ax = plt.subplots(figsize=PAGE)
@@ -351,7 +335,7 @@ def main():
         pdf.savefig(fig)
         plt.close(fig)
 
-        d_star = int(np.argmax(matched_day))
+        d_star = int(np.argmax(matched_day))  # most active day
         fig, axes = plt.subplots(2, 1, figsize=PAGE, sharex=True,
                                  gridspec_kw={"height_ratios": [1.5, 1.0]})
         ax = axes[0]
@@ -387,7 +371,7 @@ def main():
 
         fig, ax = plt.subplots(figsize=PAGE)
         cmap = plt.get_cmap("tab10")
-        cum_gain = np.cumsum(gain.reshape(n, -1), axis=1)
+        cum_gain = np.cumsum(gain.reshape(n, -1), axis=1)  # cumulative gain per member
         for i in range(n):
             ax.plot(x, cum_gain[i], lw=1.4, color=cmap(i % 10), label=slots[i])
         for d in range(1, n_days):
@@ -403,7 +387,7 @@ def main():
         plt.close(fig)
 
         fig, ax = plt.subplots(figsize=PAGE)
-        cum_amm = np.cumsum(amm.reshape(n, -1), axis=1)
+        cum_amm = np.cumsum(amm.reshape(n, -1), axis=1)  # cumulative cash, with the market
         cum_base = np.cumsum(base.reshape(n, -1), axis=1)
         for i in range(n):
             ax.plot(x, cum_amm[i], lw=1.4, color=cmap(i % 10), label=slots[i])
@@ -422,7 +406,7 @@ def main():
         plt.close(fig)
 
         fig, ax = plt.subplots(figsize=PAGE)
-        gs = per_agent["gain seller side"].values
+        gs = per_agent["gain seller side"].values  # gain decomposition per member
         gb = per_agent["gain buyer side"].values
         idx = np.arange(n)
         ax.bar(idx, gs, color=SOLD, label="earned selling above wholesale")
@@ -456,10 +440,10 @@ def main():
         plt.close(fig)
 
 
-    if args.figdir:
+    if args.figdir:  # standalone figures and tables of the paper
         figdir = Path(args.figdir)
         figdir.mkdir(parents=True, exist_ok=True)
-        W = 6.3
+        W = 6.3  # text width of the paper, inches
 
         def save(fig, name):
             fig.tight_layout()
@@ -476,7 +460,7 @@ def main():
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels([dt for dt in dates], fontsize=8)
         ax.legend(loc="upper right", frameon=False, fontsize=7)
-        save(fig, "fig_sessions.pdf")
+        save(fig, "fig_sessions.pdf")  # supply, demand and matched energy
 
         fig, ax = plt.subplots(figsize=(W, 2.9))
         ax.plot(x, np.cumsum(flat_gain), color=GAIN, lw=1.4)
@@ -485,7 +469,7 @@ def main():
         ax.set_ylabel("USD, cumulative")
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels([dt for dt in dates], fontsize=8)
-        save(fig, "fig_gain.pdf")
+        save(fig, "fig_gain.pdf")  # cumulative community gain
 
         d_star2 = int(np.argmax(matched_day))
         fig, ax = plt.subplots(figsize=(W, 3.2))
@@ -497,7 +481,7 @@ def main():
         ax.set_xlabel("hour of day")
         ax.set_ylabel("c/kWh")
         ax.legend(loc="upper left", frameon=False, fontsize=7, ncol=2)
-        save(fig, "fig_prices.pdf")
+        save(fig, "fig_prices.pdf")  # prices on the most active day
 
         fig, ax = plt.subplots(figsize=(W, 3.4))
         cmap2 = plt.get_cmap("tab10")
@@ -510,7 +494,7 @@ def main():
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels([dt for dt in dates], fontsize=8)
         ax.legend(loc="upper left", frameon=False, fontsize=6.5, ncol=2)
-        save(fig, "fig_individual.pdf")
+        save(fig, "fig_individual.pdf")  # cumulative gain per member
 
         fig, ax = plt.subplots(figsize=(W, 3.4))
         ca = np.cumsum(amm.reshape(n, -1), axis=1)
@@ -525,7 +509,7 @@ def main():
         ax.set_xticks([d * T + T // 2 for d in range(n_days)])
         ax.set_xticklabels([dt for dt in dates], fontsize=8)
         ax.legend(loc="lower left", frameon=False, fontsize=6.5, ncol=2)
-        save(fig, "fig_cash.pdf")
+        save(fig, "fig_cash.pdf")  # cash position per member
 
         fig, ax = plt.subplots(figsize=(W, 2.9))
         gsv = per_agent["gain seller side"].values
@@ -537,8 +521,9 @@ def main():
         ax.set_xticklabels(slots, fontsize=7)
         ax.set_ylabel("USD over the run")
         ax.legend(loc="upper right", frameon=False, fontsize=7)
-        save(fig, "fig_decomposition.pdf")
+        save(fig, "fig_decomposition.pdf")  # seller and buyer sides of each gain
 
+        # Number for LaTeX, with thin spaces and a math minus.
         def fr(v, dec=2):
             txt = f"{abs(v):,.{dec}f}".replace(",", "\\,")
             return f"$-{txt}$" if v < 0 else txt
@@ -557,7 +542,7 @@ def main():
                   f"{fr(100 * matched_day.sum() / bought_day.sum(), 1)} & {fr(100 * matched_day.sum() / sold_day.sum(), 1)} & "
                   f"{fr(gain_day.sum())} \\\\",
                   "\\bottomrule", "\\end{tabular}"]
-        (figdir / "table_days.tex").write_text("\n".join(lines), encoding="utf-8")
+        (figdir / "table_days.tex").write_text("\n".join(lines), encoding="utf-8")  # per-day table
 
         lines = ["\\begin{tabular}{lrrrrrr}", "\\toprule",
                  "Household & Sold & Bought & Grid only & With AMM & Gain & Share of gain \\\\",
@@ -570,10 +555,10 @@ def main():
                          f"{fr(row['grid only USD'])} & {fr(row['with AMM USD'])} & {fr(row['gain USD'])} & "
                          f"{fr(100 * row['gain USD'] / tot_g, 1)} \\\\")
         lines += ["\\bottomrule", "\\end{tabular}"]
-        (figdir / "table_households.tex").write_text("\n".join(lines), encoding="utf-8")
+        (figdir / "table_households.tex").write_text("\n".join(lines), encoding="utf-8")  # per-member table
         print(f"exported figures and tables to {figdir}")
 
-    print(f"wrote {args.out}")
+    print(f"wrote {args.out}")  # summary on stdout
     print(f"rule: {args.rule}")
     print(f"community gain: {community_gain.sum():.2f} USD over {n_days} days, "
           f"{100 * matched.sum() / D.sum():.1f} % of demand served locally")
@@ -584,6 +569,7 @@ def main():
     print(f"household gains: {per_agent['gain USD'].min():.2f} to {per_agent['gain USD'].max():.2f} USD")
     imp = impacts
 
+    # Percentile in cents.
     def q(a, p):
         return 100 * float(np.percentile(a, p)) if len(a) else float("nan")
     print(f"price impact: {imp['sessions_both']} sessions with both sides "
