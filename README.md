@@ -1,6 +1,6 @@
 # Private local energy market: contracts, proofs and experiments
 
-This repository holds the code that accompanies a manuscript currently under review. It
+This repository holds the code that accompanies the manuscript. It
 implements an automated market maker for local electricity exchange: EVM contracts on a
 Hyperledger Besu network, Noir circuits proven with UltraHonk, an operator daemon that runs the
 market and proves each day, and a prosumer client that checks its own settlement. It also holds
