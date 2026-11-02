@@ -1,26 +1,22 @@
-// Reads the watcher log of a clock-skew experiment and reports, phase by phase:
-// how many blocks each validator proposed, the gap between consecutive blocks,
-// and how far each block's timestamp is from the wall-clock time at which the
-// watcher first saw it. A validator whose clock is ahead should lose its turns
-// (its blocks are refused); one whose clock is behind should produce backdated
-// blocks. The market derives its sessions and deadlines from these timestamps.
-//
-//   WATCH=besu_results/skew_watch.jsonl EVENTS=besu_results/skew_events.jsonl \
-//   SKEWED=0x2c8b... npx tsx js_scripts/besu/skewreport.ts
+// Clock-skew experiment report. Reads the watcher log (WATCH) and phase markers (EVENTS) of
+// network/skew.sh and gives per phase the skewed validator's share of blocks, the block intervals
+// and the lag between first sight and block timestamp. Writes OUT (skew.json); run by skew.sh, or:
+//   WATCH=besu_results/skew_watch.jsonl EVENTS=besu_results/skew_events.jsonl SKEWED=0x2c8b... npx tsx js_scripts/besu/skewreport.ts
 
 import fs from "node:fs";
 
 const WATCH = process.env.WATCH ?? "besu_results/skew_watch.jsonl";
 const EVENTS = process.env.EVENTS ?? "besu_results/skew_events.jsonl";
 const OUT = process.env.OUT ?? "besu_results/skew.json";
-const SKEWED = (process.env.SKEWED ?? "").toLowerCase();
+const SKEWED = (process.env.SKEWED ?? "").toLowerCase(); // validator address of the skewed node
 
-type W = { t: number; node: number; up: boolean; number?: number; hash?: string; ts?: number; miner?: string };
-type E = { t: number; phase: string };
+type W = { t: number; node: number; up: boolean; number?: number; hash?: string; ts?: number; miner?: string }; // one chainwatch line
+type E = { t: number; phase: string }; // one phase marker
 
 const readJsonl = <T>(p: string): T[] =>
   fs.readFileSync(p, "utf-8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as T);
 
+// n, min, mean, max of a list, null if empty.
 function stats(xs: number[]) {
   if (xs.length === 0) return null;
   const s = [...xs].sort((a, b) => a - b);
@@ -30,7 +26,7 @@ function stats(xs: number[]) {
 const watch = readJsonl<W>(WATCH);
 const events = readJsonl<E>(EVENTS);
 const end = watch[watch.length - 1].t;
-const phases = events.map((e, i) => ({ phase: e.phase, from: e.t, to: events[i + 1]?.t ?? end }));
+const phases = events.map((e, i) => ({ phase: e.phase, from: e.t, to: events[i + 1]?.t ?? end })); // each phase runs to the next marker
 
 // First time each block number was seen by the watcher, on any node.
 const firstSeen = new Map<number, W>();
@@ -41,17 +37,17 @@ const report = phases.map((p) => {
   // Skip the first 30 s of each phase: the restarted node is still syncing.
   const inPhase = blocks.filter((b) => b.t >= p.from + 30000 && b.t < p.to);
   const byMiner: Record<string, number> = {};
-  for (const b of inPhase) byMiner[b.miner!.toLowerCase()] = (byMiner[b.miner!.toLowerCase()] ?? 0) + 1;
+  for (const b of inPhase) byMiner[b.miner!.toLowerCase()] = (byMiner[b.miner!.toLowerCase()] ?? 0) + 1; // blocks per proposer
   const intervals: number[] = [];
   for (let i = 1; i < inPhase.length; i++) {
-    if (inPhase[i].number === inPhase[i - 1].number! + 1) intervals.push(inPhase[i].ts! - inPhase[i - 1].ts!);
+    if (inPhase[i].number === inPhase[i - 1].number! + 1) intervals.push(inPhase[i].ts! - inPhase[i - 1].ts!); // timestamp gap of consecutive blocks
   }
-  const lag = (list: W[]) => stats(list.map((b) => b.t / 1000 - b.ts!));
+  const lag = (list: W[]) => stats(list.map((b) => b.t / 1000 - b.ts!)); // wall clock at first sight minus block timestamp, s
   return {
     phase: p.phase, blocks: inPhase.length,
-    skewedShare: inPhase.length ? (byMiner[SKEWED] ?? 0) / inPhase.length : null,
+    skewedShare: inPhase.length ? (byMiner[SKEWED] ?? 0) / inPhase.length : null, // a node ahead loses its turns
     blockIntervalS: stats(intervals),
-    seenMinusTimestampS: { skewed: lag(inPhase.filter((b) => b.miner!.toLowerCase() === SKEWED)),
+    seenMinusTimestampS: { skewed: lag(inPhase.filter((b) => b.miner!.toLowerCase() === SKEWED)), // a node behind backdates its blocks
                            others: lag(inPhase.filter((b) => b.miner!.toLowerCase() !== SKEWED)) },
   };
 });
