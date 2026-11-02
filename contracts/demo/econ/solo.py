@@ -1,4 +1,6 @@
-# baseline: each household optimises alone against the grid, no community
+# Baseline: each household optimises its flexibility alone against the grid, without the community.
+# Reads the data through common.Data and writes out/solo.json (bills and schedules), read by the other scripts.
+# Run from contracts/: python demo/econ/solo.py [--out PATH]
 import argparse
 import json
 
@@ -13,18 +15,18 @@ args = ap.parse_args()
 
 data = Data()
 T, dt = data.T, data.dt
-rows, schedules = [], {}
+rows, schedules = [], {}  # table rows, schedules saved to json
 
 for name in data.names:
     m = new_model()  # one model per household, they are independent
-    hv = add_household(m, data, name)
+    hv = add_household(m, data, name)  # physical constraints
     # grid bill: buy at retail - sell at feed-in
     m.setObjective(quicksum((data.high[t] * hv["buy"][t] - data.low[t] * hv["sell"][t]) * dt
                             for t in range(T)), GRB.MINIMIZE)
     m.optimize()
     if m.Status != GRB.OPTIMAL:
         raise SystemExit(f"{name}: solver status {m.Status}")
-    sch = schedule(hv, T)
+    sch = schedule(hv, T)  # optimal schedule as arrays
     net = sch["sell_kw"] - sch["buy_kw"]  # net position
     h = data.hh[name]
     # check: the energy balance should be exact (error ~1e-14)
@@ -40,8 +42,8 @@ for name in data.names:
 print(f"{'household':12} {'raw bill':>10} {'solo bill':>10} {'saving':>9} {'max soc':>8} {'cycled':>8} {'balance err':>12}")
 for r in rows:
     print(f"{r[0]:12} {r[1]:10.2f} {r[2]:10.2f} {r[3]:9.2f} {r[4]:8.2f} {r[5]:8.2f} {r[6]:12.1e}")
-tot_raw = sum(r[1] for r in rows)
-tot_opt = sum(r[2] for r in rows)
+tot_raw = sum(r[1] for r in rows)  # community bill of the recorded curves
+tot_opt = sum(r[2] for r in rows)  # community bill, everyone optimised alone (100.22 USD in the paper)
 print(f"{'community':12} {tot_raw:10.2f} {tot_opt:10.2f} {tot_raw - tot_opt:9.2f}")
 print("bills in USD over the period, a negative bill is a net income; "
       "max soc in kWh; cycled = energy through the battery in kWh")

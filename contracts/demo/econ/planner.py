@@ -1,4 +1,6 @@
-# social planner: one model with the 10 households, minimise the community's grid bill
+# Social planner: one model with the 10 households that minimises the community's grid bill,
+# then the payment of each household under the three rules on that allocation.
+# Reads out/solo.json, writes out/planner.json. Run from contracts/: python demo/econ/planner.py [--solo PATH] [--out PATH]
 import argparse
 import json
 
@@ -16,7 +18,7 @@ data = Data()
 T, dt = data.T, data.dt
 solo = json.loads(open(args.solo).read())["bills"]  # grid-alone bills, to compare
 
-m = new_model()
+m = new_model()  # one model for the whole community
 m.Params.TimeLimit = 1800  # 30 min max just in case
 hv = {name: add_household(m, data, name) for name in data.names}  # the 10 households in the same model
 g_out = m.addVars(T, lb=0.0, name="grid_export")  # what the community sells to the grid
@@ -37,15 +39,15 @@ if m.SolCount == 0:
 m.Params.ObjNumber = 0  # to read the value of objective 1
 print(f"solver status {m.Status} (2 = optimal, 9 = time limit), cost {m.ObjNVal:.4f} USD")
 
-sch = {n: schedule(hv[n], T) for n in data.names}
+sch = {n: schedule(hv[n], T) for n in data.names}  # optimal schedules
 sell = np.array([sch[n]["sell_kw"] for n in data.names])  # households x sessions
 buy = np.array([sch[n]["buy_kw"] for n in data.names])
 S, D = sell.sum(axis=0), buy.sum(axis=0)  # total supply and demand per session
-net = S - D
-community_bill = float(np.sum(data.high * np.clip(-net, 0, None) - data.low * np.clip(net, 0, None)) * dt)
+net = S - D  # community position, + = exports to the grid
+community_bill = float(np.sum(data.high * np.clip(-net, 0, None) - data.low * np.clip(net, 0, None)) * dt)  # 68.03 USD in the paper
 matched = float(np.minimum(S, D).sum() * dt)  # energy traded locally
-solo_total = sum(solo[n]["solo"] for n in data.names)
-raw_total = sum(solo[n]["raw"] for n in data.names)
+solo_total = sum(solo[n]["solo"] for n in data.names)  # everyone optimised alone
+raw_total = sum(solo[n]["raw"] for n in data.names)  # recorded curves, nothing optimised
 
 print(f"\ncommunity bill: raw {raw_total:.2f}, solo {solo_total:.2f}, planner {community_bill:.2f} USD")
 print(f"gain of the planner over solo: {solo_total - community_bill:.2f} USD")

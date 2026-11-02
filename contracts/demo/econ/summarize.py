@@ -1,11 +1,13 @@
-# reads out/ms, out/stab and out/cert and prints the tables (plain text and LaTeX)
+# Prints the tables of the strategic study (multiple starts, stability, fine-grid check) in plain text
+# and as LaTeX rows. Reads out/planner.json, out/nash_<rule>*.json, out/ms, out/stab and out/cert; writes nothing.
+# Run from contracts/: python demo/econ/summarize.py
 import json
 
 import numpy as np
 
 from common import HERE
 
-OUT = HERE / "out"
+OUT = HERE / "out"  # committed results
 RULES = ("mmr", "sdr", "hyperbolic")
 LABEL = {"mmr": "MMR", "sdr": "SDR", "hyperbolic": "Hyperbolic"}
 TOL = 0.01  # two bills closer than one cent count as the same equilibrium
@@ -21,14 +23,14 @@ def eff(c):
 
 
 def load(pattern):
-    return [json.loads(f.read_text()) | {"file": f.stem} for f in sorted(OUT.glob(pattern))]
+    return [json.loads(f.read_text()) | {"file": f.stem} for f in sorted(OUT.glob(pattern))]  # runs matching pattern, with their file name
 
 
 def net(run):
-    return np.array([np.array(s["sell_kw"]) - np.array(s["buy_kw"]) for s in run["schedules"].values()])
+    return np.array([np.array(s["sell_kw"]) - np.array(s["buy_kw"]) for s in run["schedules"].values()])  # households x sessions, kW
 
 
-lines_ms, lines_stab, lines_cert = [], [], []
+lines_ms, lines_stab, lines_cert = [], [], []  # LaTeX rows of the three tables
 print(f"planner {c_star:.2f} USD, alone {c0:.2f} USD, planner gain {c0 - c_star:.2f} USD")
 print(f"upper bound on the price of anarchy from individual rationality: {c0 / c_star:.3f}\n")
 
@@ -40,10 +42,10 @@ for rule in RULES:
         continue
     bills = np.array([r["community_bill"] for r in runs])
     eps = np.array([r["epsilon_usd"] for r in runs])
-    conv = sum(r["converged"] for r in runs)
+    conv = sum(r["converged"] for r in runs)  # runs where a pass moved nobody
     distinct = len(np.unique(np.round(bills / TOL)))  # distinct equilibria, by bill
     worst, best = bills.max(), bills.min()
-    base = json.loads((OUT / f"nash_{rule}.json").read_text())["community_bill"]
+    base = json.loads((OUT / f"nash_{rule}.json").read_text())["community_bill"]  # the paper's equilibrium
     rank = (bills < base - 1e-9).mean() * 100  # share of runs that found a cheaper equilibrium
     print(f"{rule}: {len(runs)} runs, {conv} converged, max eps {eps.max():.5f} USD, "
           f"bills {best:.2f} to {worst:.2f} (median {np.median(bills):.2f}), {distinct} distinct, "
@@ -60,12 +62,12 @@ for rule in RULES:
     if not runs:
         continue
     base = json.loads((OUT / f"nash_{rule}.json").read_text())
-    q0 = net(base)
+    q0 = net(base)  # positions before the kick
     for k in sorted({len(r["perturbed"]) for r in runs}):
         sub = [r for r in runs if len(r["perturbed"]) == k]
         dbill = np.array([r["community_bill"] - base["community_bill"] for r in sub])
         dist = np.array([np.abs(net(r) - q0).max() for r in sub])  # largest change of a net position, kW
-        back = int((np.abs(dbill) <= TOL).sum())
+        back = int((np.abs(dbill) <= TOL).sum())  # runs back to the same bill
         print(f"{rule}, {k} household(s) kicked: {len(sub)} runs, {back} back to the same bill, "
               f"max |change of bill| {np.abs(dbill).max():.3f} USD, median largest position change {np.median(dist):.2f} kW")
         lines_stab.append(f"{LABEL[rule]} & {k} & {len(sub)} & {back} & {np.abs(dbill).max():.3f} & "

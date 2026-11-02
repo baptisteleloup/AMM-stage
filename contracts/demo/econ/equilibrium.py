@@ -1,4 +1,7 @@
-# Nash equilibrium by best responses
+# Pure Nash equilibrium of the households under one pricing rule, by iterated best responses (Gurobi,
+# revenue as a broken line), then a check pass that gives the certificate epsilon.
+# Reads out/solo.json (and out/planner.json or --from), writes out/nash_<rule>[_from_<init>].json or out/<tag>.json.
+# Run from contracts/: python demo/econ/equilibrium.py --rule mmr [--init planner] [--points 201] ...
 import argparse
 import json
 import time
@@ -13,7 +16,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--rule", choices=("mmr", "sdr", "hyperbolic"), required=True)
 ap.add_argument("--points", type=int, default=201)  # number of points of the broken line
 ap.add_argument("--tol", type=float, default=1e-4)  # min gain for a household to switch schedule
-ap.add_argument("--max-passes", type=int, default=60)
+ap.add_argument("--max-passes", type=int, default=60)  # 0 = only the final check
 ap.add_argument("--solo", default=str(HERE / "out" / "solo.json"))
 ap.add_argument("--init", choices=("solo", "planner", "mix", "file"), default="solo")  # starting point
 ap.add_argument("--from", dest="from_file", default=None)  # with --init file: json with the starting schedules
@@ -23,17 +26,17 @@ ap.add_argument("--shuffle", action="store_true")  # random order of the househo
 ap.add_argument("--seed", type=int, default=0)  # for mix, perturb and shuffle
 ap.add_argument("--tag", default=None)  # output = out/<tag>.json (default: nash_<rule>.json as before)
 args = ap.parse_args()
-rng = np.random.default_rng(args.seed)
+rng = np.random.default_rng(args.seed)  # reproducible random starts and orders
 
 data = Data()
 T, dt, X = data.T, data.dt, data.cfg["grid_kw"]
 names = data.names
-idx = {n: i for i, n in enumerate(names)}
-solo = json.loads(open(args.solo).read())
+idx = {n: i for i, n in enumerate(names)}  # name -> row of q
+solo = json.loads(open(args.solo).read())  # solo bills and schedules
 
 
 def load_schedules(path):
-    return json.loads(Path(path).read_text())["schedules"]
+    return json.loads(Path(path).read_text())["schedules"]  # schedules of a saved run
 
 
 # starting schedule of each household (always feasible: it is one of its real schedules)
@@ -62,13 +65,13 @@ q = np.array([np.array(init["schedules"][n]["sell_kw"]) - np.array(init["schedul
 def payments(q):
     # exact payment of each household with the real formulas
     sell, buy = np.clip(q, 0, None), np.clip(-q, 0, None)
-    r, c, _ = session_prices(sell.sum(0), buy.sum(0), data.low, data.high, args.rule)
-    return (buy * c - sell * r).sum(axis=1) * dt
+    r, c, _ = session_prices(sell.sum(0), buy.sum(0), data.low, data.high, args.rule)  # session prices of the profile
+    return (buy * c - sell * r).sum(axis=1) * dt  # USD per household, + = pays
 
 
 def revenue_curve(i, t, xs):
     # exact revenue of household i in session t for each position xs, the others being fixed
-    others = np.delete(q[:, t], i)
+    others = np.delete(q[:, t], i)  # positions of the others in session t
     S = np.clip(others, 0, None).sum() + np.clip(xs, 0, None)  # total supply if the household plays xs
     D = np.clip(-others, 0, None).sum() + np.clip(-xs, 0, None)  # total demand
     r, c, _ = session_prices(S, D, np.full_like(xs, data.low[t]), np.full_like(xs, data.high[t]), args.rule)
@@ -95,7 +98,7 @@ def best_response(name):
     if m.SolCount == 0:
         raise SystemExit(f"{name}: solver status {m.Status}")
     sch = schedule(hv, T)
-    return sch["sell_kw"] - sch["buy_kw"], sch, m.ObjVal
+    return sch["sell_kw"] - sch["buy_kw"], sch, m.ObjVal  # net position, schedule, approximate revenue
 
 
 def own_value(i, qi):
@@ -108,7 +111,7 @@ def own_value(i, qi):
 schedules = {n: {k: np.array(v) for k, v in init["schedules"][n].items()} for n in names}
 print(f"start from {args.init}: community bill {payments(q).sum():.4f} USD")
 t0 = time.time()
-converged = False
+converged = False  # set when a pass moves nobody
 p = 0  # number of passes done (stays 0 with --max-passes 0, i.e. only the final check)
 for p in range(1, args.max_passes + 1):
     moved, best_gain, pwl_err = 0, 0.0, 0.0
@@ -137,9 +140,9 @@ for n in names:
     i = idx[n]
     q_br, _, _ = best_response(n)
     regret[n] = max(0.0, own_value(i, q_br) - own_value(i, q[i]))
-epsilon = max(regret.values())
+epsilon = max(regret.values())  # largest gain from deviating, reported in the paper
 
-pay = payments(q)
+pay = payments(q)  # final payments
 sell, buy = np.clip(q, 0, None), np.clip(-q, 0, None)
 matched = float(np.minimum(sell.sum(0), buy.sum(0)).sum() * dt)  # local trade
 status = "check only, no passes" if args.max_passes == 0 else ("converged" if converged else "NOT converged")
@@ -161,7 +164,7 @@ out = {"rule": args.rule, "init": args.init, "from": args.from_file, "mix_p": ar
        "payments": {n: float(pay[idx[n]]) for n in names},
        "schedules": {n: {k: np.asarray(v).round(6).tolist() for k, v in schedules[n].items()} for n in names}}
 if args.tag:
-    path = HERE / "out" / f"{args.tag}.json"
+    path = HERE / "out" / f"{args.tag}.json"  # campaign runs: out/ms, out/stab, out/cert
 else:
     suffix = "" if args.init == "solo" else f"_from_{args.init}"  # so it doesn't overwrite the run from solo
     path = HERE / "out" / f"nash_{args.rule}{suffix}.json"

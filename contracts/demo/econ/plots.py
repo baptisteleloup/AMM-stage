@@ -1,5 +1,6 @@
-# distribution figures for the planner / Nash section, same style as Michele's paper
-# reads the json files written by solo.py, planner.py and equilibrium.py
+# Figures of the planner and Nash section: price bands, gains, battery, net positions, consumption and grid exchange.
+# Reads out/solo.json, out/planner.json and out/nash_<rule>.json; writes figures/fig_eq_*.pdf.
+# Run from contracts/: python demo/econ/plots.py [--rule mmr] [--out DIR]
 import argparse
 import json
 
@@ -12,22 +13,22 @@ from common import HERE, Data, session_prices
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--rule", choices=("mmr", "sdr", "hyperbolic"), default="mmr")  # rule for the profile figures
-ap.add_argument("--out", default=str(HERE / "figures"))
+ap.add_argument("--out", default=str(HERE / "figures"))  # output folder
 args = ap.parse_args()
 
 RULES = ("mmr", "sdr", "hyperbolic")
 LABEL = {"mmr": "Mid-market rate", "sdr": "Supply-demand ratio", "hyperbolic": "Hyperbolic"}
 OUT = HERE / "out"
-FIG = HERE.joinpath("figures") if args.out == str(HERE / "figures") else __import__("pathlib").Path(args.out)
+FIG = HERE.joinpath("figures") if args.out == str(HERE / "figures") else __import__("pathlib").Path(args.out)  # figures folder
 FIG.mkdir(exist_ok=True)
 
 data = Data()
 T, dt, days = data.T, data.dt, data.cfg["days"]
 names = data.names
 hours = np.arange(96) / 4  # x axis, hour of the day
-solo = json.loads((OUT / "solo.json").read_text())
-planner = json.loads((OUT / "planner.json").read_text())
-nash = {r: json.loads((OUT / f"nash_{r}.json").read_text()) for r in RULES if (OUT / f"nash_{r}.json").exists()}
+solo = json.loads((OUT / "solo.json").read_text())  # bills alone
+planner = json.loads((OUT / "planner.json").read_text())  # planner bills and schedules
+nash = {r: json.loads((OUT / f"nash_{r}.json").read_text()) for r in RULES if (OUT / f"nash_{r}.json").exists()}  # equilibria found from solo
 pv = [n for n in names if data.hh[n]["omega"].sum() > 0]  # households with photovoltaics
 nopv = [n for n in names if n not in pv]
 
@@ -43,20 +44,21 @@ def by_hour(x):
 
 
 def band(ax, x, color, label):
-    # median line + 25-75 and 5-95 bands over the first axis, like the theory paper
+    # median line + 25-75 and 5-95 bands over the first axis
     ax.fill_between(hours, np.quantile(x, 0.05, axis=0), np.quantile(x, 0.95, axis=0), color=color, alpha=0.15, lw=0)
     ax.fill_between(hours, np.quantile(x, 0.25, axis=0), np.quantile(x, 0.75, axis=0), color=color, alpha=0.35, lw=0)
     ax.plot(hours, np.median(x, axis=0), color=color, lw=1.6, label=label)
 
 
 def hour_axis(ax):
+    # common x axis: 0 to 24 h
     ax.set_xlim(0, 24)
     ax.set_xticks(range(0, 25, 4))
     ax.set_xlabel("hour of the day")
     ax.grid(alpha=0.3)
 
 
-# 1) price bands at the Nash equilibrium of each rule (like Fig. 19 of the theory paper)
+# 1) price bands at the Nash equilibrium of each rule
 fig, axes = plt.subplots(1, len(nash), figsize=(4.2 * len(nash), 3.4), sharey=True, squeeze=False)
 for ax, (rule, run) in zip(axes[0], nash.items()):
     q = np.array([arr(run, n, "sell_kw") - arr(run, n, "buy_kw") for n in names])
@@ -81,10 +83,10 @@ fig.tight_layout()
 fig.savefig(FIG / "fig_eq_prices.pdf")
 plt.close(fig)
 
-# 2) gains of each household and bill of the community (like Fig. 18)
+# 2) gains of each household and bill of the community
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.6), gridspec_kw={"width_ratios": [1.6, 1]})
 x = np.arange(len(names))
-w = 0.8 / max(1, len(nash))
+w = 0.8 / max(1, len(nash))  # bar width, one bar per rule
 for j, (rule, run) in enumerate(nash.items()):
     gain = [solo["bills"][n]["solo"] - run["payments"][n] for n in names]  # gain over optimising alone
     ax1.bar(x + (j - (len(nash) - 1) / 2) * w, gain, w, label=LABEL[rule])
@@ -110,7 +112,7 @@ run = nash[args.rule]  # the rule used for the profile figures
 
 
 def profile_figure(key_fn, ylabel, fname):
-    # bands over households and days, PV households left, others right (like Figs. 23 and 24)
+    # bands over households and days, PV households left, others right
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.4), sharey=True)
     for ax, group, title in ((axes[0], pv, "households with photovoltaics"), (axes[1], nopv, "households without")):
         if not group:
@@ -135,7 +137,7 @@ profile_figure(lambda n: arr(run, n, "batt_kw"), "battery power (kW), charging >
 profile_figure(lambda n: arr(run, n, "sell_kw") - arr(run, n, "buy_kw"), "net position (kW), selling > 0",
                f"fig_eq_net_{args.rule}.pdf")
 
-# 5) community consumption by hour, base / flexible energy / cycles, with the retail rate (like Fig. 20)
+# 5) community consumption by hour, base / flexible energy / cycles, with the retail rate
 base = by_hour(sum(data.hh[n]["base"] for n in names)).mean(0)  # mean over days, kW
 flex = by_hour(sum(arr(run, n, "flex_kw") for n in names)).mean(0)
 cyc = by_hour(sum(arr(run, n, "cycle_kw") for n in names)).mean(0)
@@ -154,7 +156,7 @@ fig.tight_layout()
 fig.savefig(FIG / f"fig_eq_consumption_{args.rule}.pdf")
 plt.close(fig)
 
-# 6) exchanges of the community with the grid, Nash against planner (like Fig. 21)
+# 6) exchanges of the community with the grid, Nash against planner
 fig, axes = plt.subplots(1, 2, figsize=(10, 3.4), sharey=True)
 for ax, (title, src) in zip(axes, ((f"Nash, {LABEL[args.rule].lower()}", run), ("Social planner", planner))):
     q = sum(arr(src, n, "sell_kw") - arr(src, n, "buy_kw") for n in names)  # community net position

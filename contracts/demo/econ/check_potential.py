@@ -1,16 +1,11 @@
-# looks for a witness that the game under MMR has no exact potential
+# Looks for a witness that the game under a rule has no exact potential, on saved profiles.
+# Reads the given json profiles (default: every json under out/), writes nothing.
+# Run from contracts/: python demo/econ/check_potential.py [--rule mmr|sdr|hyperbolic] [profile.json ...]
 #
-# idea (Monderer and Shapley 1996, Theorem 4.5): restrict two households n and m
-# to one number each, theta_n and theta_m, the energy they shift between two
-# sessions t and t2 through their battery (net position +theta at t, -theta at t2,
-# everything else fixed). For small thetas this is a smooth game on intervals,
-# and it has a potential only if
-#   d2 P_n / dtheta_n dtheta_m  ==  d2 P_m / dtheta_n dtheta_m
-# a potential of the full game would give one here, so one pair where the two
-# cross derivatives differ is enough to show that the full game has none
-#
-# usage: python check_potential.py [--rule mmr|sdr|hyperbolic] [profile.json ...]
-# with no file it tries every profile in out/ (equilibria, planner, solo)
+# Idea (Monderer and Shapley 1996, Theorem 4.5): restrict two households n and m to one number each,
+# the energy theta they shift through their battery from session t to t2. This smooth restricted game
+# has a potential only if d2 P_n / dtheta_n dtheta_m == d2 P_m / dtheta_n dtheta_m, so one pair where the
+# two cross derivatives differ shows that the full game has none.
 import argparse
 import json
 
@@ -20,7 +15,7 @@ from common import HERE, SETTINGS, Data, session_prices
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--rule", choices=("mmr", "sdr", "hyperbolic"), default="mmr")  # the game we test
-ap.add_argument("paths", nargs="*")
+ap.add_argument("paths", nargs="*")  # profiles to test
 args = ap.parse_args()
 RULE = args.rule
 EPS = 1e-4  # step of the finite differences (kWh)
@@ -29,14 +24,14 @@ THR = 1e-6  # smallest difference of cross derivatives we count (USD/kWh^2)
 
 data = Data()
 dt, T = data.dt, data.T
-K, B, X = SETTINGS["battery_kw"], SETTINGS["battery_kwh"], SETTINGS["grid_kw"]
+K, B, X = SETTINGS["battery_kw"], SETTINGS["battery_kwh"], SETTINGS["grid_kw"]  # limits used to check slack
 
 
 def bill(x, S_o, D_o, t):
     # bills of the households of x (net positions in kWh) in session(s) t,
     # the other households' aggregates being S_o, D_o
-    S = S_o + np.clip(x, 0, None).sum(0)
-    D = D_o + np.clip(-x, 0, None).sum(0)
+    S = S_o + np.clip(x, 0, None).sum(0)  # supply with these households
+    D = D_o + np.clip(-x, 0, None).sum(0)  # demand with these households
     r, c, _ = session_prices(S, D, data.low[t], data.high[t], RULE)
     return -(np.clip(x, 0, None) * r - np.clip(-x, 0, None) * c)
 
@@ -46,7 +41,7 @@ def cross(xn, xm, S_o, D_o, t):
     def b(dn, dm):
         return bill(np.array([xn + dn, xm + dm]), S_o, D_o, t)
 
-    f = (b(EPS, EPS) - b(EPS, 0) - b(0, EPS) + b(0, 0)) / EPS**2
+    f = (b(EPS, EPS) - b(EPS, 0) - b(0, EPS) + b(0, 0)) / EPS**2  # mixed second difference
     return f[0], f[1]  # cross derivative of n's bill, of m's bill
 
 
@@ -70,6 +65,7 @@ def can_shift(sch, t, t2, sign):
 
 
 def search(path):
+    # first witness found in one saved profile, or None
     run = json.loads(open(path).read())
     if "schedules" not in run or "soc_kwh" not in next(iter(run["schedules"].values())):
         return None  # not a profile of schedules (e.g. a summary file)
@@ -84,7 +80,7 @@ def search(path):
             S_o = S - np.clip(xn, 0, None) - np.clip(xm, 0, None)
             D_o = D - np.clip(-xn, 0, None) - np.clip(-xm, 0, None)
             cn, cm = cross(xn, xm, S_o, D_o, t_all)
-            smooth = (np.abs(xn) > MARGIN) & (np.abs(xm) > MARGIN) & (np.abs(S - D) > MARGIN)
+            smooth = (np.abs(xn) > MARGIN) & (np.abs(xm) > MARGIN) & (np.abs(S - D) > MARGIN)  # sessions away from every kink
             gap = np.where(smooth, cn - cm, np.nan)  # asymmetry of each session
             for t in np.flatnonzero(smooth & (np.abs(gap) > THR)):
                 for t2 in np.flatnonzero(smooth):
@@ -120,4 +116,4 @@ for path in paths:
         print(f"  {who} can raise its net position at session {up} and lower it at session {down} "
               f"through its battery, with every constraint slack")
     print(f"  restricted game: d2P_n/dtheta_n dtheta_m = {tot_n:+.6f}, d2P_m/dtheta_n dtheta_m = {tot_m:+.6f} USD/kWh^2")
-    break
+    break  # one witness is enough

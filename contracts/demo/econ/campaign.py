@@ -1,6 +1,7 @@
-# runs equilibrium.py many times: multiple starts, stability test and fine-grid check
-# every run writes its own json in out/ms, out/stab or out/cert, existing ones are skipped
-# so the campaign can be stopped and started again
+# Runs equilibrium.py many times: multiple starts, stability test and fine-grid check (several hours).
+# Needs out/solo.json, out/planner.json and out/nash_<rule>*.json; writes out/ms, out/stab and out/cert,
+# skipping runs already done, so it can be stopped and restarted. The log of the paper's run is out/campaign.log.
+# Run from contracts/: python demo/econ/campaign.py [--step multistart|stability|certify|all] [--rules ...]
 import argparse
 import subprocess
 import sys
@@ -18,8 +19,8 @@ ap.add_argument("--stab-seeds", type=int, default=5)  # how many kicks for each 
 ap.add_argument("--cert-points", type=int, default=2001)  # finer broken line for the check
 args = ap.parse_args()
 
-OUT = HERE / "out"
-EQ = str(HERE / "equilibrium.py")
+OUT = HERE / "out"  # results folder
+EQ = str(HERE / "equilibrium.py")  # script run for every tag
 
 
 def run(tag, extra):
@@ -28,16 +29,17 @@ def run(tag, extra):
         print(f"skip {tag} (already done)", flush=True)
         return
     t0 = time.time()
-    cmd = [sys.executable, EQ, "--tag", tag] + extra
+    cmd = [sys.executable, EQ, "--tag", tag] + extra  # same Python, output out/<tag>.json
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
         print(f"FAILED {tag}\n{res.stderr[-2000:]}", flush=True)
         return
-    last = [line for line in res.stdout.splitlines() if line.startswith(("nash under", "community bill", "certificate"))]
+    last = [line for line in res.stdout.splitlines() if line.startswith(("nash under", "community bill", "certificate"))]  # summary lines of the run
     print(f"done {tag} in {time.time() - t0:.0f} s | " + " | ".join(last), flush=True)
 
 
 def multistart(rule):
+    # starts from solo, planner, random mixes of the two, and shuffled orders
     run(f"ms/{rule}_solo", ["--rule", rule, "--init", "solo"])
     run(f"ms/{rule}_planner", ["--rule", rule, "--init", "planner"])
     for s in range(args.n_mix):
@@ -49,6 +51,7 @@ def multistart(rule):
 
 
 def stability(rule):
+    # kick k households of the paper's equilibrium back to solo and let the others react
     base = OUT / f"nash_{rule}.json"  # the equilibrium of the paper (start from grid-alone schedules)
     if not base.exists():
         print(f"no {base.name}, run equilibrium.py --rule {rule} first", flush=True)

@@ -1,11 +1,13 @@
-# figures for the mixed-strategy equilibria, reads out/mixed_<rule>.json
+# Extension, outside the paper: figures of the mixed-strategy equilibria.
+# Reads out/mixed_<rule>.json here and ../out/solo.json, ../out/planner.json; writes figures/fig_mixed_*.pdf.
+# Run from contracts/: python demo/econ/extensions/plots_mixed.py [--rule sdr]
 import argparse
 import json
 import sys
 from pathlib import Path
 
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # no window, files only
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,27 +22,28 @@ RULES = ("mmr", "sdr", "hyperbolic")
 LABEL = {"mmr": "Mid-market rate", "sdr": "Supply-demand ratio", "hyperbolic": "Hyperbolic"}
 OUT = HERE / "out"  # solo.json and planner.json of the paper
 EXT = Path(__file__).resolve().parent  # demo/econ/extensions
-FIG = EXT / "figures"
+FIG = EXT / "figures"  # figures written here
 FIG.mkdir(exist_ok=True)
 
 data = Data()
 names = data.names
 N, days = len(names), data.cfg["days"]
-hours = np.arange(96) / 4
-mixed = {r: json.loads((EXT / "out" / f"mixed_{r}.json").read_text()) for r in RULES if (EXT / "out" / f"mixed_{r}.json").exists()}
-solo = json.loads((OUT / "solo.json").read_text())
-planner = json.loads((OUT / "planner.json").read_text())
-pv = [i for i, n in enumerate(names) if data.hh[n]["omega"].sum() > 0]
+hours = np.arange(96) / 4  # x axis, hour of the day
+mixed = {r: json.loads((EXT / "out" / f"mixed_{r}.json").read_text()) for r in RULES if (EXT / "out" / f"mixed_{r}.json").exists()}  # rules already solved
+solo = json.loads((OUT / "solo.json").read_text())  # bills alone
+planner = json.loads((OUT / "planner.json").read_text())  # planner bill
+pv = [i for i, n in enumerate(names) if data.hh[n]["omega"].sum() > 0]  # households with photovoltaics
 
 
 def drawn_series(run, key):
     # value of one series for every draw and household: draws x households x T
-    picks = np.array(run["draws"])
+    picks = np.array(run["draws"])  # draws x households, index in each bank
     banks = [[np.array(s[key]) for s in run["banks"][n]] for n in names]
     return np.array([[banks[i][picks[j, i]] for i in range(N)] for j in range(len(picks))])
 
 
 def hour_axis(ax):
+    # common x axis: 0 to 24 h
     ax.set_xlim(0, 24)
     ax.set_xticks(range(0, 25, 4))
     ax.set_xlabel("hour of the day")
@@ -67,7 +70,7 @@ plt.close(fig)
 # 2) distribution of the community bill over draws, with the reference bills
 fig, axes = plt.subplots(1, len(mixed), figsize=(4.2 * len(mixed), 3.2), sharey=True, squeeze=False)
 for ax, (rule, run) in zip(axes[0], mixed.items()):
-    total = np.array(run["draw_bills"]).sum(1)
+    total = np.array(run["draw_bills"]).sum(1)  # community bill of each draw
     ax.hist(total, bins=30, color="tab:blue", alpha=0.7)
     ax.axvline(planner["solo_total"], color="0.4", ls="--", label="alone, optimised")
     ax.axvline(planner["community_bill"], color="tab:green", ls="--", label="planner")
@@ -83,8 +86,8 @@ plt.close(fig)
 # 3) distribution of each household's gain over draws, one panel per rule
 fig, axes = plt.subplots(1, len(mixed), figsize=(4.2 * len(mixed), 3.2), sharey=True, squeeze=False)
 for ax, (rule, run) in zip(axes[0], mixed.items()):
-    gains = np.array([solo["bills"][n]["solo"] for n in names])[None, :] - np.array(run["draw_bills"])
-    ax.boxplot([gains[:, i] for i in range(N)], whis=(5, 95), showfliers=False)
+    gains = np.array([solo["bills"][n]["solo"] for n in names])[None, :] - np.array(run["draw_bills"])  # draws x households
+    ax.boxplot([gains[:, i] for i in range(N)], whis=(5, 95), showfliers=False)  # whiskers at 5 and 95%
     ax.axhline(0, color="k", lw=0.6)
     ax.set_xticklabels([str(i + 1) for i in range(N)])
     ax.set_xlabel("household")
@@ -95,14 +98,14 @@ fig.tight_layout()
 fig.savefig(FIG / "fig_mixed_gains.pdf")
 plt.close(fig)
 
-# 4) price bands over draws and days (like Fig. 19 of the theory paper)
+# 4) price bands over draws and days
 fig, axes = plt.subplots(1, len(mixed), figsize=(4.2 * len(mixed), 3.4), sharey=True, squeeze=False)
 for ax, (rule, run) in zip(axes[0], mixed.items()):
     q = drawn_series(run, "sell_kw") - drawn_series(run, "buy_kw")  # draws x households x T
-    S, D = np.clip(q, 0, None).sum(1), np.clip(-q, 0, None).sum(1)
+    S, D = np.clip(q, 0, None).sum(1), np.clip(-q, 0, None).sum(1)  # aggregates, draws x T
     lo = np.broadcast_to(data.low, S.shape)
     hi = np.broadcast_to(data.high, S.shape)
-    r, c, _ = session_prices(S, D, lo, hi, rule)
+    r, c, _ = session_prices(S, D, lo, hi, rule)  # prices of every draw and session
     for x, color, lab in ((c, "tab:red", "buyer price $c$"), (r, "tab:green", "seller price $r$")):
         xd = (x * 100).reshape(-1, days, 96).reshape(-1, 96)  # (draws x days) x 96, cents per kWh
         ax.fill_between(hours, np.quantile(xd, 0.1, axis=0), np.quantile(xd, 0.9, axis=0), color=color, alpha=0.25, lw=0)
@@ -117,8 +120,8 @@ fig.tight_layout()
 fig.savefig(FIG / "fig_mixed_prices.pdf")
 plt.close(fig)
 
-# 5) battery power over draws, days and households, PV vs not (like Fig. 23)
-run = mixed[args.rule]
+# 5) battery power over draws, days and households, PV vs not
+run = mixed[args.rule]  # rule chosen with --rule
 batt = drawn_series(run, "batt_kw")  # draws x households x T
 fig, axes = plt.subplots(1, 2, figsize=(10, 3.4), sharey=True)
 for ax, group, title in ((axes[0], pv, "households with photovoltaics"),
@@ -126,7 +129,7 @@ for ax, group, title in ((axes[0], pv, "households with photovoltaics"),
     if not group:
         ax.set_visible(False)
         continue
-    x = batt[:, group, :].reshape(-1, days, 96).reshape(-1, 96)
+    x = batt[:, group, :].reshape(-1, days, 96).reshape(-1, 96)  # (draws x households x days) x 96
     ax.fill_between(hours, np.quantile(x, 0.05, axis=0), np.quantile(x, 0.95, axis=0), color="tab:blue", alpha=0.15, lw=0)
     ax.fill_between(hours, np.quantile(x, 0.25, axis=0), np.quantile(x, 0.75, axis=0), color="tab:blue", alpha=0.35, lw=0)
     ax.plot(hours, np.median(x, axis=0), color="tab:blue", lw=1.6)

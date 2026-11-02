@@ -1,9 +1,7 @@
-# mixed-strategy Nash equilibrium of the households, by double oracle
-# idea: each household randomises over a small "bank" of schedules
-#   - inside the banks, the probabilities are found by fictitious play
-#   - then Gurobi checks if a household has a better schedule OUTSIDE its bank
-#   - if yes, that schedule is added to its bank and we start again
-#   - when nobody finds a better schedule outside its bank, it is an equilibrium
+# Extension, outside the paper: mixed-strategy Nash equilibrium of the households by double oracle.
+# Each household mixes over a bank of schedules (fictitious play), Gurobi adds better schedules from
+# outside the banks until none exists. Reads ../out/nash_<rule>*.json and ../out/solo.json, writes out/mixed_<rule>.json.
+# Run from contracts/: python demo/econ/extensions/mixed.py --rule sdr [--outer 15] [--resume] ...
 import argparse
 import itertools
 import json
@@ -161,7 +159,7 @@ def best_response(i, sigma):
         ys = probs @ ((r * s_[None, :] - c * d_[None, :]) * dt)  # expected revenue at each point (average over draws)
         m.setPWLObj(qv[t], xs.tolist(), ys.tolist())  # gurobi joins the points by straight segments
     m.optimize()
-    sch = schedule(hv, T)
+    sch = schedule(hv, T)  # best schedule found
     return sch, expected_value(net(sch), probs, S, D)  # schedule found and its exact expected revenue
 
 
@@ -197,12 +195,12 @@ for i in range(N):
     probs, S, D = others(i, sigma, args.max_exact)
     current = float(sigma[i] @ np.array([expected_value(net(s), probs, S, D) for s in banks[i]]))
     _, val = best_response(i, sigma)
-    eps_n[names[i]] = max(0.0, val - current)
+    eps_n[names[i]] = max(0.0, val - current)  # expected gain from deviating
 epsilon = max(eps_n.values())
 
 # draws of the whole community from the mixture, for the distribution figures
 # each draw: every household picks one schedule of its bank with its probabilities
-draws = 2000
+draws = 2000  # community draws for the figures
 picks = np.array([[rng.choice(len(sigma[i]), p=sigma[i] / sigma[i].sum()) for i in range(N)] for _ in range(draws)])
 bills = np.zeros((draws, N))
 for j in range(draws):
