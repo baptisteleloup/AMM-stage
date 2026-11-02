@@ -1,3 +1,4 @@
+# Noir package of the day_chunk circuit. nodash must keep the same tag in all three circuits (same Poseidon2).
 [package]
 name = "day_chunk"
 type = "bin"

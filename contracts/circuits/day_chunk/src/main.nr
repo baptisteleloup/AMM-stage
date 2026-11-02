@@ -1,20 +1,19 @@
-use nodash::poseidon2;
+// Batch circuit: one proof settles one day for BATCH members. It checks their committed positions,
+// recomputes their payments at the on-chain prices, updates their balance commitments and caps
+// withdrawals. Build with `nargo compile` here; the operator (prove.ts) reads target/day_chunk.json.
 
-// Batch circuit. One proof covers BATCH members for one whole day. 
+use nodash::poseidon2;
 
 global SESSIONS: u32 = 96; // fifteen-minute sessions in a day
 global BATCH: u32 = 8;     // members per proof, the fixed width of the circuit
 
-// Commitment to a balance or a floor: Poseidon2 hash of the value and a random blinding
-// factor. The blinding factor prevents guessing small values by trying them all.
+// Commitment to a balance or a floor. The random blinding stops anyone from trying all small values.
 fn commit_balance(bal: Field, blind: Field) -> Field {
     poseidon2([bal, blind])
 }
 
-// Commitment to a member's day of positions, equation (2) of the paper. The chain starts
-// from the slot number and a random seed, so that a day of inactivity is not guessable,
-// then hashes the 96 (sell, buy) pairs one after the other, so that no position can be
-// changed or moved to another session without changing the result.
+// Commitment to a member's 96 positions, equation (2) of the paper. Seeded with the slot and a
+// random seed (an idle day is not guessable), then chained so no position can change or move.
 fn hash_netputs(slot: Field, nblind: Field, sell: [Field; SESSIONS], buy: [Field; SESSIONS]) -> Field {
     let mut acc: Field = poseidon2([slot, nblind]);
     for t in 0..SESSIONS {
@@ -23,8 +22,7 @@ fn hash_netputs(slot: Field, nblind: Field, sell: [Field; SESSIONS], buy: [Field
     acc
 }
 
-// Public inputs are assembled by the market contract from its own storage, never by the
-// prover (450 field elements in total). Private inputs are known to the operator only.
+// Public inputs (450 fields) are built by MarketV4 from its storage. Private inputs are the operator's.
 fn main(
     price_r: pub [Field; SESSIONS],       // seller rate of each session, as recorded on chain (1e-9 currency per kWh)
     price_c: pub [Field; SESSIONS],       // buyer rate of each session, as recorded on chain
@@ -35,8 +33,7 @@ fn main(
     deposits: pub [Field; BATCH],         // deposits frozen at midnight, applied today (1e-12 currency)
     withdrawals: pub [Field; BATCH],      // withdrawal REQUESTS frozen at midnight
     withdrawals_paid: pub [Field; BATCH], // what is actually paid, min(request, available), claimed by the prover
-    floor_commits: pub [Field; BATCH],    // floor commitments frozen at midnight; the floor itself
-                                          // stays private because it would reveal subscribed power
+    floor_commits: pub [Field; BATCH],    // floor commitments frozen at midnight (the floor stays private)
     partial_s: pub [Field; SESSIONS],     // the batch's share of the supply aggregate, per session
     partial_d: pub [Field; SESSIONS],     // the batch's share of the demand aggregate, per session
     partial_paid_out: pub Field,          // total paid to the batch's sellers over the day
@@ -57,7 +54,7 @@ fn main(
     let mut acc_in: Field = 0;
 
     for n in 0..BATCH {
-        // Slot 0 marks a padding lane, filled by the contract when the batch is not full.
+        // Slot 0 marks a padding lane, used when the batch is not full.
         let is_padding = slots[n] == 0;
 
         // Balance and floor must fit in 64 bits, the width of the contract's balances.
@@ -92,7 +89,7 @@ fn main(
             // A member below its floor has only zero positions.
             assert(sell[n][t] * (1 - participating) == 0);
             assert(buy[n][t] * (1 - participating) == 0);
-            // A padding lane has only zero positions (already implied by participating = 0).
+            // A padding lane has only zero positions (also implied by participating = 0).
             if is_padding {
                 assert(sell[n][t] == 0);
                 assert(buy[n][t] == 0);
@@ -120,13 +117,12 @@ fn main(
             assert(netput_blinds[n] == 0);
         }
 
-        // Statement 4: balance after the day's trades and deposit. The range check is what
-        // enforces non-negativity: a negative value wraps around to a number of more than
-        // 250 bits in the prime field and cannot pass.
+        // Statement 4: balance after trades and deposit. The 64-bit check enforces non-negativity,
+        // since a negative value wraps to a field element of more than 250 bits.
         let after_trade = old_bals[n] + paid_out_n + deposits[n] - paid_in_n;
         after_trade.assert_max_bit_size::<64>();
 
-        // Withdrawal capping: pay the request, or everything available if the request is larger.
+        // Withdrawal capping: paid = min(request, available).
         withdrawals[n].assert_max_bit_size::<64>();
         let avail = after_trade as u64;
         let req = withdrawals[n] as u64;
@@ -144,9 +140,8 @@ fn main(
         acc_in = acc_in + paid_in_n;
     }
 
-    // Statements 2 and 5: the sums over the lanes equal the partial aggregates and totals
-    // the prover declared. The contract later checks that the batches add up to the
-    // aggregates posted during the day.
+    // Statements 2 and 5: lane sums equal the declared partial aggregates and totals.
+    // MarketV4 then checks that the batches add up to the aggregates posted during the day.
     for t in 0..SESSIONS {
         assert(acc_s[t] == partial_s[t]);
         assert(acc_d[t] == partial_d[t]);
@@ -155,9 +150,8 @@ fn main(
     assert(acc_in == partial_paid_in);
 }
 
-// Prints the two constants the contract needs for padding lanes: the commitment to 96
-// zero positions under slot 0 and seed 0, and the commitment to a zero balance under
-// blinding factor 0. They are injected into the market contract at deployment.
+// `nargo test --show-output` prints the two padding constants given to MarketV4 at deployment:
+// EMPTY_NETPUT_HASH (96 zero positions, slot 0, seed 0) and ZERO_BAL_COMMIT (balance 0, blinding 0).
 #[test]
 fn print_contract_constants() {
     let zeros: [Field; SESSIONS] = [0; SESSIONS];
