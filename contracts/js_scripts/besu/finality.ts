@@ -88,7 +88,7 @@ async function main() {
 
   // Block intervals over the whole measured range.
   const first = samples[0].blockNumber, last = samples[samples.length - 1].blockNumber;
-  const heads = [];
+  const heads: (ethers.Block | null)[] = [];
   for (let b = first; b <= last; b++) heads.push(await providers[0].getBlock(b));
   const intervals = heads.slice(1).map((h, i) => h!.timestamp - heads[i]!.timestamp);
   const proposers: Record<string, number> = {};
