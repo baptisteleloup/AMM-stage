@@ -22,9 +22,9 @@ export class Sessions {
   private participates(day: number, slot: number): boolean {
     const cached = this.store.participationOf(day, slot);
     if (cached !== null) return cached;
-    const floor = this.store.floorOf(slot) ?? 0n;
+    const floor = this.store.floorOf(slot);
     const bal = this.store.balanceOf(day - 1, slot) ?? 0n;
-    const yes = floor === 0n ? true : bal >= floor;
+    const yes = floor !== null && bal >= floor;
     this.store.putParticipation(day, slot, yes);
     return yes;
   }

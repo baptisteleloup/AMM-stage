@@ -66,7 +66,8 @@ need() {
 step "checks"
 need python3
 need npx
-need anvil
+# CHAIN=besu runs on the Besu network in ../Network (see README-besu.md), no anvil needed.
+[ "${CHAIN:-anvil}" = anvil ] && need anvil
 need curl
 [ -f js_scripts/demo/demo_ui.ts ] || { red "run this from contracts/ (js_scripts/demo/demo_ui.ts not found)"; exit 1; }
 

@@ -19,11 +19,15 @@ BASE_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"
 
 
 FLEXIBLE_PATTERNS = [
-    r"\.cooling",
-    r"\.heating",
     r"\.hot_water",
     r"\.water_systems",
+    r"\.pool_pump",
+    r"\.permanent_spa_pump",
 ]
+
+CYCLE_APPS = ["dishwasher", "clothes_washer", "clothes_dryer"]
+CYCLE_PATTERN = r"\.(" + "|".join(CYCLE_APPS) + r")\."
+WASH_DRY_MAX_GAP = pd.Timedelta(hours=4)
 
 FLEXIBLE_EXCLUDE = [
     r"_fans_pumps",
@@ -47,18 +51,72 @@ def matches(name, patterns):
 
 
 def classify(columns):
-    """Split ResStock electricity columns into pv / flexible / base."""
+    """Split ResStock electricity columns into pv / flexible / cycle / base."""
     elec = [c for c in columns
             if c.startswith("out.electricity.") and c.endswith("energy_consumption")]
     pv = [c for c in elec if matches(c, PV_PATTERNS)]
+    cyc = [c for c in elec if re.search(CYCLE_PATTERN, c) and c not in pv]
     flex = [c for c in elec
             if matches(c, FLEXIBLE_PATTERNS)
             and not matches(c, FLEXIBLE_EXCLUDE)
-            and c not in pv]
-    skip = set(pv) | set(flex)
+            and c not in pv and c not in cyc]
+    skip = set(pv) | set(flex) | set(cyc)
     base = [c for c in elec
             if c not in skip and not matches(c, [r"\.total", r"\.net"])]
-    return pv, flex, base
+    return pv, flex, cyc, base
+
+
+def app_of(col):
+    return re.search(CYCLE_PATTERN, col).group(1)
+
+
+def detect_cycles(df, cyc_cols, name, to_kw):
+    """One cycle per uninterrupted run of non-zero consumption."""
+    cycles = []
+    for col in cyc_cols:
+        app = app_of(col)
+        kw = df[col] * to_kw
+        on = kw > 0
+        if not on.any():
+            continue
+        run_id = (on != on.shift()).cumsum()[on]
+        for _, run in kw[on].groupby(run_id):
+            start = run.index[0]
+            if start == df.index[0] or run.index[-1] == df.index[-1]:
+                print(f"  {name}: {app} cycle at {start} cut by the window, left out")
+                continue
+            date = start.normalize()
+            cycles.append({
+                "appliance": app,
+                "date": date.date().isoformat(),
+                "observed_step": int((start - date) / pd.Timedelta(minutes=15)),
+                "profile_kw": [round(float(v), 4) for v in run.values],
+                "energy_kwh": round(float(run.sum()) / to_kw, 4),
+                "_start": start,
+            })
+    cycles.sort(key=lambda c: c["_start"])
+    for i, c in enumerate(cycles):
+        c["id"] = f"{name}/{c['appliance']}/{i}"
+        c["after"] = None
+        c["min_lag_steps"] = 0
+
+    used = set()
+    for dryer in (c for c in cycles if c["appliance"] == "clothes_dryer"):
+        washers = [w for w in cycles
+                   if w["appliance"] == "clothes_washer"
+                   and w["id"] not in used
+                   and w["date"] == dryer["date"]
+                   and w["_start"] <= dryer["_start"]
+                   and dryer["_start"] - w["_start"] <= WASH_DRY_MAX_GAP]
+        if washers:
+            w = washers[-1]
+            used.add(w["id"])
+            dryer["after"] = w["id"]
+            dryer["min_lag_steps"] = int((dryer["_start"] - w["_start"])
+                                         / pd.Timedelta(minutes=15))
+    for c in cycles:
+        del c["_start"]
+    return cycles
 
 
 def fetch(bid, state, cache_dir):
@@ -89,11 +147,15 @@ def load_building(path, day_from, day_to):
 
 
 def build_agent(df, name):
-    pv_cols, flex_cols, base_cols = classify(df.columns)
+    pv_cols, flex_cols, cyc_cols, base_cols = classify(df.columns)
     to_kw = 4.0
-    pv_kwh = df[pv_cols].sum(axis=1) if pv_cols else pd.Series(0.0, index=df.index)
-    flex_kwh = df[flex_cols].sum(axis=1) if flex_cols else pd.Series(0.0, index=df.index)
-    base_kwh = df[base_cols].sum(axis=1) if base_cols else pd.Series(0.0, index=df.index)
+    zero = pd.Series(0.0, index=df.index)
+    pv_kwh = df[pv_cols].sum(axis=1) if pv_cols else zero
+    flex_kwh = df[flex_cols].sum(axis=1) if flex_cols else zero
+    cyc_kwh = df[cyc_cols].sum(axis=1) if cyc_cols else zero
+    base_kwh = df[base_cols].sum(axis=1) if base_cols else zero
+    flex_cap_kw = float(sum(df[c].max() for c in flex_cols)) * to_kw if flex_cols else 0.0
+    cycles = detect_cycles(df, cyc_cols, name, to_kw)
     pv_sign = "negative" if float(pv_kwh.sum()) < 0 else "positive"
     omega_kw = pv_kwh.abs() * to_kw
 
@@ -104,21 +166,28 @@ def build_agent(df, name):
         "omega_kw": omega_kw.values,
         "alpha_base_kw": alpha_base_kw.values,
         "flex_kw": flex_kwh.values * to_kw,
+        "flex_cap_kw": flex_cap_kw,
+        "cycle_kw": cyc_kwh.values * to_kw,
     }, index=df.index)
 
     stats = {
         "name": name,
         "pv_columns": pv_cols,
         "flexible_columns": flex_cols,
+        "cycle_columns": cyc_cols,
+        "flex_cap_kw": round(flex_cap_kw, 3),
+        "cycles": len(cycles),
         "base_columns_count": len(base_cols),
         "pv_sign_convention": pv_sign,
         "has_pv": bool(pv_cols) and float(pv_kwh.abs().sum()) > 0,
         "generation_kwh_per_day": round(float(omega_kw.sum() / to_kw) / max(1, len(flex_daily_kwh)), 2),
         "base_kwh_per_day": round(float(base_kwh.sum()) / max(1, len(flex_daily_kwh)), 2),
         "flexible_kwh_per_day": round(float(flex_kwh.sum()) / max(1, len(flex_daily_kwh)), 2),
-        "flexible_share": round(float(flex_kwh.sum() / max(1e-9, flex_kwh.sum() + base_kwh.sum())), 3),
+        "cycle_kwh_per_day": round(float(cyc_kwh.sum()) / max(1, len(flex_daily_kwh)), 2),
+        "flexible_share": round(float((flex_kwh.sum() + cyc_kwh.sum())
+                                      / max(1e-9, flex_kwh.sum() + cyc_kwh.sum() + base_kwh.sum())), 3),
     }
-    return out, flex_daily_kwh, stats
+    return out, flex_daily_kwh, cycles, stats
 
 
 def main():
@@ -155,12 +224,14 @@ def main():
     sources = []
     frames = {}
     flex_daily = {}
+    all_cycles = {}
 
     for bid, path in zip(ids, paths):
         name = f"prosumer-{len(agents)}"
         print(f"[{name}] building {bid}")
         df = load_building(path, day_from, day_to_end)
-        series, flex, stats = build_agent(df, name)
+        series, flex, cycles, stats = build_agent(df, name)
+        all_cycles[name] = cycles
         stats["resstock_building_id"] = bid
         frames[name] = series
         flex_daily[name] = flex
@@ -174,8 +245,9 @@ def main():
         })
         print(f"          generation {stats['generation_kwh_per_day']:>7} kWh/d  "
               f"base {stats['base_kwh_per_day']:>7} kWh/d  "
-              f"flex {stats['flexible_kwh_per_day']:>7} kWh/d "
-              f"({stats['flexible_share']:.0%})")
+              f"flex {stats['flexible_kwh_per_day']:>7} kWh/d  "
+              f"cycles {stats['cycle_kwh_per_day']:>6} kWh/d in {stats['cycles']} runs "
+              f"({stats['flexible_share']:.0%} shiftable)")
 
     days = sorted({d.date().isoformat() for d in next(iter(frames.values())).index})
     n_expected = len(days) * SESSIONS
@@ -195,8 +267,17 @@ def main():
                                for n, s in flex_daily.items()},
         }, f, indent=1)
 
+    with open(os.path.join(args.out, "cycles.json"), "w") as f:
+        json.dump({
+            "step_minutes": 15,
+            "days": days,
+            "wash_dry_max_gap_hours": WASH_DRY_MAX_GAP / pd.Timedelta(hours=1),
+            "agents": all_cycles,
+        }, f, indent=1)
+
     community_gen = sum(a["generation_kwh_per_day"] for a in agents)
-    community_load = sum(a["base_kwh_per_day"] + a["flexible_kwh_per_day"] for a in agents)
+    community_load = sum(a["base_kwh_per_day"] + a["flexible_kwh_per_day"]
+                         + a["cycle_kwh_per_day"] for a in agents)
 
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -215,8 +296,22 @@ def main():
             "timestamps shifted back 15 min so the index labels the START of each interval",
             "kWh per interval converted to average kW by multiplying by 4",
             "electricity end uses split into generation / flexible / inflexible",
-            "flexible = cooling, heating, hot water; fans and pumps excluded as "
-            "they are already accounted for inside the equipment they serve",
+            "flexible = hot water, pool pump and spa pump: a daily energy that can "
+            "be spread freely within the day, up to flex_cap_kw, the sum of the "
+            "highest power each of these end uses reaches over the period",
+            "pool and spa pumps are spread over the day by ResStock along an "
+            "average schedule; their daily energy is treated as shiftable, as a "
+            "timer would allow",
+            "dishwasher, clothes washer and clothes dryer = cycles: each "
+            "uninterrupted run of non-zero consumption is one cycle, kept with "
+            "its own 15-minute power profile and written to cycles.json; only "
+            "its start time can move, within its day",
+            "a dryer cycle starting at most 4 h after a washer cycle of the same "
+            "day is paired with it and must keep at least the observed lag",
+            "cooling and heating stay inflexible since a thermostat load cannot "
+            "be moved freely within the day",
+            "cycle_kw = observed consumption of the cycles, kept so that the net "
+            "position as recorded is still omega - alpha_base - flex - cycle",
             "flexible load aggregated to one energy figure per day, as the solver expects",
         ],
         "selection": {
@@ -249,7 +344,7 @@ def main():
     print()
     print(f"community: {community_gen:.1f} kWh/d generated vs "
           f"{community_load:.1f} kWh/d consumed  -> {manifest['community_totals_kwh_per_day']['balance']}")
-    print(f"wrote {len(agents)} agent file(s), agents.json and manifest.json to {args.out}/")
+    print(f"wrote {len(agents)} agent file(s), agents.json, cycles.json and manifest.json to {args.out}/")
     sellers = sum(1 for a in agents if a["has_pv"])
     print(f"{sellers} agent(s) with PV, {len(agents) - sellers} without")
     if sellers == 0:

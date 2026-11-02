@@ -3,7 +3,7 @@ import { Identity } from "./identity.js";
 import { Store } from "./store.js";
 import { config } from "./config.js";
 import { verifyDay } from "./verify.js";
-import { requestData, fetchData } from "./recourse.js";
+import { requestData, fetchData, requestClearReveal } from "./recourse.js";
 
 export type ActionAttempt = {
   action: string;
@@ -12,6 +12,11 @@ export type ActionAttempt = {
   tx: string | null;
   reason: string;
 };
+
+// Last verdict this client reached on its own data for a day, if any.
+function verdictOf(store: Store, day: number): string | undefined {
+  return (store.verdict(`day-${day}`) as { verdict?: string } | undefined)?.verdict;
+}
 
 export async function tryFinalize(chain: Chain, id: Identity, store: Store, day: number): Promise<ActionAttempt> {
   const dc = await chain.dayClose(day);
@@ -115,13 +120,13 @@ async function tryRecourse(
   chain: Chain, id: Identity, store: Store, day: number, needsData: boolean,
 ): Promise<ActionAttempt[]> {
   const out: ActionAttempt[] = [];
-  if (!needsData || !config.autoRequestData) return out;
-
   const slot = store.slot || (await chain.slotOf(id.address));
   if (slot === 0) return out;
   const r = await chain.revealOf(day, slot);
 
+  // Stage 1: the packet is missing, or it does not match the commitment on chain.
   if (r.stage1Deadline === 0n) {
+    if (!needsData || !config.autoRequestData) return out;
     try {
       const res = await requestData(chain, id, store, day);
       out.push({ action: "requestData", day, attempted: true, tx: res.tx, reason: res.outcome });
@@ -131,12 +136,37 @@ async function tryRecourse(
     return out;
   }
 
-  if (r.stage1Done && config.autoFetchData && !store.opening(day)) {
+  // The operator answered: read what it published once, whatever made us ask, and check
+  // the day again against it.
+  if (r.stage1Done && config.autoFetchData && !store.verdict(`fetched-${day}`)) {
+    let usable = true;
     try {
       const res = await fetchData(chain, id, store, day);
       out.push({ action: "fetchData", day, attempted: true, tx: res.tx, reason: res.outcome });
     } catch (e) {
-      out.push({ action: "fetchData", day, attempted: false, tx: null, reason: (e as Error).message.slice(0, 120) });
+      usable = false;
+      out.push({ action: "fetchData", day, attempted: true, tx: null, reason: `unusable answer: ${(e as Error).message.slice(0, 100)}` });
+    }
+    store.putVerdict(`fetched-${day}`, { at: new Date().toISOString(), usable });
+    if (usable) {
+      try {
+        const v = await verifyDay(chain, id, store, day);
+        out.push({ action: "verify", day, attempted: true, tx: null, reason: `after the operator's answer: ${v.verdict}` });
+      } catch (e) {
+        out.push({ action: "verify", day, attempted: false, tx: null, reason: (e as Error).message.slice(0, 120) });
+      }
+    }
+  }
+
+  // Stage 2: what the operator published does not let the day verify, so the operator
+  // must now prove the opening of the balance commitment in the clear.
+  if (r.stage1Done && r.stage2Deadline === 0n && config.autoRequestClear
+      && store.verdict(`fetched-${day}`) && verdictOf(store, day) !== "verified") {
+    try {
+      const res = await requestClearReveal(chain, id, store, day);
+      out.push({ action: "requestClearReveal", day, attempted: true, tx: res.tx, reason: res.outcome });
+    } catch (e) {
+      out.push({ action: "requestClearReveal", day, attempted: false, tx: null, reason: (e as Error).message.slice(0, 120) });
     }
   }
   return out;
@@ -149,23 +179,28 @@ export async function actionTick(chain: Chain, id: Identity, store: Store): Prom
   for (const day of [clock.day - 1, clock.day - 2]) {
     const v = await tryVerify(chain, id, store, day);
     if (v.attempted) out.push(v);
-    const bad = v.attempted && v.reason.startsWith("MISMATCH");
 
     const dc = await chain.dayClose(day);
-    if (DAY_STATE[dc.state] === "Closing") {
-      const needsData = bad || !store.opening(day);
+    const closing = DAY_STATE[dc.state] === "Closing";
+    if (closing) {
+      const needsData = verdictOf(store, day) === "mismatch" || !store.opening(day);
       for (const a of await tryRecourse(chain, id, store, day, needsData)) out.push(a);
     }
 
-    if (config.autoFinalize && !bad) {
-      const a = await tryFinalize(chain, id, store, day);
-      if (a.attempted) out.push(a);
-    } else if (config.autoFinalize && bad) {
-      out.push({
-        action: "finalizeDay", day, attempted: false, tx: null,
-        reason: "not settled by this client: the day did not verify. Settlement is "
-          + "permissionless, so someone else may still settle it — act now if you object.",
-      });
+    // This client settles only a day whose own data it has verified. Data fetched in this
+    // tick has just been checked inside tryRecourse, so the verdict read here is current.
+    if (config.autoFinalize && closing) {
+      const verdict = verdictOf(store, day);
+      if (verdict === "verified") {
+        const a = await tryFinalize(chain, id, store, day);
+        if (a.attempted) out.push(a);
+      } else if (verdict === "mismatch") {
+        out.push({
+          action: "finalizeDay", day, attempted: false, tx: null,
+          reason: "not settled by this client: the day did not verify. Settlement is "
+            + "permissionless, so someone else may still settle it - act now if you object.",
+        });
+      }
     }
 
     if (config.autoCancelOwn) {

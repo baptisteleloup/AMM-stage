@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {MarketV4} from "../src/MarketV4.sol";
 import {GridTariff} from "../src/GridTariff.sol";
+import {Pricing, PricingLib} from "../src/Pricing.sol";
 import {EnergyEuro} from "../src/EnergyEuro.sol";
 import {IERC20} from "../src/interfaces/IERC20.sol";
 import {IHonkVerifier} from "../src/interfaces/IVerifier.sol";
@@ -22,6 +23,13 @@ contract MarketV4FFITest is Test {
 
     MarketV4 market;
     GridTariff tariff;
+    Pricing pricing;
+
+    // Pricing rule the community runs under. Subclasses rerun the whole suite under the
+    // other rules, since every test derives its expected amounts from the recorded prices.
+    function _rule() internal pure virtual returns (PricingLib.Rule) {
+        return PricingLib.Rule.MidMarket;
+    }
     EnergyEuro eeur;
 
     address operator = makeAddr("operator");
@@ -52,11 +60,13 @@ contract MarketV4FFITest is Test {
         });
         tariff = new GridTariff(GridTariff.Mode.Schedule, admin, sched, new address[](0), 0);
 
+        pricing = new Pricing(_rule());
         market = new MarketV4(
             IERC20(address(eeur)),
             IHonkVerifier(deployCode("DayChunkVerifier.sol:HonkVerifier")),
             IHonkVerifier(deployCode("RevealVerifier.sol:HonkVerifier")),
             tariff,
+            pricing,
             operator,
             grid,
             floorAdmin,

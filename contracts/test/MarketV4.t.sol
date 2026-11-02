@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {MarketV4} from "../src/MarketV4.sol";
 import {GridTariff} from "../src/GridTariff.sol";
+import {Pricing, PricingLib} from "../src/Pricing.sol";
 import {EnergyEuro} from "../src/EnergyEuro.sol";
 import {IHonkVerifier} from "../src/interfaces/IVerifier.sol";
 import {IERC20} from "../src/interfaces/IERC20.sol";
@@ -31,6 +32,13 @@ contract MarketV4Test is Test {
 
     MarketV4 market;
     GridTariff tariff;
+    Pricing pricing;
+
+    // Pricing rule the community runs under. Subclasses rerun the whole suite under the
+    // other rules, since every test derives its expected amounts from the recorded prices.
+    function _rule() internal pure virtual returns (PricingLib.Rule) {
+        return PricingLib.Rule.MidMarket;
+    }
     EnergyEuro eeur;
     MockHonkVerifier dayVerifier;
     MockHonkVerifier revealVerifier;
@@ -74,11 +82,13 @@ contract MarketV4Test is Test {
 
         tariff = new GridTariff(GridTariff.Mode.Schedule, admin, sched, new address[](0), 0);
 
+        pricing = new Pricing(_rule());
         market = new MarketV4(
             IERC20(address(eeur)),
             dayVerifier,
             revealVerifier,
             tariff,
+            pricing,
             operator,
             grid,
             floorAdmin,
@@ -747,5 +757,23 @@ contract MarketV4PathologicalTariffTest is MarketV4Test {
         vm.prank(alice);
         vm.expectRevert(bytes("invalid reveal"));
         market.escape(0, "proof");
+    }
+}
+
+contract MarketV4SupplyDemandRatioTest is MarketV4Test {
+    function _rule() internal pure override returns (PricingLib.Rule) {
+        return PricingLib.Rule.SupplyDemandRatio;
+    }
+}
+
+contract MarketV4HyperbolicTest is MarketV4Test {
+    function _rule() internal pure override returns (PricingLib.Rule) {
+        return PricingLib.Rule.Hyperbolic;
+    }
+
+    // The geometric mean of the test band is irrational, so the recorded prices are
+    // rounded and a positive residual is expected, unlike under the other two rules.
+    function _expectedDustIsZero() internal view override returns (bool) {
+        return false;
     }
 }

@@ -88,12 +88,24 @@ async function main(): Promise<void> {
     winStart: wins.map((w) => w[0]),
     winEnd: wins.map((w) => w[1]),
   };
+  // Schedule mode: one feed-in rate and a peak/off-peak retail split, set once.
+  // Feed mode: a 96-slot price vector posted per day by reporters, finalised on
+  // quorum. The schedule passed here is only the constructor's initial value and
+  // is never read in feed mode.
   const tariff = feedMode
     ? await deploy("GridTariff", deployer, [1, roles.grid.address, schedule, reporters.map((w) => w.address), QUORUM])
     : await deploy("GridTariff", deployer, [0, roles.grid.address, schedule, [], 0]);
   console.log(feedMode
     ? `tariff in feed mode: ${reporters.length} reporter(s), quorum ${QUORUM}`
     : `tariff in schedule mode: feed-in ${FEED_IN_C}c, off-peak ${OFF_PEAK_C}c, peak ${PEAK_C}c`);
+
+  // Pricing rule of the community, fixed as an immutable of the pricing contract:
+  // mmr (mid-market rate, default), sdr (supply-demand ratio) or hyperbolic.
+  const RULES: Record<string, number> = { mmr: 0, sdr: 1, hyperbolic: 2 };
+  const ruleName = (process.env.PRICING_RULE ?? "mmr").toLowerCase();
+  if (!(ruleName in RULES)) throw new Error(`PRICING_RULE must be one of ${Object.keys(RULES).join(", ")}`);
+  const pricing = await deploy("Pricing", deployer, [RULES[ruleName]]);
+  console.log(`pricing rule: ${ruleName}`);
 
   const dayVerifier = await deploy("DayChunkVerifier", deployer, [], "HonkVerifier");
   const revealVerifier = await deploy("RevealVerifier", deployer, [], "HonkVerifier");
@@ -108,6 +120,7 @@ async function main(): Promise<void> {
     await dayVerifier.getAddress(),
     await revealVerifier.getAddress(),
     await tariff.getAddress(),
+    await pricing.getAddress(),
     roles.operator.address,
     roles.grid.address,
     roles.floorAdmin.address,
@@ -159,6 +172,8 @@ async function main(): Promise<void> {
     contracts: {
       eeur: await eeur.getAddress(),
       tariff: await tariff.getAddress(),
+      pricing: await pricing.getAddress(),
+      pricingRule: ruleName,
       dayVerifier: await dayVerifier.getAddress(),
       revealVerifier: await revealVerifier.getAddress(),
       market: marketAddr,

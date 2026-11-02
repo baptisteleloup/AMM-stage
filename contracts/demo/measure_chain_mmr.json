@@ -1,0 +1,252 @@
+{
+  "summary": {
+    "rpc": "http://127.0.0.1:8545",
+    "market": "0xa85233c63b9ee964add6f2cffe00fd84eb32338f",
+    "blocks": 3848,
+    "blocksWithMarketTx": 674,
+    "txToContracts": 693,
+    "spanSeconds": 522660,
+    "proofTimeSeconds": {
+      "n": 12,
+      "mean": 2.416666666666666,
+      "min": 2.3,
+      "max": 2.8
+    },
+    "proofBytes": {
+      "mean": 9408
+    },
+    "fidelity": {
+      "checked": 50,
+      "mismatches": 0
+    },
+    "dustPot": "461607"
+  },
+  "perFunction": {
+    "register": {
+      "count": 10,
+      "gasMin": "206865",
+      "gasMean": "208583",
+      "gasMax": "223977",
+      "gasTotal": "2085834",
+      "calldataBytesTotal": 1640
+    },
+    "deposit": {
+      "count": 10,
+      "gasMin": "64959",
+      "gasMean": "66669",
+      "gasMax": "82059",
+      "gasTotal": "666690",
+      "calldataBytesTotal": 360
+    },
+    "submitDailyPrices": {
+      "count": 80,
+      "gasMin": "150246",
+      "gasMean": "2283870",
+      "gasMax": "4416985",
+      "gasTotal": "182709676",
+      "calldataBytesTotal": 494400
+    },
+    "proposeFloor": {
+      "count": 10,
+      "gasMin": "47888",
+      "gasMean": "47898",
+      "gasMax": "47900",
+      "gasTotal": "478988",
+      "calldataBytesTotal": 680
+    },
+    "confirmFloor": {
+      "count": 10,
+      "gasMin": "29653",
+      "gasMean": "29663",
+      "gasMax": "29665",
+      "gasTotal": "296638",
+      "calldataBytesTotal": 680
+    },
+    "postNetputHashes": {
+      "count": 6,
+      "gasMin": "685885",
+      "gasMean": "721550",
+      "gasMax": "899719",
+      "gasTotal": "4329300",
+      "calldataBytesTotal": 2520
+    },
+    "requestData": {
+      "count": 6,
+      "gasMin": "76974",
+      "gasMean": "76984",
+      "gasMax": "76986",
+      "gasTotal": "461904",
+      "calldataBytesTotal": 216
+    },
+    "postEncryptedData": {
+      "count": 6,
+      "gasMin": "34051",
+      "gasMean": "686663",
+      "gasMax": "817570",
+      "gasTotal": "4119981",
+      "calldataBytesTotal": 100632
+    },
+    "submitChunk": {
+      "count": 12,
+      "gasMin": "5341182",
+      "gasMean": "5646210",
+      "gasMax": "5999364",
+      "gasTotal": "67754528",
+      "calldataBytesTotal": 197040
+    },
+    "openSession": {
+      "count": 536,
+      "gasMin": "65036",
+      "gasMean": "65652",
+      "gasMax": "66237",
+      "gasTotal": "35189615",
+      "calldataBytesTotal": 70752
+    },
+    "finalizeDay": {
+      "count": 7,
+      "gasMin": "24738",
+      "gasMean": "559575",
+      "gasMax": "675874",
+      "gasTotal": "3917026",
+      "calldataBytesTotal": 252
+    }
+  },
+  "perDay": [
+    {
+      "day": 20732,
+      "sessionsOpened": 0,
+      "gasSessions": "0",
+      "gasNetputHashes": "899719",
+      "chunks": 2,
+      "gasChunks": "10918914",
+      "proofBytesPerChunk": [
+        9408,
+        9408
+      ],
+      "gasFinalize": "581627",
+      "gasDayTotal": "12400260",
+      "finalized": true,
+      "cancelled": false
+    },
+    {
+      "day": 20733,
+      "sessionsOpened": 96,
+      "gasSessions": "6302208",
+      "gasNetputHashes": "685921",
+      "chunks": 2,
+      "gasChunks": "11359074",
+      "proofBytesPerChunk": [
+        9408,
+        9408
+      ],
+      "gasFinalize": "675874",
+      "gasDayTotal": "19023077",
+      "finalized": true,
+      "cancelled": false
+    },
+    {
+      "day": 20734,
+      "sessionsOpened": 96,
+      "gasSessions": "6299842",
+      "gasNetputHashes": "685921",
+      "chunks": 2,
+      "gasChunks": "11359338",
+      "proofBytesPerChunk": [
+        9408,
+        9408
+      ],
+      "gasFinalize": "658504",
+      "gasDayTotal": "19003605",
+      "finalized": true,
+      "cancelled": false
+    },
+    {
+      "day": 20735,
+      "sessionsOpened": 96,
+      "gasSessions": "6303361",
+      "gasNetputHashes": "685921",
+      "chunks": 2,
+      "gasChunks": "11378926",
+      "proofBytesPerChunk": [
+        9408,
+        9408
+      ],
+      "gasFinalize": "658774",
+      "gasDayTotal": "19026982",
+      "finalized": true,
+      "cancelled": false
+    },
+    {
+      "day": 20736,
+      "sessionsOpened": 96,
+      "gasSessions": "6302197",
+      "gasNetputHashes": "685885",
+      "chunks": 2,
+      "gasChunks": "11379118",
+      "proofBytesPerChunk": [
+        9408,
+        9408
+      ],
+      "gasFinalize": "658735",
+      "gasDayTotal": "19025935",
+      "finalized": true,
+      "cancelled": false
+    },
+    {
+      "day": 20737,
+      "sessionsOpened": 96,
+      "gasSessions": "6302208",
+      "gasNetputHashes": "685933",
+      "chunks": 2,
+      "gasChunks": "11359158",
+      "proofBytesPerChunk": [
+        9408,
+        9408
+      ],
+      "gasFinalize": "683512",
+      "gasDayTotal": "19030811",
+      "finalized": true,
+      "cancelled": false
+    },
+    {
+      "day": 20738,
+      "sessionsOpened": 56,
+      "gasSessions": "3679799",
+      "gasNetputHashes": "0",
+      "chunks": 0,
+      "gasChunks": "0",
+      "proofBytesPerChunk": [],
+      "gasFinalize": "0",
+      "gasDayTotal": "3679799",
+      "finalized": false,
+      "cancelled": false
+    }
+  ],
+  "dustPerDay": [
+    {
+      "day": 20732,
+      "amount": "0"
+    },
+    {
+      "day": 20733,
+      "amount": "107264"
+    },
+    {
+      "day": 20734,
+      "amount": "83237"
+    },
+    {
+      "day": 20735,
+      "amount": "81378"
+    },
+    {
+      "day": 20736,
+      "amount": "82464"
+    },
+    {
+      "day": 20737,
+      "amount": "107264"
+    }
+  ],
+  "fidelityMismatches": []
+}

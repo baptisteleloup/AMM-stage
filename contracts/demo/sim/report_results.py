@@ -1,4 +1,32 @@
 #!/usr/bin/env python3
+"""Results report for the ResStock demo.
+
+Reads demo/data/netputs_resstock.json and demo/data/prices.json and writes a
+PDF with tables and charts: market volumes, prices, community gains and
+individual gains, all measured against the status quo in which every kWh is
+traded with the grid alone (exports paid the wholesale price, imports paid
+the retail price).
+
+Prices per session follow src/Pricing.sol exactly, under the rule chosen
+with --rule (mmr, sdr or hyperbolic), with S and D the community aggregates
+of the session and y = S/D:
+    mmr         rho = (low + high)/2, c = rho + (high - rho)(1 - y)^+,
+                r = rho - (rho - low)(1 - 1/y)^+
+    sdr         y <= 1: r = high*low / ((high - low) y + low), c = y r + (1 - y) high
+                y > 1:  r = c = low
+    hyperbolic  a = sqrt(low), b = sqrt(high), chi = ab/(b - a)
+                y <= 1: r = ab, c = y ab + (1 - y) high
+                y > 1:  u = 1 - 1/y, z = chi/(u + chi/b), c = a z, r = chi (z - a) + u low
+A session with no seller or no buyer is priced (r, c) = (low, high) under every
+rule, as in the contract. All three rules are exactly budget balanced, so the
+community gain is the tariff spread times the locally matched volume whatever
+the rule; the rules differ in how that gain is split between the two sides.
+
+This file lives in demo/sim/ and resolves its defaults relative to itself,
+so it runs from anywhere:
+    python3 demo/sim/report_results.py
+    python3 demo/sim/report_results.py --out somewhere/else.pdf
+"""
 
 import argparse
 import json
@@ -49,13 +77,88 @@ def load(netputs_path, prices_path):
     return names, sell, buy, dates, low, high, feed
 
 
-def session_prices(S, D, low, high):
+RULES = ("mmr", "sdr", "hyperbolic")
+
+
+def session_prices(S, D, low, high, rule="mmr"):
+    """Seller and buyer rates per session under one of the three rules, element-wise."""
     rho = (low + high) / 2.0
-    ratio_sd = np.divide(S, D, out=np.zeros_like(S), where=D > 0)
-    ratio_ds = np.divide(D, S, out=np.zeros_like(D), where=S > 0)
-    c = rho + (high - rho) * np.clip(1.0 - ratio_sd, 0.0, None)
-    r = rho - (rho - low) * np.clip(1.0 - ratio_ds, 0.0, None)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        y = np.where(D > 0, S / np.where(D > 0, D, 1.0), 0.0)
+        if rule == "mmr":
+            u = np.clip(1.0 - np.where(S > 0, D / np.where(S > 0, S, 1.0), 0.0), 0.0, None)
+            v = np.clip(1.0 - y, 0.0, None)
+            r = rho - (rho - low) * u
+            c = rho + (high - rho) * v
+        elif rule == "sdr":
+            Dd = (high - low) * np.minimum(y, 1.0) + low
+            r_dem = np.where(Dd > 0, high * low / np.where(Dd > 0, Dd, 1.0), 0.0)
+            r = np.where(y > 1.0, low, r_dem)
+            c = np.where(y > 1.0, low, y * r_dem + (1.0 - y) * high)
+        elif rule == "hyperbolic":
+            a, b = np.sqrt(low), np.sqrt(high)
+            gap = np.where(b > a, b - a, 1.0)
+            chi = a * b / gap
+            ab = a * b
+            u = np.clip(1.0 - np.where(y > 0, 1.0 / np.where(y > 0, y, 1.0), 0.0), 0.0, None)
+            z = chi / np.where(u + a / gap > 0, u + a / gap, 1.0)   # chi / (u + chi/b)
+            r = np.where(y > 1.0, chi * (z - a) + u * low, ab)
+            c = np.where(y > 1.0, a * z, y * ab + (1.0 - y) * high)
+            # Zero feed-in rate: the limit of the rule, as in the contract.
+            r = np.where(low <= 0, 0.0, r)
+            c = np.where(low <= 0, np.where(y > 1.0, 0.0, (1.0 - y) * high), c)
+        else:
+            raise ValueError(f"unknown rule {rule}")
+    # Conventions shared with the contract: an empty side, or a zero-width band.
+    empty = (S <= 0) | (D <= 0) | (high <= low)
+    r = np.where(empty, low, r)
+    c = np.where(empty, high, c)
     return r, c, rho
+
+
+def price_impacts(sell, buy, low, high, rule, h=1e-6):
+    """Marginal price impact of each member on its own side, and the gap between its
+    marginal and average price, from the derivatives of the rule in y = S/D.
+
+    A buyer moves y at rate -y/D, a seller at rate 1/D, so
+        d c / d d_n = -(y/D) c'(y)        d r / d s_n = r'(y) / D
+    and the gaps are d_n * |d c / d d_n| and s_n * |d r / d s_n|. Only sessions with
+    both sides present are considered; elsewhere nobody moves a price."""
+    S = sell.sum(axis=0)
+    D = buy.sum(axis=0)
+    both = (S > 0) & (D > 0) & (high > low)
+    y = np.where(both, S / np.where(D > 0, D, 1.0), 1.0)
+    ones = np.ones_like(y)
+
+    def prices_at(yy):
+        return session_prices(yy, ones, low, high, rule)[:2]
+
+    r_up, c_up = prices_at(y * (1 + h))
+    r_dn, c_dn = prices_at(y * (1 - h))
+    dr = (r_up - r_dn) / (2 * h * y)
+    dc = (c_up - c_dn) / (2 * h * y)
+    imp_buy = np.where(both, np.abs(-(y / np.where(D > 0, D, 1.0)) * dc), 0.0)
+    imp_sell = np.where(both, np.abs(dr / np.where(D > 0, D, 1.0)), 0.0)
+    gap_buy = buy * imp_buy[None, :, :]
+    gap_sell = sell * imp_sell[None, :, :]
+
+    r, c, _ = session_prices(S, D, low, high, rule)
+    marg_cost = c[None, :, :] + gap_buy
+    marg_rev = r[None, :, :] - gap_sell
+    tol = 1e-12
+    return {
+        "sessions_both": int(both.sum()),
+        "excess_supply": int((both & (S > D)).sum()),
+        "excess_demand": int((both & (S < D)).sum()),
+        "impact_buy": imp_buy[both & (imp_buy > tol)],
+        "impact_sell": imp_sell[both & (imp_sell > tol)],
+        "gap_buy": gap_buy[(buy > 0) & (gap_buy > tol)],
+        "gap_sell": gap_sell[(sell > 0) & (gap_sell > tol)],
+        "ir_buy_broken": int(((buy > 0) & (marg_cost > high[None, :, :] + tol)).sum()),
+        "ir_sell_broken": int(((sell > 0) & (marg_rev < low[None, :, :] - tol)).sum()),
+        "buyer_sessions": int(((buy > 0) & both[None, :, :]).sum()),
+        "seller_sessions": int(((sell > 0) & both[None, :, :]).sum()),
+    }
 
 
 def fmt(x, dec=2):
@@ -99,6 +202,8 @@ def main():
     ap.add_argument("--netputs", default=str(demo / "data" / "netputs_resstock.json"))
     ap.add_argument("--prices", default=str(demo / "data" / "prices.json"))
     ap.add_argument("--out", default=str(demo / "results_resstock.pdf"))
+    ap.add_argument("--rule", default="mmr", choices=RULES,
+                    help="pricing rule, as fixed in the Pricing contract (default mmr)")
     ap.add_argument("--figdir", default=None,
                     help="also export each figure as a standalone PDF plus two LaTeX "
                          "tables (booktabs) into this folder, sized for a report")
@@ -112,7 +217,7 @@ def main():
     D = buy.sum(axis=0)
     matched = np.minimum(S, D)
     spread = high - low
-    r, c, rho = session_prices(S, D, low, high)
+    r, c, rho = session_prices(S, D, low, high, args.rule)
 
     amm = r[None, :, :] * sell - c[None, :, :] * buy
     base = low[None, :, :] * sell - high[None, :, :] * buy
@@ -123,6 +228,7 @@ def main():
     community_gain = gain.sum(axis=0)
     check = np.abs(community_gain - spread * matched).max()
     assert check < 1e-9, f"settlement identity violated by {check}"
+    impacts = price_impacts(sell, buy, low, high, args.rule)
 
     flat_S = S.reshape(-1)
     flat_D = D.reshape(-1)
@@ -168,7 +274,7 @@ def main():
         fig, ax = plt.subplots(figsize=PAGE)
         ax.axis("off")
         y = 0.95
-        ax.text(0.02, y, "ResStock demo, market results", fontsize=22, color=INK, weight="bold")
+        ax.text(0.02, y, f"ResStock demo, market results ({args.rule})", fontsize=22, color=INK, weight="bold")
         y -= 0.07
         ax.text(0.02, y, "Local energy sharing AMM on measured building data and real day-ahead prices",
                 fontsize=12, color="#555555")
@@ -249,7 +355,7 @@ def main():
         ax = axes[0]
         ax.step(hours, 100 * high[d_star], where="post", color=BOUGHT, lw=1.3, label="high (retail)")
         ax.step(hours, 100 * c[d_star], where="post", color=BOUGHT, lw=1.1, ls="--", label="c (buyers pay)")
-        ax.step(hours, 100 * rho[d_star], where="post", color=GRID, lw=1.0, label="mid")
+        ax.step(hours, 100 * rho[d_star], where="post", color=GRID, lw=1.0, label="midpoint")
         ax.step(hours, 100 * r[d_star], where="post", color=SOLD, lw=1.1, ls="--", label="r (sellers get)")
         ax.step(hours, 100 * low[d_star], where="post", color=SOLD, lw=1.3, label="low (wholesale)")
         ax.set_ylabel("c/kWh")
@@ -383,7 +489,7 @@ def main():
         fig, ax = plt.subplots(figsize=(W, 3.2))
         ax.step(hours, 100 * high[d_star2], where="post", color=BOUGHT, lw=1.1, label="high (retail)")
         ax.step(hours, 100 * c[d_star2], where="post", color=BOUGHT, lw=0.9, ls="--", label="c (buyers pay)")
-        ax.step(hours, 100 * rho[d_star2], where="post", color=GRID, lw=0.8, label="mid")
+        ax.step(hours, 100 * rho[d_star2], where="post", color=GRID, lw=0.8, label="midpoint")
         ax.step(hours, 100 * r[d_star2], where="post", color=SOLD, lw=0.9, ls="--", label="r (sellers get)")
         ax.step(hours, 100 * low[d_star2], where="post", color=SOLD, lw=1.1, label="low (wholesale)")
         ax.set_xlabel("hour of day")
@@ -432,10 +538,11 @@ def main():
         save(fig, "fig_decomposition.pdf")
 
         def fr(v, dec=2):
-            return f"{v:.{dec}f}".replace(".", ",")
+            txt = f"{abs(v):,.{dec}f}".replace(",", "\\,")
+            return f"$-{txt}$" if v < 0 else txt
 
         lines = ["\\begin{tabular}{lrrrrrr}", "\\toprule",
-                 "Jour & Offert & Demand\\'e & Appari\\'e & Couverture & Absorption & Gain \\\\",
+                 "Day & Offered & Demanded & Matched & Covered & Absorbed & Gain \\\\",
                  " & (kWh) & (kWh) & (kWh) & (\\%) & (\\%) & (USD) \\\\",
                  "\\midrule"]
         for i, lab in enumerate(day_labels):
@@ -451,7 +558,7 @@ def main():
         (figdir / "table_days.tex").write_text("\n".join(lines), encoding="utf-8")
 
         lines = ["\\begin{tabular}{lrrrrrr}", "\\toprule",
-                 "M\\'enage & Vendu & Achet\\'e & R\\'eseau seul & Avec AMM & Gain & Part du gain \\\\",
+                 "Household & Sold & Bought & Grid only & With AMM & Gain & Share of gain \\\\",
                  " & (kWh) & (kWh) & (USD) & (USD) & (USD) & (\\%) \\\\",
                  "\\midrule"]
         tot_g = per_agent["gain USD"].sum()
@@ -465,8 +572,31 @@ def main():
         print(f"exported figures and tables to {figdir}")
 
     print(f"wrote {args.out}")
+    print(f"rule: {args.rule}")
     print(f"community gain: {community_gain.sum():.2f} USD over {n_days} days, "
           f"{100 * matched.sum() / D.sum():.1f} % of demand served locally")
+    print(f"grid-only net cost: {-base.sum():.2f} USD, saving {100 * community_gain.sum() / -base.sum():.1f} %")
+    print(f"split of the gain: sellers {gain_sell.sum():.2f} USD, buyers {gain_buy.sum():.2f} USD")
+    print(f"volume-weighted prices (cents/kWh): sellers {100 * w_r:.2f} vs feed-in {100 * w_low:.2f}, "
+          f"buyers {100 * w_c:.2f} vs retail {100 * w_high:.2f}")
+    print(f"household gains: {per_agent['gain USD'].min():.2f} to {per_agent['gain USD'].max():.2f} USD")
+    imp = impacts
+
+    def q(a, p):
+        return 100 * float(np.percentile(a, p)) if len(a) else float("nan")
+    print(f"price impact: {imp['sessions_both']} sessions with both sides "
+          f"({imp['excess_supply']} excess supply, {imp['excess_demand']} excess demand)")
+    for side in ("buy", "sell"):
+        a, g = imp[f"impact_{side}"], imp[f"gap_{side}"]
+        who = "buyers " if side == "buy" else "sellers"
+        if len(a):
+            print(f"  {who} impact of one more kWh (cents/kWh): median {q(a, 50):.2f}, p90 {q(a, 90):.2f}, "
+                  f"max {q(a, 100):.2f} over {len(a)} sessions; gap: median {q(g, 50):.2f}, "
+                  f"p90 {q(g, 90):.2f}, max {q(g, 100):.2f} over {len(g)} member-sessions")
+        else:
+            print(f"  {who} no price impact in any session")
+    print(f"  marginal price outside the band: {imp['ir_buy_broken']} of {imp['buyer_sessions']} buyer-sessions, "
+          f"{imp['ir_sell_broken']} of {imp['seller_sessions']} seller-sessions")
 
 
 if __name__ == "__main__":

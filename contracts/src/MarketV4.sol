@@ -5,7 +5,7 @@ import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IHonkVerifier} from "./interfaces/IVerifier.sol";
 import {IGridTariff} from "./interfaces/IGridTariff.sol";
-import {Pricing} from "./Pricing.sol";
+import {IPricing} from "./interfaces/IPricing.sol";
 
 // Core contract of the settlement layer. It records the session aggregates and prices,
 // freezes each day at midnight, verifies the batch proofs, runs the recourse window,
@@ -71,6 +71,10 @@ contract MarketV4 {
 
     // Tariff contract read at every session opening for (lambda_low, lambda_high).
     IGridTariff public immutable tariff;
+
+    // Pricing contract that turns the aggregates and the band into the two session rates.
+    // It carries the community's pricing rule as an immutable, fixed at deployment.
+    IPricing public immutable pricing;
 
     // The only address that may open sessions, post commitments, answer data requests
     // and propose floors.
@@ -219,6 +223,7 @@ contract MarketV4 {
         IHonkVerifier _day,
         IHonkVerifier _reveal,
         IGridTariff _tariff,
+        IPricing _pricing,
         address _operator,
         address _grid,
         address _floorAdmin,
@@ -230,6 +235,7 @@ contract MarketV4 {
         dayVerifier = _day;
         revealVerifier = _reveal;
         tariff = _tariff;
+        pricing = _pricing;
         operator = _operator;
         grid = _grid;
         floorAdmin = _floorAdmin;
@@ -313,7 +319,7 @@ contract MarketV4 {
     }
 
     // The operator posts the aggregates (s, d) of the current session, in Wh. The contract reads
-    // the band from the tariff, computes (r, c) with the pricing library, rounds them and
+    // the band from the tariff, computes (r, c) with the pricing contract, rounds them and
     // records everything. Only the session in progress can be opened.
     function openSession(uint256 dayId, uint256 t, uint32 s, uint32 d) external onlyOperator {
         require(t < SESSIONS, "t");
@@ -321,7 +327,7 @@ contract MarketV4 {
         require(dayId == currentDayId() && t == currentSessionIdx(), "clock");
         (UD60x18 lo, UD60x18 hi) = tariff.getPrices(block.timestamp);
 
-        (UD60x18 rUd, UD60x18 cUd) = Pricing.prices(ud(uint256(s) * 1e18), ud(uint256(d) * 1e18), lo, hi);
+        (UD60x18 rUd, UD60x18 cUd) = pricing.prices(ud(uint256(s) * 1e18), ud(uint256(d) * 1e18), lo, hi);
  
         sessions[dayId][t] = Session(s, d, _priceDown(rUd), _priceUp(cUd), _priceUp(lo), _priceDown(hi), true);
         (uint32 r, uint32 c) = (sessions[dayId][t].priceR, sessions[dayId][t].priceC);

@@ -49,6 +49,7 @@ export const config = {
   autoSweep: process.env.AUTO_SWEEP === "1",
   autoRequestData: process.env.AUTO_REQUEST_DATA !== "0",
   autoFetchData: process.env.AUTO_FETCH_DATA !== "0",
+  autoRequestClear: process.env.AUTO_REQUEST_CLEAR !== "0",
   pollMs: Number(process.env.CLIENT_POLL_MS ?? 30000),
   marginWarnNum: 12n,
   marginCritNum: 10n,

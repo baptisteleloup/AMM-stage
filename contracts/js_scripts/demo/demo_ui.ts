@@ -2,7 +2,11 @@ import fs from "node:fs";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { ethers } from "ethers";
 
-const RPC_URL = "http://127.0.0.1:8545";
+const RPC_URL = process.env.RPC_URL ?? "http://127.0.0.1:8545";
+// CHAIN=besu runs the demo on the Besu network in Network/, in real time:
+// no anvil, no time travel. The current day is the empty start-up day and
+// trading starts at the next UTC midnight.
+const CHAIN = process.env.CHAIN ?? "anvil";
 const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const N_PROSUMERS = Number(process.env.N_PROSUMERS ?? 8);
 const FLOOR_EUR = process.env.FLOOR_EUR ?? "31";
@@ -99,6 +103,15 @@ function pipe(child: ChildProcess, tag: string, colour: string, keep: (line: str
 }
 
 async function startAnvil(): Promise<void> {
+  if (CHAIN === "besu") {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const up = await waitFor("besu", async () => {
+      try { await provider.getBlockNumber(); return true; } catch { return false; }
+    }, 30000, 1000);
+    if (!up) throw new Error(`no Besu node answering at ${RPC_URL} (run Network/reset.sh first)`);
+    ok(`Besu up at ${RPC_URL}, real-time clock`);
+    return;
+  }
   log("starting anvil");
   anvil = spawn("anvil", ["--port", "8545", "--block-time", BLOCK_TIME], { stdio: "ignore" });
   const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -219,6 +232,19 @@ async function main(): Promise<void> {
   const nowTs = async (): Promise<number> => (await provider.getBlock("latest"))!.timestamp;
 
   const advanceTo = async (target: number): Promise<void> => {
+    if (CHAIN === "besu") {
+      // Real time: wait for the chain to reach the target instead of jumping to it.
+      let announced = false;
+      for (;;) {
+        const now = await nowTs();
+        if (now >= target) return;
+        if (!announced && target - now > 120) {
+          log(`waiting ${((target - now) / 3600).toFixed(1)} h of real time for the chain to reach ${new Date(target * 1000).toISOString()}`);
+          announced = true;
+        }
+        await sleep(Math.min(5000, (target - now) * 1000));
+      }
+    }
     const now = await nowTs();
     const delta = target - now;
     if (delta > 0) await provider.send("evm_increaseTime", [delta]);
@@ -230,7 +256,11 @@ async function main(): Promise<void> {
     return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / SESSION_SECONDS) };
   };
 
-  {
+  // On anvil, jump to the start of the next day. On Besu, time cannot be moved:
+  // the current day becomes the empty start-up day (the operator only trades once
+  // a previous day has been closed and proven), and trading starts at the next
+  // UTC midnight.
+  if (CHAIN !== "besu") {
     const c = await clock();
     await advanceTo((c.day + 1) * 86400 + SESSION_ANCHOR);
   }
