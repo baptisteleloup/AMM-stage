@@ -1,3 +1,6 @@
+// Runs proofs in a child process (prove_worker.ts) so the main loop never waits on one.
+// Jobs are queued and proven one at a time; callers poll state(id) on later ticks.
+
 import { fork, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -9,18 +12,16 @@ export type JobState =
   | { state: "done"; proof: Uint8Array; ms: number }
   | { state: "failed"; error: string; ms: number };
 
-type Pending = {
+type Pending = { // a queued or running job
   id: string;
   message: Record<string, unknown>;
   startedAt: number;
 };
 
-const TIMEOUT_MS = Number(process.env.PROOF_TIMEOUT_MS ?? 300000);
+const TIMEOUT_MS = Number(process.env.PROOF_TIMEOUT_MS ?? 300000); // a job past this is failed and the worker killed
 
-// import.meta is unavailable here: with no "type": "module" in package.json the
-// project transpiles to CommonJS, which rejects it. The daemon is launched from
-// the repository root, so resolve against the working directory and let
-// OPERATOR_DIR override it if that ever stops being true.
+// Locates prove_worker.ts. The project is CommonJS, so import.meta is unavailable: try
+// PROVE_WORKER, then OPERATOR_DIR, then paths relative to the working directory (contracts/).
 function workerPath(): string {
   const candidates = [
     process.env.PROVE_WORKER,
@@ -39,14 +40,13 @@ export class Prover {
   private child: ChildProcess | null = null;
   private queue: Pending[] = [];
   private current: Pending | null = null;
-  private results = new Map<string, JobState>();
+  private results = new Map<string, JobState>(); // finished jobs, until clear(id)
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   private ensureChild(): ChildProcess {
     if (this.child && this.child.connected) return this.child;
 
-    // The daemon is normally run under tsx, whose loader lives in execArgv;
-    // passing it on is what lets the child import a .ts file at all.
+    // Pass on execArgv (the tsx loader) so the child can run a .ts file.
     const child = fork(workerPath(), [], {
       execArgv: process.execArgv,
       stdio: ["ignore", "inherit", "inherit", "ipc"],
@@ -55,7 +55,7 @@ export class Prover {
 
     child.on("message", (raw: unknown) => {
       const msg = raw as { id: string; ok: boolean; proof?: number[]; error?: string; ms: number };
-      if (this.current && this.current.id === msg.id) {
+      if (this.current && this.current.id === msg.id) { // ignore late answers to a timed-out job
         this.results.set(msg.id, msg.ok
           ? { state: "done", proof: Uint8Array.from(msg.proof ?? []), ms: msg.ms }
           : { state: "failed", error: msg.error ?? "unknown", ms: msg.ms });
@@ -63,7 +63,7 @@ export class Prover {
       }
     });
 
-    child.on("exit", (code: number | null, signal: string | null) => {
+    child.on("exit", (code: number | null, signal: string | null) => { // a crash fails the running job
       if (this.current) {
         this.results.set(this.current.id, {
           state: "failed",
@@ -85,6 +85,7 @@ export class Prover {
     this.pump();
   }
 
+  // Starts the next queued job if none is running.
   private pump(): void {
     if (this.current || this.queue.length === 0) return;
     const job = this.queue.shift()!;
@@ -100,13 +101,14 @@ export class Prover {
         error: `no proof after ${Math.round(TIMEOUT_MS / 1000)}s`,
         ms: Date.now() - job.startedAt,
       });
-      // A worker that overran is not trusted to recover; replace it.
+      // A worker that overran is killed and replaced by the next job.
       try { this.child?.kill("SIGKILL"); } catch { /* already gone */ }
       this.child = null;
       this.finishCurrent();
     }, TIMEOUT_MS);
   }
 
+  // Queues a job unless the same id is running, queued or finished.
   private submit(id: string, message: Record<string, unknown>): void {
     if (this.current?.id === id) return;
     if (this.queue.some((j) => j.id === id)) return;
@@ -115,12 +117,12 @@ export class Prover {
     this.pump();
   }
 
-  /** Ask for a chunk proof. Returns at once; poll with `state` on later ticks. */
+  // Asks for a batch proof. Returns at once; poll with state() on later ticks.
   requestChunk(id: string, witness: ChunkWitness): void {
     this.submit(id, { id, kind: "chunk", witness });
   }
 
-  /** Ask for a reveal proof. Returns at once. */
+  // Asks for a reveal proof. Returns at once.
   requestReveal(id: string, commitment: bigint, bal: bigint, blind: bigint): void {
     this.submit(id, {
       id, kind: "reveal",
@@ -128,6 +130,7 @@ export class Prover {
     });
   }
 
+  // idle (never asked or cleared), running (queued counts too), done or failed.
   state(id: string): JobState {
     const done = this.results.get(id);
     if (done) return done;
@@ -136,7 +139,7 @@ export class Prover {
     return { state: "idle" };
   }
 
-  /** Drop a finished job so the same id can be asked for again. */
+  // Drops a finished job so the same id can be asked for again.
   clear(id: string): void {
     this.results.delete(id);
   }
@@ -145,6 +148,7 @@ export class Prover {
     return this.current !== null || this.queue.length > 0;
   }
 
+  // Kills the worker on shutdown.
   stop(): void {
     if (this.timer) clearTimeout(this.timer);
     try { this.child?.kill("SIGTERM"); } catch { /* already gone */ }

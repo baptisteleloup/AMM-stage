@@ -1,3 +1,6 @@
+// Operator's private SQLite store (DB_PATH): balance openings, floors, blinding factors,
+// participation bits, daily spend, alerts sent and progress markers. Kept by the operator only.
+
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
@@ -9,7 +12,12 @@ export class Store {
   constructor(dbPath: string = config.dbPath) {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
     this.db = new Database(dbPath);
-    this.db.pragma("journal_mode = WAL");
+    this.db.pragma("journal_mode = WAL"); // safe against a crash mid-write
+    // openings: balance and blinding after each settled day, plus that day's position seed.
+    // floors: floor and blinding per member. participation: bit frozen at the day's first session.
+    // spend: net cost of the day so far (margin calls). alerts: margin alerts already written.
+    // dayblinds: seeds drawn at the midnight freeze, reused when proving.
+    // meta: progress markers (packets:<day>, proofFails:<day>, revealCursor).
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS openings(
         day INTEGER NOT NULL, slot INTEGER NOT NULL,
@@ -34,11 +42,13 @@ export class Store {
     `);
   }
 
+  // Blinding of the balance committed at the close of `day`.
   blindOf(day: number, slot: number): bigint | null {
     const r = this.db.prepare("SELECT blind FROM openings WHERE day=? AND slot=?").get(day, slot) as { blind: string } | undefined;
     return r ? BigInt(r.blind) : null;
   }
 
+  // Full opening of `day` for a slot, sent in recourse data and reveal proofs.
   openingOf(day: number, slot: number): Opening | null {
     const r = this.db.prepare("SELECT balance, blind, netput_blind FROM openings WHERE day=? AND slot=?").get(day, slot) as { balance: string; blind: string; netput_blind: string } | undefined;
     return r ? { balance: BigInt(r.balance), blind: BigInt(r.blind), netputBlind: BigInt(r.netput_blind) } : null;
@@ -49,6 +59,7 @@ export class Store {
     return r ? BigInt(r.blind) : null;
   }
 
+  // Seeds of `day`: position commitment seed and new balance blinding.
   dayBlinds(day: number, slot: number): { netputBlind: bigint; newBlind: bigint } | null {
     const r = this.db.prepare("SELECT netput_blind, new_blind FROM dayblinds WHERE day=? AND slot=?").get(day, slot) as { netput_blind: string; new_blind: string } | undefined;
     return r ? { netputBlind: BigInt(r.netput_blind), newBlind: BigInt(r.new_blind) } : null;
@@ -59,6 +70,7 @@ export class Store {
       .run(day, slot, netputBlind.toString(), newBlind.toString());
   }
 
+  // Key-value progress markers.
   metaGet(k: string): string | null {
     const r = this.db.prepare("SELECT v FROM meta WHERE k=?").get(k) as { v: string } | undefined;
     return r ? r.v : null;
@@ -68,6 +80,7 @@ export class Store {
     this.db.prepare("INSERT OR REPLACE INTO meta(k,v) VALUES(?,?)").run(k, v);
   }
 
+  // Balance after the close of `day`, null if unknown.
   balanceOf(day: number, slot: number): bigint | null {
     const r = this.db.prepare("SELECT balance FROM openings WHERE day=? AND slot=?").get(day, slot) as { balance: string } | undefined;
     return r ? BigInt(r.balance) : null;
@@ -83,6 +96,7 @@ export class Store {
     return r ? BigInt(r.floor) : null;
   }
 
+  // Stores a floor and writes its opening for the member (receipts/slot-N/floor-opening.json).
   putFloor(slot: number, floor: bigint, blind: bigint): void {
     this.db.prepare("INSERT OR REPLACE INTO floors(slot,floor,blind) VALUES(?,?,?)")
       .run(slot, floor.toString(), blind.toString());
@@ -104,7 +118,7 @@ export class Store {
 
   putParticipation(day: number, slot: number, yes: boolean): void {
     this.db.prepare("INSERT OR IGNORE INTO participation(day,slot,yes) VALUES(?,?,?)")
-      .run(day, slot, yes ? 1 : 0);
+      .run(day, slot, yes ? 1 : 0); // IGNORE: the first value of the day stays
   }
 
   netSpend(day: number, slot: number): bigint {
@@ -112,6 +126,7 @@ export class Store {
     return r ? BigInt(r.net) : 0n;
   }
 
+  // Adds a session's net cost and returns the day's running total.
   addSpend(day: number, slot: number, delta: bigint): bigint {
     const next = this.netSpend(day, slot) + delta;
     this.db.prepare("INSERT OR REPLACE INTO spend(day,slot,net) VALUES(?,?,?)")
@@ -128,4 +143,5 @@ export class Store {
   }
 }
 
+// What opens a balance commitment, plus the day's position seed.
 export type Opening = { balance: bigint; blind: bigint; netputBlind: bigint };

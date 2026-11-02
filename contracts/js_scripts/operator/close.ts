@@ -1,3 +1,7 @@
+// Closing of the previous day, one step per tick: midnight freeze (position commitments),
+// batch proofs submitted one by one, openings stored and day-close packets written, then
+// settlement after the dispute deadline, or cancellation when the day cannot settle.
+
 import crypto from "node:crypto";
 import { hashNetputs, commitBalance, toHex32 } from "../scenario.js";
 import { config } from "./config.js";
@@ -9,18 +13,20 @@ import type { ChunkWitness } from "./prove.js";
 import type { Prover } from "./prover.js";
 
 const SESSIONS = 96;
-const BATCH = 8;
-const FIELD_BYTES = 31;
-const SETTLE_RETRY_MS = Number(process.env.SETTLE_RETRY_MS ?? 15_000);
-const MAX_PROOF_ATTEMPTS = Number(process.env.MAX_PROOF_ATTEMPTS ?? 3);
-const RETRY_BACKOFF_MS = Number(process.env.PROOF_RETRY_BACKOFF_MS ?? 30000);
+const BATCH = 8; // members per proof, as in the circuit
+const FIELD_BYTES = 31; // random values stay below the field modulus
+const SETTLE_RETRY_MS = Number(process.env.SETTLE_RETRY_MS ?? 15_000); // pause between finalizeDay attempts
+const MAX_PROOF_ATTEMPTS = Number(process.env.MAX_PROOF_ATTEMPTS ?? 3); // then give up and cancel after the deadline
+const RETRY_BACKOFF_MS = Number(process.env.PROOF_RETRY_BACKOFF_MS ?? 30000); // grows linearly with the failures
 
+// Fresh blinding factor or seed.
 function randField(): bigint {
   return BigInt("0x" + crypto.randomBytes(FIELD_BYTES).toString("hex"));
 }
 
-type SessionRow = { opened: boolean; r: bigint; c: bigint };
+type SessionRow = { opened: boolean; r: bigint; c: bigint }; // a session as recorded on chain
 
+// Everything the circuit needs about one member for one day.
 type SlotDay = {
   sells: bigint[]; buys: bigint[];
   oldBal: bigint; oldBlind: bigint;
@@ -32,12 +38,13 @@ type SlotDay = {
 };
 
 export class Close {
-  private padding: { empty: string; zero: string } | null = null;
+  private padding: { empty: string; zero: string } | null = null; // padding constants, read once
 
-  private nextAttemptAt = new Map<number, number>();
+  private nextAttemptAt = new Map<number, number>(); // day => earliest next proof attempt (backoff)
 
-  private sessionCache = new Map<number, SessionRow[]>();
+  private sessionCache = new Map<number, SessionRow[]>(); // day => its 96 sessions
 
+  // The 96 sessions of a day, read from the chain once.
   private async sessionsOf(target: number): Promise<SessionRow[]> {
     const hit = this.sessionCache.get(target);
     if (hit) return hit;
@@ -47,7 +54,7 @@ export class Close {
       rows.push({ opened: s.opened, r: BigInt(s.priceR), c: BigInt(s.priceC) });
     }
     this.sessionCache.set(target, rows);
-    // Keep only the days still in play; anything older is settled or cancelled.
+    // Drop days older than target - 2, already settled or cancelled.
     for (const d of this.sessionCache.keys()) if (d < target - 2) this.sessionCache.delete(d);
     return rows;
   }
@@ -60,10 +67,12 @@ export class Close {
     private prover: Prover,
   ) {}
 
+  // Failed proof attempts for a day, kept across restarts.
   private attempts(day: number): number {
     return Number(this.store.metaGet(`proofFails:${day}`) ?? "0");
   }
 
+  // Records a failed attempt and schedules the next one.
   private noteFailure(day: number, why: string): void {
     const n = this.attempts(day) + 1;
     this.store.metaSet(`proofFails:${day}`, String(n));
@@ -75,15 +84,16 @@ export class Close {
   }
 
 
+  // Cancels a day that could not be proven, once the dispute deadline has passed.
   private async maybeCancel(day: number, dc: { chunksVerified: number; disputeDeadline: bigint }): Promise<boolean> {
     const now = await this.chain.now();
     if (BigInt(now) <= dc.disputeDeadline) return false;
     const expected = await this.chain.chunkCountFor(day);
-    if (expected > 0 && dc.chunksVerified >= expected) return false;
+    if (expected > 0 && dc.chunksVerified >= expected) return false; // all proven after all
     try {
       await this.chain.cancelDay(day, 0, `proof incomplete after ${this.attempts(day)} attempt(s)`);
       console.error(`[close] day ${day}: CANCELLED — it could not be proven before the deadline`);
-      this.store.metaSet(`proofFails:${day}`, "0");
+      this.store.metaSet(`proofFails:${day}`, "0"); // reset the counter
       return true;
     } catch (e) {
       console.error(`[close] day ${day}: cancelDay refused — ${(e as Error).message.slice(0, 120)}`);
@@ -91,33 +101,36 @@ export class Close {
     }
   }
 
-  private settledAnchor = new Map<number, number | null>();
+  private settledAnchor = new Map<number, number | null>(); // target => last settled day before it
 
 
+  // Last settled day before target: its balances are the target's opening balances on chain.
+  // Cancelled days are skipped; the search stops at a day never frozen, or after 60 days.
   private async lastSettledBefore(target: number): Promise<number | null> {
     const cached = this.settledAnchor.get(target);
     if (cached !== undefined) return cached;
     let found: number | null = null;
     for (let d = target - 1; d >= 0 && d > target - 60; d--) {
       const st = (await this.chain.dayClose(d)).state;
-      if (st === 2) { found = d; break; }
-      if (st === 1) {
+      if (st === 2) { found = d; break; } // Finalized
+      if (st === 1) { // Closing: should not happen if each day resolves within 24 h
         console.error(`[close] day ${d} is still Closing while day ${target} is being proven — its opening commitments are not final; is PROOF_WINDOW + SETTLEMENT_GRACE below 24 h?`);
         continue;
       }
-      if (st === 0 && !(await this.chain.netputHashesPosted(d))) break;
+      if (st === 0 && !(await this.chain.netputHashesPosted(d))) break; // before the first frozen day
     }
     this.settledAnchor.set(target, found);
     return found;
   }
 
  
-  private nextSettleAt = new Map<number, number>();
+  private nextSettleAt = new Map<number, number>(); // day => earliest next finalizeDay attempt
 
+  // After the deadline with no recourse open: finalizeDay; if it keeps reverting past the grace period, cancel.
   private async settleOrCancel(day: number, dc: { chunksVerified: number; disputeDeadline: bigint }): Promise<boolean> {
     const now = BigInt(await this.chain.now());
     if (now < dc.disputeDeadline) return false;
-    if (await this.chain.openRevealCount(day) > 0) return false;
+    if (await this.chain.openRevealCount(day) > 0) return false; // settlement waits for recourse answers
     if (Date.now() < (this.nextSettleAt.get(day) ?? 0)) return false;
     this.nextSettleAt.set(day, Date.now() + SETTLE_RETRY_MS);
     try {
@@ -125,7 +138,7 @@ export class Close {
       console.log(`[close] day ${day}: settled`);
       return true;
     } catch (e) {
-      if ((await this.chain.dayClose(day)).state >= 2) return true;
+      if ((await this.chain.dayClose(day)).state >= 2) return true; // someone else settled or cancelled it
       const why = (e as Error).message.slice(0, 160);
       const grace = await this.chain.settlementGrace();
       if (now <= dc.disputeDeadline + grace) {
@@ -145,10 +158,10 @@ export class Close {
 
   async tick(): Promise<void> {
     const { day } = await this.chain.clock();
-    const target = day - 1;
+    const target = day - 1; // the day being closed is yesterday
     if (target < 0) return;
     const prev = await this.chain.lastClosedDay();
-    if (prev > 0 && prev < target) {
+    if (prev > 0 && prev < target) { // an older day still open blocks the freeze of this one
       const pdc = await this.chain.dayClose(prev);
       if (pdc.state === 1) {
         console.error(`[close] day ${prev} is still Closing while day ${target} waits — settling or cancelling it first`);
@@ -158,8 +171,8 @@ export class Close {
     }
 
     const dc = await this.chain.dayClose(target);
-    if (dc.state >= 2) return;
-    if (this.store.metaGet(`packets:${target}`) === "done") {
+    if (dc.state >= 2) return; // already settled or cancelled
+    if (this.store.metaGet(`packets:${target}`) === "done") { // last step: settle
       await this.settleOrCancel(target, dc);
       return;
     }
@@ -167,28 +180,29 @@ export class Close {
     if (!this.padding) this.padding = await this.chain.paddingConstants();
 
     const posted = await this.chain.netputHashesPosted(target);
-    if (!posted) {
+    if (!posted) { // step 1: midnight freeze
       await this.postHashes(target);
       return;
     }
 
     const K = Math.ceil(dc.prosumerCountAt / BATCH);
-    if (dc.chunksVerified < K) {
+    if (dc.chunksVerified < K) { // step 2: batch proofs
       if (this.attempts(target) >= MAX_PROOF_ATTEMPTS) {
         await this.maybeCancel(target, dc);
         return;
       }
       const wait = this.nextAttemptAt.get(target) ?? 0;
-      if (Date.now() < wait) return;
+      if (Date.now() < wait) return; // backing off after a failure
       await this.proveAndSubmit(target, dc.prosumerCountAt);
       return;
     }
 
-    if (this.store.metaGet(`packets:${target}`) !== "done") {
+    if (this.store.metaGet(`packets:${target}`) !== "done") { // step 3: openings and packets
       await this.writePackets(target, dc.prosumerCountAt);
     }
   }
 
+  // Each member's 96 positions for the day, zero in sessions never opened or when not participating.
   private async netputsFor(target: number, N: number): Promise<Map<number, { sells: bigint[]; buys: bigint[] }>> {
     const per = new Map<number, { sells: bigint[]; buys: bigint[] }>();
     for (let slot = 1; slot <= N; slot++) {
@@ -196,8 +210,8 @@ export class Close {
     }
     const rows = await this.sessionsOf(target);
     for (let t = 0; t < SESSIONS; t++) {
-      if (!rows[t].opened) continue;
-      const phys = physicalOf(target, t);
+      if (!rows[t].opened) continue; // counts as zero on chain
+      const phys = physicalOf(target, t); // same reading Sessions used when opening t
       const batch = await this.source.read(phys.day, phys.t);
       for (const [slot, np] of batch) {
         const row = per.get(slot);
@@ -210,51 +224,54 @@ export class Close {
     return per;
   }
 
+  // Participation as seen at close: the frozen bit if any, and the balance still at or above the floor.
   private participates(target: number, slot: number): boolean {
     const floor = this.store.floorOf(slot) ?? 0n;
     const bal = this.store.balanceOf(target - 1, slot) ?? 0n;
-    const live = floor === 0n ? true : bal >= floor;
+    const live = floor === 0n ? true : bal >= floor; // no floor: always participates
     const frozen = this.store.participationOf(target, slot);
     if (frozen === null) return live;
     return frozen && live;
   }
 
+  // Midnight freeze: draws the day's seeds and posts one position commitment per member.
   private async postHashes(target: number): Promise<void> {
     const N = await this.chain.prosumerCount();
     const per = await this.netputsFor(target, N);
     const hashes: string[] = [];
     for (let slot = 1; slot <= N; slot++) {
       let blinds = this.store.dayBlinds(target, slot);
-      if (!blinds) {
+      if (!blinds) { // drawn once, kept if the freeze is retried
         blinds = { netputBlind: randField(), newBlind: randField() };
         this.store.putDayBlinds(target, slot, blinds.netputBlind, blinds.newBlind);
       }
       const row = per.get(slot)!;
-      const h = await hashNetputs(BigInt(slot), blinds.netputBlind, row.sells, row.buys);
+      const h = await hashNetputs(BigInt(slot), blinds.netputBlind, row.sells, row.buys); // same hash as the circuit
       hashes.push(toHex32(h));
     }
     await this.chain.postNetputHashes(target, hashes);
     console.log(`[close] day ${target}: netput hashes posted + freeze (N=${N})`);
   }
 
+  // Computes a member's day exactly as the circuit will: trades, deposit, capped withdrawal, new balance.
   private async slotState(target: number, slot: number, row: { sells: bigint[]; buys: bigint[] }, prices: { r: bigint; c: bigint }[]): Promise<SlotDay> {
     const blinds = this.store.dayBlinds(target, slot);
     if (!blinds) throw new Error(`missing day blinds for slot ${slot}`);
-    const anchor = await this.lastSettledBefore(target);
+    const anchor = await this.lastSettledBefore(target); // opening balance comes from the last settled day
     const oldBal = anchor === null ? 0n : (this.store.balanceOf(anchor, slot) ?? 0n);
     const oldBlind = anchor === null ? 0n : (this.store.blindOf(anchor, slot) ?? 0n);
     const floor = this.store.floorOf(slot) ?? 0n;
     const floorBlind = this.store.floorBlindOf(slot) ?? 0n;
-    const deposit = await this.chain.snapDeposit(target, slot);
+    const deposit = await this.chain.snapDeposit(target, slot); // queues frozen at midnight
     const withdrawal = await this.chain.snapWithdrawal(target, slot);
     const participating = this.participates(target, slot);
 
     let delta = 0n;
     for (let t = 0; t < SESSIONS; t++) {
-      delta += row.sells[t] * prices[t].r - row.buys[t] * prices[t].c;
+      delta += row.sells[t] * prices[t].r - row.buys[t] * prices[t].c; // income minus cost, internal units
     }
     const available = oldBal + delta + deposit;
-    const paid = withdrawal < available ? withdrawal : available;
+    const paid = withdrawal < available ? withdrawal : available; // min(request, available)
     const newBal = available - paid;
     const newCommit = await commitBalance(newBal, blinds.newBlind);
 
@@ -267,17 +284,19 @@ export class Close {
     };
   }
 
+  // Builds the witness of the first unproven batch, asks the prover, and submits the proof once ready.
+  // Handles one batch per call; the next tick continues.
   private async proveAndSubmit(target: number, N: number): Promise<void> {
     const per = await this.netputsFor(target, N);
     const prices = (await this.sessionsOf(target)).map((s) => ({ r: s.r, c: s.c }));
 
     const K = Math.ceil(N / BATCH);
     for (let k = 0; k < K; k++) {
-      if (await this.chain.chunkDone(target, k)) continue;
+      if (await this.chain.chunkDone(target, k)) continue; // already on chain
 
       const zero = BigInt(this.padding!.zero);
       const empty = BigInt(this.padding!.empty);
-      const w: ChunkWitness = {
+      const w: ChunkWitness = { // circuit inputs
         price_r: prices.map((p) => p.r.toString()),
         price_c: prices.map((p) => p.c.toString()),
         slots: [], netput_hashes: [], old_commits: [], new_commits: [],
@@ -286,7 +305,7 @@ export class Close {
         sell: [], buy: [], old_bals: [], old_blinds: [], new_blinds: [],
         floors: [], floor_blinds: [], netput_blinds: [],
       };
-      const sub: ChunkSubmission = {
+      const sub: ChunkSubmission = { // claimed outputs sent to the contract
         newCommits: [], withdrawalsPaid: [],
         partialS: Array(SESSIONS).fill(0), partialD: Array(SESSIONS).fill(0),
         partialPaidOut: 0n, partialPaidIn: 0n,
@@ -298,7 +317,7 @@ export class Close {
 
       for (let j = 0; j < BATCH; j++) {
         const slot = k * BATCH + j + 1;
-        if (slot > N) {
+        if (slot > N) { // padding lane: zeros and the contract's constants
           w.slots.push("0");
           w.netput_hashes.push(empty.toString());
           w.old_commits.push(zero.toString());
@@ -322,10 +341,10 @@ export class Close {
         const st = await this.slotState(target, slot, per.get(slot)!, prices);
         const netputHash = await hashNetputs(BigInt(slot), st.netputBlind, st.sells, st.buys);
         const oldCommit = target === 0 && st.oldBal === 0n && st.oldBlind === 0n
-          ? zero
+          ? zero // first day: commitment set at registration
           : await commitBalance(st.oldBal, st.oldBlind);
         const floorCommit = st.floor === 0n && st.floorBlind === 0n
-          ? zero
+          ? zero // no floor: the zero commitment set at registration
           : await commitBalance(st.floor, st.floorBlind);
 
         w.slots.push(String(slot));
@@ -367,7 +386,7 @@ export class Close {
       const jobId = `chunk:${target}:${k}`;
       const job = this.prover.state(jobId);
 
-      if (job.state === "idle") {
+      if (job.state === "idle") { // start proving, check back next tick
         this.prover.requestChunk(jobId, w);
         console.log(`[close] day ${target}: chunk ${k + 1}/${K} queued for proving`);
         return;
@@ -392,8 +411,8 @@ export class Close {
       } catch (e) {
         this.prover.clear(jobId);
         const msg = (e as Error).message;
-        const sel = /data="(0x[0-9a-f]{8})/.exec(msg)?.[1] ?? "";
-        const named = sel === "0x9fc3a218" ? "SumcheckFailed (the proof does not match the posted data)" : sel;
+        const sel = /data="(0x[0-9a-f]{8})/.exec(msg)?.[1] ?? ""; // revert selector, if any
+        const named = sel === "0x9fc3a218" ? "SumcheckFailed (the proof does not match the posted data)" : sel; // verifier error selector
         this.noteFailure(target, `chunk ${k + 1}/${K} rejected on chain: ${named}\n`
           + `      ${ctx}\n      raw: ${msg.slice(0, 300)}`);
         return;
@@ -401,6 +420,7 @@ export class Close {
     }
   }
 
+  // After the last batch: stores each new opening and writes the signed day-close packets.
   private async writePackets(target: number, N: number): Promise<void> {
     const per = await this.netputsFor(target, N);
     const prices = (await this.sessionsOf(target)).map((s) => ({ r: s.r, c: s.c }));

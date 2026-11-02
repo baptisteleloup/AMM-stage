@@ -1,7 +1,10 @@
+// Thin wrapper over the MarketV4 contract for the operator: reads its state, sends its
+// transactions with the operator key and waits for each to be mined.
+
 import { ethers } from "ethers";
 import { config } from "./config.js";
 
-const ABI = [
+const ABI = [ // only the functions and events the operator uses
   "function currentDayId() view returns (uint256)",
   "function currentSessionIdx() view returns (uint256)",
   "function sessions(uint256,uint256) view returns (uint32 s,uint32 d,uint32 priceR,uint32 priceC,uint32 lambdaLo,uint32 lambdaHi,bool opened)",
@@ -34,6 +37,7 @@ const ABI = [
   "event DataRequested(uint256 indexed dayId,uint256 slot,uint8 stage)",
 ];
 
+// Typed views of the contract structs (numbers where they fit, bigint for deadlines).
 export type SessionView = {
   s: number; d: number; priceR: number; priceC: number;
   lambdaLo: number; lambdaHi: number; opened: boolean;
@@ -48,6 +52,7 @@ export type RevealView = {
   stage1Deadline: bigint; stage2Deadline: bigint; stage1Done: boolean; stage2Done: boolean;
 };
 
+// Outputs of one batch proof, as MarketV4.submitChunk expects them.
 export type ChunkSubmission = {
   newCommits: string[];
   withdrawalsPaid: bigint[];
@@ -64,7 +69,7 @@ export class Chain {
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    this.wallet = new ethers.Wallet(config.operatorKey, this.provider);
+    this.wallet = new ethers.Wallet(config.operatorKey, this.provider); // signs transactions and receipts
     this.market = new ethers.Contract(config.marketAddress, ABI, this.wallet);
   }
 
@@ -72,6 +77,7 @@ export class Chain {
     return (await this.provider.getNetwork()).chainId;
   }
 
+  // Timestamp of the latest block: the market runs on chain time, not wall-clock time.
   async now(): Promise<number> {
     const b = await this.provider.getBlock("latest");
     if (!b) throw new Error("no latest block");
@@ -80,7 +86,7 @@ export class Chain {
 
   async clock(): Promise<{ day: number; t: number }> {
     const ts = await this.now();
-    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) };
+    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) }; // same as currentDayId / currentSessionIdx
   }
 
   async session(day: number, t: number): Promise<SessionView> {
@@ -130,7 +136,7 @@ export class Chain {
   }
 
   async submitChunk(day: number, k: number, sub: ChunkSubmission, proof: Uint8Array): Promise<void> {
-    const tx = await this.market.submitChunk(day, k, sub, ethers.hexlify(proof));
+    const tx = await this.market.submitChunk(day, k, sub, ethers.hexlify(proof)); // proof as hex bytes
     await tx.wait();
   }
 
@@ -142,6 +148,7 @@ export class Chain {
     return BigInt(await this.market.snapWithdrawal(day, slot));
   }
 
+  // EMPTY_NETPUT_HASH and ZERO_BAL_COMMIT, used for padding lanes.
   async paddingConstants(): Promise<{ empty: string; zero: string }> {
     return {
       empty: String(await this.market.EMPTY_NETPUT_HASH()),
@@ -179,13 +186,7 @@ export class Chain {
     return Number(await this.market.openRevealCount(day));
   }
 
-  /**
-   * Abandon a day that can no longer be closed. Permissionless by design: the
-   * operator is not the only party who may call it, but it is the one that knows
-   * first, so it should. revealSlot 0 is the general ground — a proof that never
-   * arrived, or a dispute still open past the deadline. No balance moves; the
-   * deposits and withdrawals frozen for the day return to the queue.
-   */
+  // Settles a day (permissionless on chain; the operator calls it as soon as it can).
   async finalizeDay(day: number): Promise<void> {
     const tx = await this.market.finalizeDay(day);
     await tx.wait();
@@ -199,6 +200,7 @@ export class Chain {
     return BigInt(await this.market.SETTLEMENT_GRACE());
   }
 
+  // Cancels a day that cannot settle. revealSlot 0 = proofs missing or settlement stuck; nothing moves.
   async cancelDay(day: number, revealSlot: number, reason: string): Promise<void> {
     const tx = await this.market.cancelDay(day, revealSlot, reason);
     await tx.wait();
@@ -208,6 +210,7 @@ export class Chain {
     return this.provider.getBlockNumber();
   }
 
+  // DataRequested events (recourse, stage 1 or 2) from fromBlock to the latest block.
   async dataRequests(fromBlock: number): Promise<{ day: number; slot: number; stage: number; block: number }[]> {
     const latest = await this.provider.getBlockNumber();
     if (fromBlock > latest) return [];

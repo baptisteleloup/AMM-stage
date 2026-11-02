@@ -1,10 +1,13 @@
+// Proof generation with noir_js and bb.js (UltraHonk, EVM target). Reads the compiled circuits
+// from circuits/*/target/*.json, relative to contracts/. Called inside prove_worker.ts only.
+
 import { readFileSync } from "node:fs";
 import { Noir } from "@noir-lang/noir_js";
 import { UltraHonkBackend, Barretenberg } from "@aztec/bb.js";
 
 type Circuit = { bytecode: string; abi: unknown };
 
-const cache = new Map<string, Circuit>();
+const cache = new Map<string, Circuit>(); // compiled circuits, read once
 
 function load(path: string): Circuit {
   let c = cache.get(path);
@@ -15,20 +18,22 @@ function load(path: string): Circuit {
   return c;
 }
 
+// Executes the circuit on the inputs, then proves the witness.
 async function prove(circuitPath: string, inputs: Record<string, unknown>): Promise<Uint8Array> {
   const circuit = load(circuitPath);
   const noir = new Noir(circuit as never);
-  const { witness } = await noir.execute(inputs as never);
+  const { witness } = await noir.execute(inputs as never); // fails here if a constraint does not hold
   const api = await Barretenberg.new({ threads: 1 });
   try {
     const backend = new UltraHonkBackend(circuit.bytecode, api);
-    const { proof } = await backend.generateProof(witness, { verifierTarget: "evm" } as never);
+    const { proof } = await backend.generateProof(witness, { verifierTarget: "evm" } as never); // checkable by the Solidity verifier
     return proof;
   } finally {
-    await api.destroy();
+    await api.destroy(); // free the WASM instance
   }
 }
 
+// Inputs of the day_chunk circuit, as decimal strings, same names as its main().
 export type ChunkWitness = {
   price_r: string[];
   price_c: string[];
@@ -54,10 +59,12 @@ export type ChunkWitness = {
   netput_blinds: string[];
 };
 
+// Proof of one batch of eight members for one day.
 export function proveChunk(w: ChunkWitness): Promise<Uint8Array> {
   return prove("circuits/day_chunk/target/day_chunk.json", w);
 }
 
+// Proof that bal opens the balance commitment.
 export function proveReveal(commitment: bigint, bal: bigint, blind: bigint): Promise<Uint8Array> {
   return prove("circuits/reveal/target/reveal.json", {
     commitment: commitment.toString(),

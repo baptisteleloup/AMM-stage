@@ -1,10 +1,14 @@
+// Signed records the operator hands to members, as EIP-712 typed data, in
+// RECEIPTS_DIR/slot-N/day-D/: one receipt per session (t-<t>.json), the day-close packet
+// (day-close.json, needed for recourse and escape) and margin alerts (alerts.jsonl).
+
 import fs from "node:fs";
 import path from "node:path";
 import { ethers } from "ethers";
 import { config } from "./config.js";
 import type { SessionBatch } from "./netputs.js";
 
-const TYPES_SESSION = {
+const TYPES_SESSION = { // the position the operator used for this member in session t
   SessionReceipt: [
     { name: "day", type: "uint256" },
     { name: "t", type: "uint256" },
@@ -14,7 +18,7 @@ const TYPES_SESSION = {
   ],
 };
 
-const TYPES_DAYCLOSE = {
+const TYPES_DAYCLOSE = { // the opening of the member's new balance commitment
   DayClosePacket: [
     { name: "day", type: "uint256" },
     { name: "slot", type: "uint256" },
@@ -28,7 +32,7 @@ export class Receipts {
   private domain: ethers.TypedDataDomain;
 
   constructor(private wallet: ethers.Wallet, chainId: bigint) {
-    this.domain = {
+    this.domain = { // ties every signature to this market and chain
       name: "EnergyMarket",
       version: "4",
       chainId,
@@ -42,6 +46,7 @@ export class Receipts {
     return p;
   }
 
+  // One signed receipt per member in the batch.
   async writeSessionReceipts(day: number, t: number, batch: SessionBatch): Promise<void> {
     for (const [slot, np] of batch) {
       const message = { day, t, slot, sell: Number(np.sell), buy: Number(np.buy) };
@@ -51,6 +56,7 @@ export class Receipts {
     }
   }
 
+  // Signed opening of the new balance after the day: balance, blinding and position seed.
   async writeDayClosePacket(day: number, slot: number, newBalance: bigint, newBlind: bigint, netputBlind: bigint): Promise<void> {
     const message = {
       day, slot,
@@ -63,6 +69,7 @@ export class Receipts {
     fs.writeFileSync(path.join(this.dir(slot, day), "day-close.json"), JSON.stringify(packet, null, 2));
   }
 
+  // Floor opening for the member (no caller; Store.putFloor writes the same file).
   writeFloorOpening(slot: number, floor: bigint, blind: bigint): void {
     const dir = path.join(config.receiptsDir, `slot-${slot}`);
     fs.mkdirSync(dir, { recursive: true });
@@ -74,6 +81,7 @@ export class Receipts {
     fs.writeFileSync(path.join(dir, "floor-opening.json"), JSON.stringify(packet, null, 2));
   }
   
+  // Appends one margin alert to the day's alerts.jsonl.
   writeAlert(day: number, slot: number, tier: string, projected: bigint, floor: bigint): void {
     const line = JSON.stringify({
       day, tier,
