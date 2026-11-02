@@ -1,9 +1,11 @@
-# Besu image with libfaketime, so that one validator can run with a shifted clock.
-#   docker build -f Dockerfile.faketime -t besu-faketime:26.8.1 .
+# Besu image with libfaketime, so one validator can run with a shifted clock (skew.sh).
+# Build from network/:  docker build -f Dockerfile.faketime -t besu-faketime:26.8.1 .
 ARG BESU_IMAGE=hyperledger/besu:26.8.1
 FROM ${BESU_IMAGE}
+# apt needs root, then back to Besu's own user
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends faketime \
     && rm -rf /var/lib/apt/lists/*
 USER besu
+# start Besu under faketime with the offset in $SKEW, passing on the compose command
 ENTRYPOINT ["/bin/sh", "-c", "exec faketime -f \"${SKEW:-+0s}\" /opt/besu/bin/besu \"$@\"", "--"]

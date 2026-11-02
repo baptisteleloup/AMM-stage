@@ -1,12 +1,9 @@
-# Override used by skew.sh: runs one validator with its clock shifted by $SKEW
-# (for example +2s or -30s), using the image built from Dockerfile.faketime.
-# Only that container's view of time changes; the host clock is untouched.
-# BESU_USING_JEMALLOC=false stops Besu's launcher from overwriting LD_PRELOAD
-# with jemalloc, which would otherwise remove libfaketime from the JVM.
+# Override used by skew.sh: runs node-4 on the faketime image with its clock shifted by $SKEW
+# (e.g. +2s, -30s). Only that container's time changes, the host clock is untouched.
 services:
   node-4:
     image: besu-faketime:${BESU_VERSION:-26.8.1}
     environment:
-      - SKEW=${SKEW:-+0s}
-      - FAKETIME_DONT_FAKE_MONOTONIC=1
-      - BESU_USING_JEMALLOC=false
+      - SKEW=${SKEW:-+0s} # clock offset read by the faketime entrypoint
+      - FAKETIME_DONT_FAKE_MONOTONIC=1 # shift wall-clock time only, keep JVM timers sane
+      - BESU_USING_JEMALLOC=false # else Besu's launcher overwrites LD_PRELOAD and drops libfaketime

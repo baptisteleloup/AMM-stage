@@ -1,6 +1,6 @@
-# Four QBFT validators for the settlement layer.
-# Image pinned for reproducible measurements; override with BESU_IMAGE if needed.
-# Free gas: zeroBaseFee in genesis.json plus --min-gas-price=0 on every node.
+# Four QBFT validators running the settlement layer, RPC on host ports 8545 to 8548.
+# Image pinned for reproducible measurements (override with BESU_IMAGE). Gas is free:
+# zeroBaseFee in genesis.json plus --min-gas-price=0. Started by reset.sh from network/.
 x-besu: &besu
   image: ${BESU_IMAGE:-hyperledger/besu:26.8.1}
   networks: [besu]
@@ -12,7 +12,7 @@ services:
     container_name: besu-node-1
     volumes:
       - ./genesis.json:/genesis.json:ro
-      - ./nodes/node-1/data:/data
+      - ./nodes/node-1/data:/data # chain data and validator key
     command:
       - --data-path=/data
       - --genesis-file=/genesis.json
@@ -29,7 +29,7 @@ services:
     ports:
       - "8545:8545"
 
-  node-2:
+  node-2: # same as node-1, joins through node-1 as bootnode
     <<: *besu
     container_name: besu-node-2
     volumes:
