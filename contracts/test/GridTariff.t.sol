@@ -1,33 +1,38 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.19;
 
+// Tests of GridTariff in both modes. Schedule: peak windows, boundaries, next-day revisions.
+// Feed: quorum adoption, dissent, fallback to the last adopted day, reporter rights.
+// Run from contracts/: forge test --match-path test/GridTariff.t.sol
+
 import {Test} from "forge-std/Test.sol";
 import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {GridTariff} from "../src/GridTariff.sol";
 
 contract GridTariffTest is Test {
-    GridTariff schedule;
-    GridTariff feed;
+    GridTariff schedule; // Schedule mode, admin-set tariff
+    GridTariff feed; // Feed mode, reporters with a quorum of 2
 
-    UD60x18 constant FEED_IN = UD60x18.wrap(8.86e18);
-    UD60x18 constant OFF_PEAK = UD60x18.wrap(16.96e18);
-    UD60x18 constant PEAK = UD60x18.wrap(21.46e18);
+    UD60x18 constant FEED_IN = UD60x18.wrap(8.86e18); // lambda_low, cents per kWh
+    UD60x18 constant OFF_PEAK = UD60x18.wrap(16.96e18); // lambda_high outside the peak windows
+    UD60x18 constant PEAK = UD60x18.wrap(21.46e18); // lambda_high inside the peak windows
 
     address admin = address(0xAD);
-    address mallory = address(0xBAD);
+    address mallory = address(0xBAD); // neither admin nor reporter
     address[] reporters;
 
-    uint256 constant DAY0 = 20_000 * 86400; 
+    uint256 constant DAY0 = 20_000 * 86400; // a midnight, start of the test day
 
+    // Two-tier tariff with peak windows 8h-12h and 13h-20h.
     function _frenchSchedule() internal pure returns (GridTariff.Schedule memory s) {
         s.feedIn = FEED_IN;
         s.retailOffPeak = OFF_PEAK;
         s.retailPeak = PEAK;
         s.winStart = new uint32[](2);
         s.winEnd = new uint32[](2);
-        s.winStart[0] = 8 * 3600; 
+        s.winStart[0] = 8 * 3600; // morning peak
         s.winEnd[0] = 12 * 3600;
-        s.winStart[1] = 13 * 3600; 
+        s.winStart[1] = 13 * 3600; // afternoon peak, after an off-peak lunch hour
         s.winEnd[1] = 20 * 3600;
     }
 
@@ -42,13 +47,14 @@ contract GridTariffTest is Test {
         feed = new GridTariff(
             GridTariff.Mode.Feed,
             admin,
-            _frenchSchedule(),
+            _frenchSchedule(), // ignored in Feed mode
             reporters,
-            2 
+            2 // quorum: two of the three reporters
         );
     }
 
 
+    // lambda_high follows the peak windows through the day.
     function test_schedule_peakWindows() public view {
         (, UD60x18 h1) = schedule.getPrices(DAY0 + 9 * 3600); // 9h  -> peak
         (, UD60x18 h2) = schedule.getPrices(DAY0 + 12 * 3600); // 12h -> off-peak (lunch)
@@ -60,21 +66,24 @@ contract GridTariffTest is Test {
         assertEq(h4.unwrap(), OFF_PEAK.unwrap());
     }
 
+    // Windows are [start, end): the start second is peak, the end second is not.
     function test_schedule_boundaries() public view {
         (, UD60x18 before8) = schedule.getPrices(DAY0 + 8 * 3600 - 1);
         (, UD60x18 at8) = schedule.getPrices(DAY0 + 8 * 3600);
         (, UD60x18 at20) = schedule.getPrices(DAY0 + 20 * 3600);
         assertEq(before8.unwrap(), OFF_PEAK.unwrap());
         assertEq(at8.unwrap(), PEAK.unwrap());
-        assertEq(at20.unwrap(), OFF_PEAK.unwrap()); 
+        assertEq(at20.unwrap(), OFF_PEAK.unwrap()); // end is exclusive
     }
 
+    // lambda_low does not depend on the time of day.
     function testFuzz_schedule_feedInConstant(uint256 secOfDay) public view {
         secOfDay = bound(secOfDay, 0, 86399);
         (UD60x18 lo,) = schedule.getPrices(DAY0 + secOfDay);
         assertEq(lo.unwrap(), FEED_IN.unwrap());
     }
 
+    // A revision takes effect the next day, so today's sessions keep the announced tariff.
     function test_schedule_revisionNextDay() public {
         GridTariff.Schedule memory s = _frenchSchedule();
         s.retailPeak = UD60x18.wrap(25e18);
@@ -87,12 +96,14 @@ contract GridTariffTest is Test {
         assertEq(tomorrow_.unwrap(), 25e18);
     }
 
+    // Only the grid admin can change the tariff.
     function test_schedule_nonAdminCannotRevise() public {
         vm.prank(mallory);
         vm.expectRevert();
         schedule.setSchedule(_frenchSchedule());
     }
 
+    // Flat 96-session price vectors, lambda_high = 2 * lambda_low.
     function _vector(uint256 base) internal pure returns (UD60x18[96] memory lo, UD60x18[96] memory hi) {
         for (uint256 i = 0; i < 96; i++) {
             lo[i] = ud(base);
@@ -100,27 +111,29 @@ contract GridTariffTest is Test {
         }
     }
 
+    // A day's prices are adopted at the second identical submission, not before.
     function test_feed_quorumFinalizes() public {
-        uint32 day = uint32(DAY0 / 86400) + 1;
+        uint32 day = uint32(DAY0 / 86400) + 1; // tomorrow, day-ahead prices
         (UD60x18[96] memory lo, UD60x18[96] memory hi) = _vector(10e18);
 
         vm.prank(reporters[0]);
         feed.submitDailyPrices(day, lo, hi);
-        assertEq(feed.activeHash(day), bytes32(0)); 
+        assertEq(feed.activeHash(day), bytes32(0)); // one vote is below the quorum
 
         vm.prank(reporters[1]);
         feed.submitDailyPrices(day, lo, hi);
         assertTrue(feed.activeHash(day) != bytes32(0));
 
-        (UD60x18 l, UD60x18 h) = feed.getPrices(uint256(day) * 86400 + 7 * 900);
+        (UD60x18 l, UD60x18 h) = feed.getPrices(uint256(day) * 86400 + 7 * 900); // session 7 of that day
         assertEq(l.unwrap(), 10e18);
         assertEq(h.unwrap(), 20e18);
     }
 
+    // Two different candidates do not add up; the third reporter breaks the tie.
     function test_feed_dissentBlocksQuorum() public {
         uint32 day = uint32(DAY0 / 86400) + 1;
         (UD60x18[96] memory lo1, UD60x18[96] memory hi1) = _vector(10e18);
-        (UD60x18[96] memory lo2, UD60x18[96] memory hi2) = _vector(11e18); 
+        (UD60x18[96] memory lo2, UD60x18[96] memory hi2) = _vector(11e18); // a dissenting candidate
 
         vm.prank(reporters[0]);
         feed.submitDailyPrices(day, lo1, hi1);
@@ -135,6 +148,7 @@ contract GridTariffTest is Test {
         assertEq(l.unwrap(), 10e18);
     }
 
+    // A day without adopted prices reuses the last adopted day and is flagged stale, so the market keeps running.
     function test_feed_fallbackToLastFinalized() public {
         uint32 day = uint32(DAY0 / 86400) + 1;
         (UD60x18[96] memory lo, UD60x18[96] memory hi) = _vector(10e18);
@@ -143,24 +157,25 @@ contract GridTariffTest is Test {
         vm.prank(reporters[1]);
         feed.submitDailyPrices(day, lo, hi);
 
-        uint256 ts = (uint256(day) + 1) * 86400 + 5 * 900;
+        uint256 ts = (uint256(day) + 1) * 86400 + 5 * 900; // the day after, never reported
         (UD60x18 l,) = feed.getPrices(ts);
         assertEq(l.unwrap(), 10e18);
         assertTrue(feed.isStale(ts));
         assertFalse(feed.isStale(uint256(day) * 86400));
     }
 
+    // Once a revision is in force, a second one replaces it only from the next day.
     function test_schedule_secondRevisionKeepsFirstInForce() public {
         GridTariff.Schedule memory a = _frenchSchedule();
         a.retailPeak = UD60x18.wrap(25e18);
         vm.prank(admin);
-        schedule.setSchedule(a);
+        schedule.setSchedule(a); // in force from DAY0 + 1
 
         vm.warp(DAY0 + 3 * 86400);
         GridTariff.Schedule memory b = _frenchSchedule();
         b.retailPeak = UD60x18.wrap(30e18);
         vm.prank(admin);
-        schedule.setSchedule(b);
+        schedule.setSchedule(b); // in force from DAY0 + 4
 
         (, UD60x18 today_) = schedule.getPrices(DAY0 + 3 * 86400 + 9 * 3600);
         (, UD60x18 tomorrow_) = schedule.getPrices(DAY0 + 4 * 86400 + 9 * 3600);
@@ -168,6 +183,7 @@ contract GridTariffTest is Test {
         assertEq(tomorrow_.unwrap(), 30e18);
     }
 
+    // The fallback searches backwards: prices adopted for a later day are never served early.
     function test_feed_neverFallsBackToAFutureDay() public {
         uint32 today = uint32(DAY0 / 86400);
         (UD60x18[96] memory lo1, UD60x18[96] memory hi1) = _vector(10e18);
@@ -176,15 +192,16 @@ contract GridTariffTest is Test {
             vm.prank(reporters[i]);
             feed.submitDailyPrices(today, lo1, hi1);
             vm.prank(reporters[i]);
-            feed.submitDailyPrices(today + 2, lo2, hi2);
+            feed.submitDailyPrices(today + 2, lo2, hi2); // adopted day after tomorrow
         }
 
-        uint256 ts = (uint256(today) + 1) * 86400 + 5 * 900;
+        uint256 ts = (uint256(today) + 1) * 86400 + 5 * 900; // tomorrow, never reported
         (UD60x18 l,) = feed.getPrices(ts);
         assertEq(l.unwrap(), 10e18);
         assertTrue(feed.isStale(ts));
     }
 
+    // Only registered reporters may vote.
     function test_feed_onlyReporters() public {
         (UD60x18[96] memory lo, UD60x18[96] memory hi) = _vector(10e18);
         vm.prank(mallory);
@@ -192,13 +209,14 @@ contract GridTariffTest is Test {
         feed.submitDailyPrices(uint32(DAY0 / 86400) + 1, lo, hi);
     }
 
+    // A reporter votes once per day, so one reporter cannot reach the quorum alone.
     function test_feed_oneSubmissionPerReporter() public {
         uint32 day = uint32(DAY0 / 86400) + 1;
         (UD60x18[96] memory lo, UD60x18[96] memory hi) = _vector(10e18);
         vm.prank(reporters[0]);
         feed.submitDailyPrices(day, lo, hi);
         vm.prank(reporters[0]);
-        vm.expectRevert(); 
+        vm.expectRevert(); // second vote by the same reporter
         feed.submitDailyPrices(day, lo, hi);
     }
 }
