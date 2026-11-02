@@ -1,3 +1,8 @@
+// Terminal view of a running demo: session aggregates and prices from the chain, balances from the
+// operator database (OPERATOR_DB; balances are not on chain). Modes: days [n] (default), day [d],
+// history [n], watch [s] (refresh loop, used by demo/run.sh). From contracts/:
+//   npx tsx js_scripts/demo/monitor.ts watch 10
+
 import fs from "node:fs";
 import Database from "better-sqlite3";
 import { ethers } from "ethers";
@@ -5,8 +10,8 @@ import { ethers } from "ethers";
 const RPC_URL = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const OPERATOR_DB = process.env.OPERATOR_DB ?? "demo/state/operator-data/operator.db";
 const SESSIONS = 96;
-const PRICE_SCALE = 1e11;
-const PEUR_PER_EUR = 1e12;
+const PRICE_SCALE = 1e11; // as MarketV4.PRICE_SCALE
+const PEUR_PER_EUR = 1e12; // internal unit is 1e-12 EUR
 
 const ABI = [
   "function currentDayId() view returns (uint256)",
@@ -16,11 +21,12 @@ const ABI = [
   "function dayCloses(uint256) view returns (uint8 state,uint256 chunksVerified,uint256 accPaidOut,uint256 accPaidIn,uint256 disputeDeadline,uint256 prosumerCountAt)",
 ];
 
-const C = {
+const C = { // terminal colours
   dim: "\x1b[90m", sell: "\x1b[33m", buy: "\x1b[34m",
   ok: "\x1b[32m", warn: "\x1b[31m", head: "\x1b[36m", off: "\x1b[0m",
 };
 
+// Market address from MARKET_ADDRESS, else from the deployment file.
 function market(): string {
   if (process.env.MARKET_ADDRESS) return process.env.MARKET_ADDRESS;
   const f = process.env.DEPLOYMENT_JSON ?? "demo/state/deployed_demo.json";
@@ -39,13 +45,14 @@ function kwh(wh: number): string {
   return (wh / 1000).toFixed(2);
 }
 
+// Horizontal bar scaled to peak.
 function bar(value: number, peak: number, width: number, colour: string): string {
   if (peak <= 0) return " ".repeat(width);
   const n = Math.min(width, Math.round((value / peak) * width));
   return colour + "█".repeat(n) + C.off + " ".repeat(width - n);
 }
 
-type DayRow = {
+type DayRow = { // one line of the days table
   day: number;
   state: string;
   opened: number;
@@ -62,6 +69,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// slot -> day -> opening balance, from the operator database.
 function balanceHistory(slots: number, fromDay: number, toDay: number): Map<number, Map<number, bigint>> {
   const out = new Map<number, Map<number, bigint>>();
   if (!fs.existsSync(OPERATOR_DB)) return out;
@@ -77,6 +85,7 @@ function balanceHistory(slots: number, fromDay: number, toDay: number): Map<numb
   return out;
 }
 
+// slot -> floor, from the operator database.
 function floors(slots: number): Map<number, bigint> {
   const out = new Map<number, bigint>();
   if (!fs.existsSync(OPERATOR_DB)) return out;
@@ -88,6 +97,7 @@ function floors(slots: number): Map<number, bigint> {
   return out;
 }
 
+// Table of opening balances over the last `span` days, red when below the floor.
 async function history(read: ethers.Contract, slots: number, today: number, span: number): Promise<void> {
   const from = Math.max(0, today - span + 1);
   const hist = balanceHistory(slots, from, today);
@@ -129,19 +139,20 @@ async function history(read: ethers.Contract, slots: number, today: number, span
   console.log(`${C.dim}      EUR at the opening of each day; red = under the floor, so barred from trading${C.off}`);
 }
 
-const STATES = ["Pending", "Closing", "Finalized", "Cancelled"];
+const STATES = ["Pending", "Closing", "Finalized", "Cancelled"]; // MarketV4.DayState
 
+// Totals of one day read from the chain.
 async function readDay(read: ethers.Contract, day: number): Promise<DayRow> {
   const dc = await read.dayCloses(day);
   let sold = 0, bought = 0, opened = 0, rSum = 0, cSum = 0, priced = 0;
 
   for (let t = 0; t < SESSIONS; t++) {
     const s = await read.sessions(day, t);
-    if (!s[6]) continue;
+    if (!s[6]) continue; // session never opened
     opened += 1;
     sold += Number(s[0]);
     bought += Number(s[1]);
-    if (Number(s[0]) > 0 || Number(s[1]) > 0) {
+    if (Number(s[0]) > 0 || Number(s[1]) > 0) { // average prices over active sessions only
       rSum += Number(s[2]) / PRICE_SCALE;
       cSum += Number(s[3]) / PRICE_SCALE;
       priced += 1;
@@ -154,7 +165,7 @@ async function readDay(read: ethers.Contract, day: number): Promise<DayRow> {
     opened,
     sold,
     bought,
-    internal: Math.min(sold, bought),
+    internal: Math.min(sold, bought), // matched locally, never touched the grid
     paidOut: dc[2] as bigint,
     paidIn: dc[3] as bigint,
     avgR: priced ? rSum / priced : 0,
@@ -162,6 +173,7 @@ async function readDay(read: ethers.Contract, day: number): Promise<DayRow> {
   };
 }
 
+// Opening balances and floors of one day, from the operator database.
 function balances(day: number, slots: number): { slot: number; balance: string; floor: string; below: boolean }[] {
   if (!fs.existsSync(OPERATOR_DB)) return [];
   const db = new Database(OPERATOR_DB, { readonly: true });
@@ -178,6 +190,7 @@ function balances(day: number, slots: number): { slot: number; balance: string; 
   return out;
 }
 
+// Two-line profile of a day: supply above, demand below, 96 characters.
 function ribbon(rows: { t: number; s: number; d: number }[]): string {
   const peak = Math.max(1, ...rows.map((r) => Math.max(r.s, r.d)));
   const up = rows.map((r) => (r.s === 0 ? " " : r.s / peak > 0.6 ? "█" : r.s / peak > 0.25 ? "▄" : "▁")).join("");
@@ -190,7 +203,7 @@ async function main(): Promise<void> {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const read = new ethers.Contract(address, ABI, provider);
 
-  const mode = process.argv[2] ?? "days";
+  const mode = process.argv[2] ?? "days"; // days | day | history | watch
   const arg = process.argv[3];
 
   if (mode === "watch") {
@@ -199,13 +212,13 @@ async function main(): Promise<void> {
       const day = Number(await read.currentDayId());
       const t = Number(await read.currentSessionIdx());
       const slots = Number(await read.prosumerCount());
-      process.stdout.write("\x1b[2J\x1b[H");
+      process.stdout.write("\x1b[2J\x1b[H"); // clear the screen
       console.log(`${C.head}day ${day}, quarter-hour ${t}/96${C.off}   ${slots} prosumer(s)   ` +
         `${C.dim}${new Date().toLocaleTimeString()}  refresh every ${every / 1000}s, Ctrl-C to stop${C.off}`);
       console.log("");
       await history(read, slots, day, 6);
       console.log("");
-      for (const d of [day, day - 1]) {
+      for (const d of [day, day - 1]) { // today and the day being closed
         if (d < 0) continue;
         const row = await readDay(read, d);
         const label = d === day ? "today  " : "settles next";
@@ -233,7 +246,7 @@ async function main(): Promise<void> {
   }
 
   if (mode === "day") {
-    const day = arg ? Number(arg) : today - 1;
+    const day = arg ? Number(arg) : today - 1; // default: yesterday
     const rows: { t: number; s: number; d: number }[] = [];
     for (let i = 0; i < SESSIONS; i++) {
       const s = await read.sessions(day, i);

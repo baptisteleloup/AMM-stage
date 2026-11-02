@@ -1,13 +1,18 @@
+// On-chain measurements of a finished demo run (cost table of the paper): gas and calldata per
+// function and per day, proof sizes, proving times from DEMO_LOG, a balance check of every
+// receipt against the settled balances, and the dust. Writes MEASURE_OUT. From contracts/:
+//   MEASURE_OUT=demo/measure_chain_<rule>.json npx tsx js_scripts/demo/measure_chain.ts
+
 import fs from "node:fs";
 import path from "node:path";
 import { ethers } from "ethers";
 
 const DEPLOY_FILE = process.env.DEPLOY_OUT ?? "demo/state/deployed_demo.json";
-const RECEIPTS_DIR = process.env.RECEIPTS_DIR ?? "demo/state/operator-data/receipts";
-const LOG_FILE = process.env.DEMO_LOG ?? "demo/state/demo.log";
+const RECEIPTS_DIR = process.env.RECEIPTS_DIR ?? "demo/state/operator-data/receipts"; // per-session receipts written by the operator
+const LOG_FILE = process.env.DEMO_LOG ?? "demo/state/demo.log"; // holds the "proof took Xs" lines
 const OUT_FILE = process.env.MEASURE_OUT ?? "demo/measure_chain.json";
 
-const MARKET_ABI = [
+const MARKET_ABI = [ // every MarketV4 call, to decode transactions by name
   "function register(bytes encryptionKey)",
   "function proposeFloor(uint256 slot,bytes32 floorCommit)",
   "function confirmFloor(uint256 slot,bytes32 floorCommit)",
@@ -30,17 +35,18 @@ const MARKET_ABI = [
   "function dustPot() view returns (uint256)",
   "event DustAccrued(uint256 indexed dayId, uint256 amount)",
 ];
-const TARIFF_ABI = [
+const TARIFF_ABI = [ // GridTariff writes
   "function submitDailyPrices(uint32 day,uint256[96] low,uint256[96] high)",
   "function setSchedule((uint256 feedIn,uint256 retailOffPeak,uint256 retailPeak,uint32[] winStart,uint32[] winEnd) s)",
 ];
 
-type FnStat = { count: number; gasMin: bigint; gasMax: bigint; gasSum: bigint; bytesSum: number };
-type DayStat = {
+type FnStat = { count: number; gasMin: bigint; gasMax: bigint; gasSum: bigint; bytesSum: number }; // per function
+type DayStat = { // per market day
   openSession: number; openGas: bigint; postHashes: bigint; chunks: number; chunkGas: bigint;
   proofBytes: number[]; finalize: bigint; finalized: boolean; cancelled: boolean;
 };
 
+// Adds one transaction to the per-function statistics.
 function stat(m: Map<string, FnStat>, name: string, gas: bigint, bytes: number): void {
   const s = m.get(name) ?? { count: 0, gasMin: gas, gasMax: gas, gasSum: 0n, bytesSum: 0 };
   s.count += 1;
@@ -51,6 +57,7 @@ function stat(m: Map<string, FnStat>, name: string, gas: bigint, bytes: number):
   m.set(name, s);
 }
 
+// Statistics of one day, created on first use.
 function day(m: Map<number, DayStat>, id: number): DayStat {
   let d = m.get(id);
   if (!d) {
@@ -66,7 +73,7 @@ function readJson(p: string): any {
 
 async function main(): Promise<void> {
   const dep = readJson(DEPLOY_FILE);
-  const rpc = process.env.RPC_URL ?? dep.rpcUrl ?? "http://127.0.0.1:8545";
+  const rpc = process.env.RPC_URL ?? dep.rpcUrl ?? "http://127.0.0.1:8545"; // chain of the deployment by default
   const marketAddr: string = (dep.market ?? dep.contracts?.market).toLowerCase();
   const tariffAddr: string | undefined = dep.contracts?.tariff?.toLowerCase();
   const provider = new ethers.JsonRpcProvider(rpc);
@@ -77,19 +84,19 @@ async function main(): Promise<void> {
   const latest = await provider.getBlockNumber();
   const fns = new Map<string, FnStat>();
   const days = new Map<number, DayStat>();
-  const paidWithdrawal = new Map<string, bigint>();
+  const paidWithdrawal = new Map<string, bigint>(); // "day:slot" -> withdrawal paid, from submitChunk
   let firstTs = 0, lastTs = 0, txCount = 0, blocksWithTx = 0;
 
-  for (let b = 0; b <= latest; b++) {
+  for (let b = 0; b <= latest; b++) { // scan the whole chain
     const block = await provider.getBlock(b, true);
     if (!block) continue;
     let touched = false;
     for (const tx of block.prefetchedTransactions) {
       const to = tx.to?.toLowerCase();
-      if (to !== marketAddr && to !== tariffAddr) continue;
+      if (to !== marketAddr && to !== tariffAddr) continue; // only calls to the market and the tariff
       const rc = await provider.getTransactionReceipt(tx.hash);
       if (!rc) continue;
-      const bytes = (tx.data.length - 2) / 2;
+      const bytes = (tx.data.length - 2) / 2; // calldata size
       const iface = to === marketAddr ? marketIf : tariffIf;
       let name = "unknown";
       let parsed: ethers.TransactionDescription | null = null;
@@ -102,7 +109,7 @@ async function main(): Promise<void> {
       txCount += 1;
       if (!firstTs) firstTs = block.timestamp;
       lastTs = block.timestamp;
-      if (!parsed || to !== marketAddr) continue;
+      if (!parsed || to !== marketAddr) continue; // per-day figures for market calls only
       const a = parsed.args;
       if (name === "openSession") {
         const d = day(days, Number(a.dayId));
@@ -115,11 +122,11 @@ async function main(): Promise<void> {
         d.proofBytes.push((a.proof.length - 2) / 2);
         const k = Number(a.k);
         const paid: bigint[] = a.sub.withdrawalsPaid.map((x: bigint) => BigInt(x));
-        paid.forEach((w, lane) => paidWithdrawal.set(`${Number(a.dayId)}:${k * 8 + lane + 1}`, w));
+        paid.forEach((w, lane) => paidWithdrawal.set(`${Number(a.dayId)}:${k * 8 + lane + 1}`, w)); // lane -> slot
       } else if (name === "finalizeDay") {
         const d = day(days, Number(a.dayId));
         d.finalize += rc.gasUsed;
-        if (rc.status === 1) d.finalized = true;
+        if (rc.status === 1) d.finalized = true; // a reverted attempt still costs gas
       } else if (name === "cancelDay") {
         if (rc.status === 1) day(days, Number(a.dayId)).cancelled = true;
       }
@@ -129,12 +136,14 @@ async function main(): Promise<void> {
 
   const proofTimes: number[] = [];
   if (fs.existsSync(LOG_FILE)) {
-    for (const m of fs.readFileSync(LOG_FILE, "utf-8").matchAll(/proof took ([0-9.]+)s/g)) proofTimes.push(Number(m[1]));
+    for (const m of fs.readFileSync(LOG_FILE, "utf-8").matchAll(/proof took ([0-9.]+)s/g)) proofTimes.push(Number(m[1])); // logged by the operator
   }
 
+  // Fidelity: for each settled day, the previous balance plus the receipts at the on-chain prices,
+  // plus the deposit minus the withdrawal, must equal the balance in the day-close packet.
   const fidelity: { day: number; slot: number; expected: string; actual: string; ok: boolean }[] = [];
   const priceCache = new Map<number, { r: bigint; c: bigint }[]>();
-  async function pricesOf(d: number): Promise<{ r: bigint; c: bigint }[]> {
+  async function pricesOf(d: number): Promise<{ r: bigint; c: bigint }[]> { // stored (r, c) of a day, cached
     let p = priceCache.get(d);
     if (!p) {
       p = [];
@@ -155,9 +164,9 @@ async function main(): Promise<void> {
         const dir = path.join(base, `day-${d}`);
         const closeFile = path.join(dir, "day-close.json");
         const prevFile = path.join(base, `day-${d - 1}`, "day-close.json");
-        if (!fs.existsSync(closeFile) || !fs.existsSync(prevFile)) continue;
+        if (!fs.existsSync(closeFile) || !fs.existsSync(prevFile)) continue; // needs both ends of the day
         const dc = await market.dayCloses(d);
-        if (Number(dc.state) !== 2) continue;
+        if (Number(dc.state) !== 2) continue; // Finalized only
         const prev = BigInt(readJson(prevFile).newBalance);
         const actual = BigInt(readJson(closeFile).newBalance);
         const prices = await pricesOf(d);
@@ -166,7 +175,7 @@ async function main(): Promise<void> {
           const rf = path.join(dir, `t-${t}.json`);
           if (!fs.existsSync(rf)) continue;
           const r = readJson(rf);
-          amount += BigInt(r.sell) * prices[t].r - BigInt(r.buy) * prices[t].c;
+          amount += BigInt(r.sell) * prices[t].r - BigInt(r.buy) * prices[t].c; // pEUR, same arithmetic as the circuit
         }
         const depo = BigInt(await market.snapDeposit(d, slot));
         const paid = paidWithdrawal.get(`${d}:${slot}`) ?? 0n;
@@ -176,7 +185,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const dustEvents = await market.queryFilter(market.filters.DustAccrued(), 0, latest);
+  const dustEvents = await market.queryFilter(market.filters.DustAccrued(), 0, latest); // rounding residual per settled day
   const dust = dustEvents.map((e: any) => ({ day: Number(e.args.dayId), amount: e.args.amount.toString() }));
 
   const perFn = Object.fromEntries([...fns.entries()].map(([k, v]) => [k, {

@@ -1,3 +1,7 @@
+// FFI helper of test/MarketV4.ffi.t.sol for the day_chunk circuit, on the fixed scenario of scenario.ts.
+// "constants": prints the padding and floor commitments. "0" or "1": proves that day and prints
+// abi.encode(proof, position commitments, new commitments, paidOut, paidIn) on stdout for vm.ffi.
+// Called from contracts/ as: npx tsx js_scripts/generateProof_daychunk.ts <constants|0|1> [r10 c10 r50 c50]
 
 import { readFileSync } from "fs";
 import { AbiCoder } from "ethers";
@@ -10,8 +14,8 @@ import {
 
 const log = (...a: unknown[]) => console.error("[daychunk]", ...a);
 
-const ffiOut = process.stdout.write.bind(process.stdout);
-process.stdout.write = process.stderr.write.bind(process.stderr) as never;
+const ffiOut = process.stdout.write.bind(process.stdout); // the only write vm.ffi reads
+process.stdout.write = process.stderr.write.bind(process.stderr) as never; // library logs go to stderr
 
 async function main() {
   const mode = process.argv[2];
@@ -19,9 +23,9 @@ async function main() {
 
   if (mode === "constants") {
     const zeros = Array(SESSIONS).fill(0n) as bigint[];
-    const empty = await hashNetputs(0n, 0n, zeros, zeros);
-    const zeroCommit = await commitBalance(0n, 0n);
-    const floorC1 = await commitBalance(FLOOR, floorBlind(1));
+    const empty = await hashNetputs(0n, 0n, zeros, zeros); // EMPTY_NETPUT_HASH
+    const zeroCommit = await commitBalance(0n, 0n); // ZERO_BAL_COMMIT
+    const floorC1 = await commitBalance(FLOOR, floorBlind(1)); // floors of alice and bob
     const floorC2 = await commitBalance(FLOOR, floorBlind(2));
     ffiOut(
       abi.encode(
@@ -37,7 +41,7 @@ async function main() {
 
   const prices = emptyPrices();
   if (day === 1) {
-    const [r10, c10, r50, c50] = process.argv.slice(3, 7).map(BigInt);
+    const [r10, c10, r50, c50] = process.argv.slice(3, 7).map(BigInt); // on-chain rates of sessions T1 and T2
     prices.r[T1] = r10;
     prices.c[T1] = c10;
     prices.r[T2] = r50;
@@ -46,8 +50,8 @@ async function main() {
 
   const st = await dayState(day, prices);
 
-  const F = (x: bigint) => x.toString();
-  const inputs = {
+  const F = (x: bigint) => x.toString(); // noir_js takes decimal strings
+  const inputs = { // names and order of the circuit's main()
     price_r: prices.r.map(F),
     price_c: prices.c.map(F),
     slots: st.slots.map(F),
@@ -57,7 +61,7 @@ async function main() {
     deposits: st.deposits.map(F),
     withdrawals: st.withdrawals.map(F),
     withdrawals_paid: st.withdrawalsPaid.map(F),
-    floor_commits: st.floorCommits.map(F), 
+    floor_commits: st.floorCommits.map(F),
     partial_s: st.partialS.map(F),
     partial_d: st.partialD.map(F),
     partial_paid_out: F(st.partialPaidOut),
@@ -67,9 +71,9 @@ async function main() {
     old_bals: st.oldBals.map(F),
     old_blinds: st.oldBlinds.map(F),
     new_blinds: st.newBlinds.map(F),
-    floors: st.floors.map(F),          
+    floors: st.floors.map(F),
     floor_blinds: st.floorBlinds.map(F),
-    netput_blinds: st.netputBlinds.map(F), 
+    netput_blinds: st.netputBlinds.map(F),
   };
 
   const circuit = JSON.parse(
@@ -77,20 +81,18 @@ async function main() {
   );
   const noir = new Noir(circuit);
   log(`day ${day}: executing circuit...`);
-  const { witness } = await noir.execute(inputs);
-
+  const { witness } = await noir.execute(inputs); // fails here if a constraint does not hold
 
   const api = await Barretenberg.new({ threads: 1 });
   const backend = new UltraHonkBackend(circuit.bytecode, api);
   log(`day ${day}: proving (takes a few seconds)...`);
   const { proof, publicInputs } = await backend.generateProof(witness, {
-    verifierTarget: "evm",
+    verifierTarget: "evm", // format of DayChunkVerifier.sol
   });
-  await api.destroy(); 
+  await api.destroy();
   log(`day ${day}: proof ${proof.length} bytes, ${publicInputs.length} public inputs`);
 
-
-  const expected = SESSIONS * 4 + BATCH * 8 + 2;
+  const expected = SESSIONS * 4 + BATCH * 8 + 2; // 450, as in MarketV4._buildPublicInputs
   if (publicInputs.length !== expected) {
     throw new Error(
       `public input count ${publicInputs.length} != contract's ${expected} -- circuit and _buildPublicInputs are OUT OF SYNC`,
@@ -102,8 +104,8 @@ async function main() {
       ["bytes", "bytes32[]", "bytes32[]", "uint256", "uint256"],
       [
         proof,
-        st.netputHashes.slice(0, N_PROSUMERS).map(toHex32),
-        st.newCommits.map(toHex32),
+        st.netputHashes.slice(0, N_PROSUMERS).map(toHex32), // posted at midnight, one per member
+        st.newCommits.map(toHex32), // all 8 lanes, as submitChunk expects
         st.partialPaidOut,
         st.partialPaidIn,
       ],

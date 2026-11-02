@@ -1,29 +1,31 @@
+// Demo orchestrator, launched by demo/run.sh: starts anvil (or uses Besu with CHAIN=besu), deploys
+// the community, posts prices and floors, starts the operator daemon and one client per CLIENT_SLOTS,
+// then drives the clock session by session and waits for each day to be proven. State goes to
+// demo/state/. From contracts/: npx tsx js_scripts/demo/demo_ui.ts (normally through demo/run.sh)
+
 import fs from "node:fs";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { ethers } from "ethers";
 
 const RPC_URL = process.env.RPC_URL ?? "http://127.0.0.1:8545";
-// CHAIN=besu runs the demo on the Besu network in Network/, in real time:
-// no anvil, no time travel. The current day is the empty start-up day and
-// trading starts at the next UTC midnight.
-const CHAIN = process.env.CHAIN ?? "anvil";
-const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const CHAIN = process.env.CHAIN ?? "anvil"; // "besu": the network in network/, real time, no time travel
+const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // public anvil test key, also funded in the Besu genesis
 const N_PROSUMERS = Number(process.env.N_PROSUMERS ?? 8);
 const FLOOR_EUR = process.env.FLOOR_EUR ?? "31";
 const TARIFF_MODE = process.env.TARIFF_MODE ?? "schedule";
 const PRICES_JSON = process.env.PRICES_JSON ?? "demo/data/prices.json";
 const PRICE_HORIZON_DAYS = process.env.PRICE_HORIZON_DAYS ?? "40";
-const TICK_MS = process.env.TICK_MS ?? "200";
-const BLOCK_TIME = process.env.BLOCK_TIME ?? "1";
-const SESSION_PACE_MS = Number(process.env.SESSION_PACE_MS ?? 4000);
-const SESSION_TIMEOUT_MS = Number(process.env.SESSION_TIMEOUT_MS ?? 30000);
-const CLIENT_SLOTS = (process.env.CLIENT_SLOTS ?? "1").split(",").map((s) => Number(s.trim()));
+const TICK_MS = process.env.TICK_MS ?? "200"; // operator loop period
+const BLOCK_TIME = process.env.BLOCK_TIME ?? "1"; // anvil block time, s
+const SESSION_PACE_MS = Number(process.env.SESSION_PACE_MS ?? 4000); // wall time per quarter-hour of market time
+const SESSION_TIMEOUT_MS = Number(process.env.SESSION_TIMEOUT_MS ?? 30000); // wait for the operator to open a session
+const CLIENT_SLOTS = (process.env.CLIENT_SLOTS ?? "1").split(",").map((s) => Number(s.trim())); // members that get a browser client
 const CLIENT_POLL_MS = process.env.CLIENT_POLL_MS ?? "5000";
-const BASE_PORT = Number(process.env.CLIENT_UI_PORT ?? 8787);
+const BASE_PORT = Number(process.env.CLIENT_UI_PORT ?? 8787); // first client port, the next ones follow
 const OPEN_BROWSER = process.env.OPEN_BROWSER !== "0";
 const SESSIONS = 96;
 const SESSION_SECONDS = 900;
-const SESSION_ANCHOR = 60;
+const SESSION_ANCHOR = 60; // land 60 s into each session, never on its boundary
 
 const ABI = [
   "function sessions(uint256,uint256) view returns (uint32 s,uint32 d,uint32 priceR,uint32 priceC,uint32 lambdaLo,uint32 lambdaHi,bool opened)",
@@ -31,7 +33,7 @@ const ABI = [
   "function chunkCountFor(uint256) view returns (uint256)",
 ];
 
-const children: ChildProcess[] = [];
+const children: ChildProcess[] = []; // daemon and clients, killed on exit
 let anvil: ChildProcess | null = null;
 
 function log(msg: string): void {
@@ -46,6 +48,7 @@ function fail(msg: string): void {
   console.log(`\x1b[31m[demo-ui]\x1b[0m ${msg}`);
 }
 
+// Stops every child process and anvil.
 function cleanup(): void {
   for (const c of children) {
     try { c.kill("SIGTERM"); } catch { /* already gone */ }
@@ -62,6 +65,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// Polls predicate until true or timeout; false on timeout.
 async function waitFor(
   label: string,
   predicate: () => Promise<boolean>,
@@ -79,6 +83,7 @@ async function waitFor(
   }
 }
 
+// Runs a command to completion, prints its output and throws if it fails.
 function run(cmd: string, args: string[], env: Record<string, string>): void {
   const r = spawnSync(cmd, args, {
     stdio: ["ignore", "pipe", "pipe"],
@@ -91,6 +96,7 @@ function run(cmd: string, args: string[], env: Record<string, string>): void {
   }
 }
 
+// Forwards the lines of a child process that pass `keep`, tagged and coloured.
 function pipe(child: ChildProcess, tag: string, colour: string, keep: (line: string) => boolean): void {
   const show = (buf: Buffer) => {
     for (const line of buf.toString().split("\n")) {
@@ -102,6 +108,7 @@ function pipe(child: ChildProcess, tag: string, colour: string, keep: (line: str
   child.stderr?.on("data", show);
 }
 
+// Starts anvil, or with CHAIN=besu checks that a Besu node answers.
 async function startAnvil(): Promise<void> {
   if (CHAIN === "besu") {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -122,6 +129,7 @@ async function startAnvil(): Promise<void> {
   ok("anvil up on 8545");
 }
 
+// Deletes the previous run's operator data, client data and deployment files.
 function resetState(): void {
   const wipe = [
     process.env.DATA_DIR ?? "demo/state/operator-data",
@@ -141,6 +149,7 @@ type Deployment = {
   prosumers: Record<number, { privateKey: string; address?: string }>;
 };
 
+// Deploys the contracts, posts prices in feed mode and sets the floors, each in a child script.
 function deploy(): Deployment {
   log(`deploying (${N_PROSUMERS} prosumers)`);
   run("npx", ["tsx", "js_scripts/demo/deploy_demo.ts"], {
@@ -154,12 +163,12 @@ function deploy(): Deployment {
     roles: Record<string, { privateKey: string }>;
     prosumers: Record<string, { privateKey: string; address?: string; slot: number }>;
   };
-  const market = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4 ?? "";
+  const market = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4 ?? ""; // accepts the layouts the file has had
   if (!market) throw new Error("market address missing from deployed_demo.json");
 
   const prosumers: Deployment["prosumers"] = {};
   for (const p of Object.values(dep.prosumers)) {
-    prosumers[p.slot] = { privateKey: p.privateKey, address: p.address };
+    prosumers[p.slot] = { privateKey: p.privateKey, address: p.address }; // indexed by slot
   }
   ok(`market ${market}`);
 
@@ -179,6 +188,7 @@ function deploy(): Deployment {
   return { market, operatorKey: dep.roles.operator.privateKey, prosumers };
 }
 
+// Starts the operator daemon, configured only through its environment.
 function startDaemon(market: string, operatorKey: string): void {
   log("starting operator daemon");
   const child = spawn("npx", ["tsx", "js_scripts/operator/main.ts"], {
@@ -195,13 +205,13 @@ function startDaemon(market: string, operatorKey: string): void {
   });
   children.push(child);
   pipe(child, "operator", "\x1b[90m", (l) =>
-    // Keep the continuation lines too: a failure now spans several lines and the
-    // useful detail is on the ones after the first.
+    // Continuation lines are kept: an error's detail is on the lines after the first.
     l.includes("[close]") || l.includes("[main]") || l.includes("[reveals]")
     || l.includes("Generated proof") || l.includes("reverted") || l.includes("Error")
     || l.startsWith("      "));
 }
 
+// Starts the client server of one member, with its own data folder and port.
 function startClient(slot: number, market: string, key: string, port: number): void {
   const child = spawn("npx", ["tsx", "js_scripts/client/server.ts"], {
     env: {
@@ -213,7 +223,7 @@ function startClient(slot: number, market: string, key: string, port: number): v
       RECEIPTS_DIR: process.env.RECEIPTS_DIR ?? "demo/state/operator-data/receipts",
       CLIENT_UI_PORT: String(port),
       CLIENT_POLL_MS,
-      KEEPER: "1",
+      KEEPER: "1", // the client also calls finalizeDay when a day is ready
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -231,6 +241,7 @@ async function main(): Promise<void> {
 
   const nowTs = async (): Promise<number> => (await provider.getBlock("latest"))!.timestamp;
 
+  // Moves the chain clock to `target` (anvil), or waits until it gets there (Besu).
   const advanceTo = async (target: number): Promise<void> => {
     if (CHAIN === "besu") {
       // Real time: wait for the chain to reach the target instead of jumping to it.
@@ -247,33 +258,31 @@ async function main(): Promise<void> {
     }
     const now = await nowTs();
     const delta = target - now;
-    if (delta > 0) await provider.send("evm_increaseTime", [delta]);
-    await provider.send("evm_mine", []);
+    if (delta > 0) await provider.send("evm_increaseTime", [delta]); // anvil time travel
+    await provider.send("evm_mine", []); // a block at the new time
   };
 
+  // Day and session index of the latest block.
   const clock = async (): Promise<{ day: number; t: number }> => {
     const ts = await nowTs();
     return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / SESSION_SECONDS) };
   };
 
-  // On anvil, jump to the start of the next day. On Besu, time cannot be moved:
-  // the current day becomes the empty start-up day (the operator only trades once
-  // a previous day has been closed and proven), and trading starts at the next
-  // UTC midnight.
+  // Anvil: jump to the next day. Besu: the current day is the empty start-up day, trading starts at midnight.
   if (CHAIN !== "besu") {
     const c = await clock();
     await advanceTo((c.day + 1) * 86400 + SESSION_ANCHOR);
   }
 
   startDaemon(dep.market, dep.operatorKey);
-  await sleep(3000);
+  await sleep(3000); // let the daemon start
 
   const ports: number[] = [];
   for (let i = 0; i < CLIENT_SLOTS.length; i++) {
     const slot = CLIENT_SLOTS[i];
     const entry = dep.prosumers[slot];
     if (!entry) { fail(`no prosumer at slot ${slot}, skipping`); continue; }
-    const port = BASE_PORT + i;
+    const port = BASE_PORT + i; // one port per client
     ports.push(port);
     startClient(slot, dep.market, entry.privateKey, port);
     ok(`client for slot ${slot} at http://127.0.0.1:${port}`);
@@ -300,7 +309,7 @@ async function main(): Promise<void> {
 
     for (let t = 0; t < SESSIONS; t++) {
       let paused = false;
-      while (fs.existsSync("PAUSE")) {
+      while (fs.existsSync("PAUSE")) { // `touch PAUSE` in contracts/ freezes the clock
         if (!paused) {
           log("PAUSE file found — the clock is frozen. Delete it to resume.");
           paused = true;
@@ -309,20 +318,20 @@ async function main(): Promise<void> {
       }
       if (paused) ok("resumed");
 
-      await advanceTo(day * 86400 + t * SESSION_SECONDS + SESSION_ANCHOR);
+      await advanceTo(day * 86400 + t * SESSION_SECONDS + SESSION_ANCHOR); // into session t
       const got = await waitFor(
         `day ${day} session ${t}`,
-        async () => (await read.sessions(day, t))[6] as boolean,
+        async () => (await read.sessions(day, t))[6] as boolean, // Session.opened
         SESSION_TIMEOUT_MS,
       );
       if (got) opened++;
-      await sleep(SESSION_PACE_MS);
+      await sleep(SESSION_PACE_MS); // leaves time to watch the client
     }
 
     if (opened === SESSIONS) ok(`day ${day}: ${opened}/${SESSIONS} sessions opened`);
     else fail(`day ${day}: ${opened}/${SESSIONS} sessions opened`);
 
-    await advanceTo((day + 1) * 86400 + SESSION_ANCHOR);
+    await advanceTo((day + 1) * 86400 + SESSION_ANCHOR); // past midnight: the operator freezes and proves the day
     log(`day ${day} is closing, the operator is proving it`);
 
     const proven = await waitFor(
@@ -330,9 +339,9 @@ async function main(): Promise<void> {
       async () => {
         const dc = await read.dayCloses(day);
         const expected = await read.chunkCountFor(day);
-        return Number(dc[0]) >= 1 && expected > 0n && dc[1] === expected;
+        return Number(dc[0]) >= 1 && expected > 0n && dc[1] === expected; // every batch verified
       },
-      600000,
+      600000, // proving may take minutes
       1000,
     );
     if (proven) ok(`day ${day}: proof verified on chain, a client keeper will settle it`);

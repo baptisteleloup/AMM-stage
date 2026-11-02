@@ -1,12 +1,17 @@
+// End-to-end recourse check on a live chain: on a day in Closing, member SLOT requests its data,
+// settlement is blocked, the operator answers, the member escalates to stage 2, and settlement is
+// blocked again. Reads DEPLOY_OUT. Exits 1 if a property fails. From contracts/, during a run:
+//   SLOT=1 npx tsx js_scripts/demo/e2e_recourse.ts
+
 import fs from "node:fs";
 import { ethers } from "ethers";
 
 const RPC_URL = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const DEPLOY_FILE = process.env.DEPLOY_OUT ?? "demo/state/deployed_demo.json";
-const DAY = process.env.DAY ? Number(process.env.DAY) : 0;
+const DAY = process.env.DAY ? Number(process.env.DAY) : 0; // 0 = yesterday on the chain clock
 const SLOT = Number(process.env.SLOT ?? 1);
 
-const ABI = [
+const ABI = [ // the MarketV4 functions used here
   "function slotOf(address) view returns (uint256)",
   "function ownerOf(uint256) view returns (address)",
   "function dayCloses(uint256) view returns (uint8 state,uint256 chunksVerified,uint256 accPaidOut,uint256 accPaidIn,uint256 disputeDeadline,uint256 prosumerCountAt)",
@@ -21,12 +26,14 @@ const ABI = [
   "function currentDayId() view returns (uint256)",
 ];
 
-const STATE = ["Pending", "Closing", "Finalized", "Cancelled"];
+const STATE = ["Pending", "Closing", "Finalized", "Cancelled"]; // MarketV4.DayState
 
+// Prints a step banner.
 function step(n: number, title: string): void {
   console.log(`\n${"=".repeat(64)}\nSTEP ${n}  ${title}\n${"=".repeat(64)}`);
 }
 
+// True if the call reverts, as it should; prints the revert reason.
 async function expectRevert(label: string, fn: () => Promise<unknown>): Promise<boolean> {
   try {
     await fn();
@@ -47,7 +54,7 @@ async function main(): Promise<void> {
     roles: Record<string, { address: string; privateKey: string }>;
     prosumers: Record<string, { address: string; privateKey: string; slot: number }>;
   };
-  const marketAddr = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4;
+  const marketAddr = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4; // accepts the layouts the file has had
   if (!marketAddr) throw new Error("market address not found in the deploy file");
 
   const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -61,7 +68,7 @@ async function main(): Promise<void> {
   const asProsumer = new ethers.Contract(marketAddr, ABI, prosumer);
   const read = new ethers.Contract(marketAddr, ABI, provider);
 
-  const day = DAY || Number(await read.currentDayId()) - 1;
+  const day = DAY || Number(await read.currentDayId()) - 1; // yesterday is the day being closed
 
   console.log(`market   ${marketAddr}`);
   console.log(`day      ${day}`);
@@ -69,7 +76,7 @@ async function main(): Promise<void> {
 
   const dc0 = await read.dayCloses(day);
   console.log(`state    ${STATE[Number(dc0[0])]}  batches ${dc0[1]}/${await read.chunkCountFor(day)}`);
-  if (Number(dc0[0]) !== 1) {
+  if (Number(dc0[0]) !== 1) { // requests are only allowed while Closing
     throw new Error(`day ${day} is ${STATE[Number(dc0[0])]}, this demonstration needs a day in Closing`);
   }
 
@@ -90,7 +97,7 @@ async function main(): Promise<void> {
   console.log("  -> a single unanswered request stops the whole day from settling");
 
   step(3, "The operator answers by publishing encrypted data");
-  const blob = "0x" + Buffer.from(JSON.stringify({ day, slot: SLOT, note: "demonstration payload" })).toString("hex");
+  const blob = "0x" + Buffer.from(JSON.stringify({ day, slot: SLOT, note: "demonstration payload" })).toString("hex"); // content is not checked on-chain
   await (await asOperator.postEncryptedData(day, SLOT, blob)).wait();
   const r2 = await read.reveals(day, SLOT);
   const open2 = await read.openRevealCount(day);
