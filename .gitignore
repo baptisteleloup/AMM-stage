@@ -1,25 +1,21 @@
- # ---- Foundry ----
+# Foundry build outputs
 out/
 cache/
 broadcast/
 foundry.lock
 
-# ---- Noir / circuits ----
-# artefacts de compilation (nargo compile) : le JSON, la VK, le witness
+# Noir circuits: compiled artefacts, witnesses and proofs
+# (the generated src/*Verifier.sol files are committed, the contracts import them)
 **/target/
-# witnesses & proofs générés localement
 *.gz
 **/proofs/
 witness.tr
-# NB : on garde Nargo.toml (source) et src/*Verifier.sol (générés MAIS
-#      importés par les contrats, donc requis au build)
 
-# ---- Node / TypeScript (js_scripts) ----
+# Node / TypeScript
 node_modules/
 *.tsbuildinfo
-# NB : package.json, package-lock.json et tsconfig.json sont VERSIONNÉS
 
-# ---- Python ----
+# Python
 __pycache__/
 *.py[cod]
 .venv/
@@ -27,35 +23,33 @@ venv/
 .python-version
 *.egg-info/
 
-# ---- generated files / local ----
+# Local deployment files and secrets
 deployed_besu.json
 deployed.json
 netputs_nice.json
+.env*
 
-# ---- OS / éditeur ----
+# OS and editor files
 .DS_Store
 *.swp
 .vscode/
 .idea/
 
-# --- Deployment ---
-.env*
-
-# demo runtime state and bulky caches
+# Demo runtime state and raw downloads
 contracts/demo/state/
 contracts/demo/data/raw/
-contracts/__pycache__/
-# econ results are committed (overrides the Foundry out/ rule above)
+
+# Experiment results are committed (overrides the out/ rule above)
 !contracts/demo/econ/out/
 !contracts/demo/econ/extensions/out/
 
-# Besu network: chain data and raw block watches (too big for GitHub)
+# Besu network: chain data and raw block logs (too large for GitHub)
 network/nodes/*/data/*
 !network/nodes/*/data/key
 network/besu_results/watch.jsonl
 network/besu_results/skew_watch.jsonl
 
-# archives and local copies
+# Local archives and working notes
 contracts/demo.zip
 contracts/js_scripts/client.zip
 __MACOSX/
