@@ -5,7 +5,7 @@ broadcast/
 foundry.lock
 
 # ---- Noir / circuits ----
-# artefacts de compilation (nargo compile) — le JSON, la VK, le witness
+# artefacts de compilation (nargo compile) : le JSON, la VK, le witness
 **/target/
 # witnesses & proofs générés localement
 *.gz

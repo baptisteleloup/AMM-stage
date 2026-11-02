@@ -86,7 +86,8 @@ export class Chain {
 
   async clock(): Promise<{ day: number; t: number }> {
     const ts = await this.now();
-    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) }; // same as currentDayId / currentSessionIdx
+    // same as currentDayId / currentSessionIdx
+    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) };
   }
 
   async session(day: number, t: number): Promise<SessionView> {

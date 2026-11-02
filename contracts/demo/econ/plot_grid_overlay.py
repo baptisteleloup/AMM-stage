@@ -33,7 +33,8 @@ nash = mean_net(json.loads((OUT / f"nash_{args.rule}.json").read_text()))
 planner = mean_net(json.loads((OUT / "planner.json").read_text()))
 edges = np.arange(97) / 4  # quarter-hour edges, so each step covers its session
 
-plt.rcParams.update({"font.size": 8, "axes.labelsize": 8, "xtick.labelsize": 7, "ytick.labelsize": 7})  # small fonts for a half-page figure
+# small fonts for a half-page figure
+plt.rcParams.update({"font.size": 8, "axes.labelsize": 8, "xtick.labelsize": 7, "ytick.labelsize": 7})
 fig, ax = plt.subplots(figsize=(7.0, 3.0))
 for y, color, label in ((nash, "tab:red", f"Nash equilibrium, {LABEL[args.rule]}"),
                         (planner, "tab:blue", "social planner")):

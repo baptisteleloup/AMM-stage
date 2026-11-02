@@ -16,7 +16,8 @@ import numpy as np
 import pandas as pd
 
 SESSIONS = 96  # fifteen-minute sessions per day
-BASE_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"  # one parquet per building, baseline (upgrade 0)
+# one parquet per building, baseline (upgrade 0)
+BASE_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"
             "end-use-load-profiles-for-us-building-stock/2024/"
             "resstock_amy2018_release_2/timeseries_individual_buildings/"
             "by_state/upgrade=0/state={state}/{bid}-0.parquet")
@@ -106,7 +107,8 @@ def detect_cycles(df, cyc_cols, name, to_kw):
         c["min_lag_steps"] = 0
 
     used = set()
-    for dryer in (c for c in cycles if c["appliance"] == "clothes_dryer"):  # pair each dryer with the latest unpaired washer of its day
+    # pair each dryer with the latest unpaired washer of its day
+    for dryer in (c for c in cycles if c["appliance"] == "clothes_dryer"):
         washers = [w for w in cycles
                    if w["appliance"] == "clothes_washer"
                    and w["id"] not in used
@@ -162,7 +164,8 @@ def build_agent(df, name):
     flex_kwh = df[flex_cols].sum(axis=1) if flex_cols else zero
     cyc_kwh = df[cyc_cols].sum(axis=1) if cyc_cols else zero
     base_kwh = df[base_cols].sum(axis=1) if base_cols else zero
-    flex_cap_kw = float(sum(df[c].max() for c in flex_cols)) * to_kw if flex_cols else 0.0  # max flexible power: sum of each end use's peak
+    # max flexible power: sum of each end use's peak
+    flex_cap_kw = float(sum(df[c].max() for c in flex_cols)) * to_kw if flex_cols else 0.0
     cycles = detect_cycles(df, cyc_cols, name, to_kw)
     pv_sign = "negative" if float(pv_kwh.sum()) < 0 else "positive"  # ResStock may report PV as negative consumption
     omega_kw = pv_kwh.abs() * to_kw  # PV output, kW, positive
@@ -209,7 +212,8 @@ def main():
     args = ap.parse_args()
 
     day_from, day_to = args.days.split(":")
-    day_to_end = pd.Timestamp(day_to) + pd.Timedelta(days=1) - pd.Timedelta(minutes=15)  # last quarter hour of the last day
+    # last quarter hour of the last day
+    day_to_end = pd.Timestamp(day_to) + pd.Timedelta(days=1) - pd.Timedelta(minutes=15)
 
     if args.local:
         paths = sorted(os.path.join(args.local, f)
@@ -320,7 +324,7 @@ def main():
             "be moved freely within the day",
             "cycle_kw = observed consumption of the cycles, kept so that the net "
             "position as recorded is still omega - alpha_base - flex - cycle",
-            "flexible load aggregated to one energy figure per day, as the solver expects",
+            "flexible load aggregated to one energy figure per day",
         ],
         "selection": {
             "note": "PV penetration in the ResStock baseline reflects the real US "
@@ -356,7 +360,7 @@ def main():
     sellers = sum(1 for a in agents if a["has_pv"])
     print(f"{sellers} agent(s) with PV, {len(agents) - sellers} without")
     if sellers == 0:
-        print("WARNING: no PV anywhere — every agent will only ever buy, and the "
+        print("WARNING: no PV anywhere, so every agent will only ever buy, and the "
               "market will have nothing to clear internally.")
 
 

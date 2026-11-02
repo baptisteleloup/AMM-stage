@@ -25,7 +25,8 @@ library PricingLib {
         returns (UD60x18 r, UD60x18 c)
     {
         require(lambdaLow.lte(lambdaHigh), "band");
-        if (s.unwrap() == 0 || d.unwrap() == 0) return (lambdaLow, lambdaHigh); // one side empty: it trades with the grid
+        // one side empty: it trades with the grid
+        if (s.unwrap() == 0 || d.unwrap() == 0) return (lambdaLow, lambdaHigh);
         if (lambdaLow.unwrap() == lambdaHigh.unwrap()) return (lambdaLow, lambdaHigh); // flat band, nothing to share
 
         if (rule == Rule.MidMarket) return _midMarket(s, d, lambdaLow, lambdaHigh);
@@ -66,7 +67,8 @@ library PricingLib {
         returns (UD60x18 r, UD60x18 c)
     {
         if (lo.unwrap() == 0) {
-            return s.gte(d) ? (ud(0), ud(0)) : (ud(0), ONE.sub(s.div(d)).mul(hi)); // limit lo -> 0: r = 0, c = (1 - y)^+ hi
+            // limit lo -> 0: r = 0, c = (1 - y)^+ hi
+            return s.gte(d) ? (ud(0), ud(0)) : (ud(0), ONE.sub(s.div(d)).mul(hi));
         }
         UD60x18 a = lo.sqrt();
         UD60x18 b = hi.sqrt();

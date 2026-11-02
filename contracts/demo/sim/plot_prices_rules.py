@@ -49,7 +49,8 @@ for ax, rule in zip(axes, RULES):
 axes[0].set_ylabel("cents/kWh")  # prices are in currency per kWh, x100
 handles, labels = axes[0].get_legend_handles_labels()
 fig.tight_layout(rect=(0, 0, 1, 0.92))
-fig.legend(handles, labels, loc="upper center", ncol=5, frameon=False, fontsize=7, bbox_to_anchor=(0.5, 1.0))  # one legend for the three panels
+# one legend for the three panels
+fig.legend(handles, labels, loc="upper center", ncol=5, frameon=False, fontsize=7, bbox_to_anchor=(0.5, 1.0))
 Path(args.out).parent.mkdir(parents=True, exist_ok=True)
 fig.savefig(args.out, bbox_inches="tight", pad_inches=0.02)  # no white margin around the figure
 print(f"written {args.out} (day {dates[day]})")

@@ -44,7 +44,8 @@ sell = np.array([sch[n]["sell_kw"] for n in data.names])  # households x session
 buy = np.array([sch[n]["buy_kw"] for n in data.names])
 S, D = sell.sum(axis=0), buy.sum(axis=0)  # total supply and demand per session
 net = S - D  # community position, + = exports to the grid
-community_bill = float(np.sum(data.high * np.clip(-net, 0, None) - data.low * np.clip(net, 0, None)) * dt)  # 68.03 USD in the paper
+# 68.03 USD in the paper
+community_bill = float(np.sum(data.high * np.clip(-net, 0, None) - data.low * np.clip(net, 0, None)) * dt)
 matched = float(np.minimum(S, D).sum() * dt)  # energy traded locally
 solo_total = sum(solo[n]["solo"] for n in data.names)  # everyone optimised alone
 raw_total = sum(solo[n]["raw"] for n in data.names)  # recorded curves, nothing optimised

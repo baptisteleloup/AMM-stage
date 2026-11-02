@@ -23,11 +23,13 @@ def eff(c):
 
 
 def load(pattern):
-    return [json.loads(f.read_text()) | {"file": f.stem} for f in sorted(OUT.glob(pattern))]  # runs matching pattern, with their file name
+    # runs matching pattern, with their file name
+    return [json.loads(f.read_text()) | {"file": f.stem} for f in sorted(OUT.glob(pattern))]
 
 
 def net(run):
-    return np.array([np.array(s["sell_kw"]) - np.array(s["buy_kw"]) for s in run["schedules"].values()])  # households x sessions, kW
+    # households x sessions, kW
+    return np.array([np.array(s["sell_kw"]) - np.array(s["buy_kw"]) for s in run["schedules"].values()])
 
 
 lines_ms, lines_stab, lines_cert = [], [], []  # LaTeX rows of the three tables

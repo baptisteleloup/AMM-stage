@@ -80,7 +80,8 @@ def search(path):
             S_o = S - np.clip(xn, 0, None) - np.clip(xm, 0, None)
             D_o = D - np.clip(-xn, 0, None) - np.clip(-xm, 0, None)
             cn, cm = cross(xn, xm, S_o, D_o, t_all)
-            smooth = (np.abs(xn) > MARGIN) & (np.abs(xm) > MARGIN) & (np.abs(S - D) > MARGIN)  # sessions away from every kink
+            # sessions away from every kink
+            smooth = (np.abs(xn) > MARGIN) & (np.abs(xm) > MARGIN) & (np.abs(S - D) > MARGIN)
             gap = np.where(smooth, cn - cm, np.nan)  # asymmetry of each session
             for t in np.flatnonzero(smooth & (np.abs(gap) > THR)):
                 for t2 in np.flatnonzero(smooth):

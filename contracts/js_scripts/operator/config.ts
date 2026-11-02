@@ -20,7 +20,7 @@ const ready = envReady();
 if (!ready.ok) { // fail at start-up rather than mid-run
   throw new Error(
     "missing environment:\n"
-    + ready.missing.map((n) => `  ${n} — ${REQUIRED[n as keyof typeof REQUIRED]}`).join("\n"),
+    + ready.missing.map((n) => `  ${n}: ${REQUIRED[n as keyof typeof REQUIRED]}`).join("\n"),
   );
 }
 

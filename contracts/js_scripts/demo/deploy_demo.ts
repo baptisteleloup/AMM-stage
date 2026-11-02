@@ -52,7 +52,8 @@ async function deploy(file: string, wallet: ethers.Wallet | ethers.NonceManager,
       const lib = await deploy(libFile, wallet, [], libName);
       const addr = (await lib.getAddress()).slice(2).toLowerCase();
       for (const { start, length } of refs) {
-        code = code.slice(0, 2 + start * 2) + addr + code.slice(2 + start * 2 + length * 2); // patch the library address into the placeholder
+        // patch the library address into the placeholder
+        code = code.slice(0, 2 + start * 2) + addr + code.slice(2 + start * 2 + length * 2);
       }
     }
   }
@@ -83,7 +84,8 @@ async function main(): Promise<void> {
 
   const fund = ethers.parseEther(FUND_ETH);
   const targets = [...Object.values(roles), ...reporters, ...prosumers];
-  await Promise.all(targets.map((w) => deployer.sendTransaction({ to: w.address, value: fund }))); // gas for every account
+  // gas for every account
+  await Promise.all(targets.map((w) => deployer.sendTransaction({ to: w.address, value: fund })));
   console.log(`funded ${targets.length} accounts with ${FUND_ETH} ETH each`);
 
   const eeur = await deploy("EnergyEuro", deployer, []);
@@ -111,11 +113,13 @@ async function main(): Promise<void> {
   const pricing = await deploy("Pricing", deployer, [RULES[ruleName]]);
   console.log(`pricing rule: ${ruleName}`);
 
-  const dayVerifier = await deploy("DayChunkVerifier", deployer, [], "HonkVerifier"); // bb names both contracts HonkVerifier
+  // bb names both contracts HonkVerifier
+  const dayVerifier = await deploy("DayChunkVerifier", deployer, [], "HonkVerifier");
   const revealVerifier = await deploy("RevealVerifier", deployer, [], "HonkVerifier");
 
   const zeros = Array(96).fill(0n);
-  const emptyNetputHash = toHex32(await hashNetputs(0n, 0n, zeros, zeros)); // padding constants, same hash as the circuit
+  // padding constants, same hash as the circuit
+  const emptyNetputHash = toHex32(await hashNetputs(0n, 0n, zeros, zeros));
   const zeroBalCommit = toHex32(await commitBalance(0n, 0n));
   console.log(`padding constants (computed from circuits): ${emptyNetputHash} ${zeroBalCommit}`);
 
@@ -138,13 +142,15 @@ async function main(): Promise<void> {
 
   await Promise.all(prosumers.map((w) => {
     const m = new ethers.Contract(marketAddr, marketAbi, w);
-    return m.register(w.signingKey.publicKey).then((tx: ethers.TransactionResponse) => tx.wait()); // wallet key doubles as the encryption key
+    // wallet key doubles as the encryption key
+    return m.register(w.signingKey.publicKey).then((tx: ethers.TransactionResponse) => tx.wait());
   }));
   console.log(`registered ${N} prosumers`);
 
   const depositWei = ethers.parseEther(DEPOSIT_EUR); // EEUR has 18 decimals
   await Promise.all([
-    ...prosumers.map((w) => (eeur.connect(deployer) as ethers.Contract).mint(w.address, depositWei * 2n).then((tx: ethers.TransactionResponse) => tx.wait())), // twice the deposit, room for a top-up
+    // twice the deposit, room for a top-up
+    ...prosumers.map((w) => (eeur.connect(deployer) as ethers.Contract).mint(w.address, depositWei * 2n).then((tx: ethers.TransactionResponse) => tx.wait())),
     (eeur.connect(deployer) as ethers.Contract).mint(roles.grid.address, ethers.parseEther(GRID_MINT_EUR)).then((tx: ethers.TransactionResponse) => tx.wait()),
   ]);
 

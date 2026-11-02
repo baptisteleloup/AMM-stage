@@ -110,7 +110,8 @@ fi
 
 if [ "${SKIP_DATA:-0}" != "1" ]; then
 
-  step "1/5  choosing $N buildings in $STATE ($WITH_PV with PV, $WITHOUT_PV without)"  # pick_buildings.py -> selection.json
+  # pick_buildings.py -> selection.json
+  step "1/5  choosing $N buildings in $STATE ($WITH_PV with PV, $WITHOUT_PV without)"
   echo "the state metadata file is a few hundred MB and is cached in demo/data/raw/"
   python3 demo/sim/pick_buildings.py --cache "$DEMO_DATA/raw" --out "$DEMO_DATA/selection.json" --state "$STATE" --with-pv "$WITH_PV" --without-pv "$WITHOUT_PV"
 
@@ -137,9 +138,9 @@ print(','.join(s['with_pv_ids'] + s['without_pv_ids']))
 
 else
   step "skipping data preparation (SKIP_DATA=1)"
-  [ -f "$NETPUTS" ] || { red "$NETPUTS not found — run once without SKIP_DATA"; exit 1; }
+  [ -f "$NETPUTS" ] || { red "$NETPUTS not found, run once without SKIP_DATA"; exit 1; }
   if [ "$TARIFF_MODE" = "feed" ] && [ ! -f "$PRICES_JSON" ]; then
-    red "prices.json not found but TARIFF_MODE=feed — run once without SKIP_DATA"
+    red "prices.json not found but TARIFF_MODE=feed. Run once without SKIP_DATA"
     exit 1
   fi
 fi

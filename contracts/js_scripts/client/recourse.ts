@@ -43,7 +43,8 @@ async function closingOnly(
   }
   const now = await chain.now();
   const deadline = Number(dc.disputeDeadline);
-  const extra = action === "requestClearReveal" ? Number((await chain.market.REVEAL_WINDOW()) as bigint) : 0; // stage 2 window ends REVEAL_WINDOW after the deadline
+  // stage 2 window ends REVEAL_WINDOW after the deadline
+  const extra = action === "requestClearReveal" ? Number((await chain.market.REVEAL_WINDOW()) as bigint) : 0;
   if (now >= deadline + extra) { // same windows as MarketV4
     return {
       action, day, slot, tx: null,

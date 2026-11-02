@@ -56,7 +56,8 @@ contract MarketV4 {
     // Queues frozen at a day's midnight: the values that day's proof uses. Later changes wait for the next day.
     mapping(uint256 => mapping(uint256 => uint256)) public snapDeposit; // [day][slot] deposit applied by the proof
     mapping(uint256 => mapping(uint256 => uint256)) public snapWithdrawal; // [day][slot] request the proof caps
-    mapping(uint256 => mapping(uint256 => bytes32)) public snapFloorCommit; // [day][slot] floor the balance is checked against
+    // [day][slot] floor the balance is checked against
+    mapping(uint256 => mapping(uint256 => bytes32)) public snapFloorCommit;
 
     // What the chain stores for one session. Prices rounded in the market's favour (_priceUp, _priceDown).
     struct Session {
@@ -97,8 +98,10 @@ contract MarketV4 {
     mapping(uint256 => uint32[SESSIONS]) internal accS;
     mapping(uint256 => uint32[SESSIONS]) internal accD;
 
-    mapping(uint256 => mapping(uint256 => bytes32)) public stagedCommit; // [day][slot] proven new balance, applied at settlement
-    mapping(uint256 => mapping(uint256 => uint256)) public stagedWithdrawalPaid; // [day][slot] proven payout, paid at settlement
+    // [day][slot] proven new balance, applied at settlement
+    mapping(uint256 => mapping(uint256 => bytes32)) public stagedCommit;
+    // [day][slot] proven payout, paid at settlement
+    mapping(uint256 => mapping(uint256 => uint256)) public stagedWithdrawalPaid;
     mapping(uint256 => mapping(uint256 => bytes32)) public netputHashOf; // [day][slot] commitment to the 96 positions
     mapping(uint256 => bool) public netputHashesPosted; // [day] frozen at midnight
 
@@ -122,7 +125,8 @@ contract MarketV4 {
     event DayFinalized(uint256 indexed dayId, uint256 paidOut, uint256 paidIn);
     event DayCancelled(uint256 indexed dayId, string reason);
     event DataRequested(uint256 indexed dayId, uint256 slot, uint8 stage);
-    event EncryptedDataPosted(uint256 indexed dayId, uint256 slot, bytes blob); // recourse data, read off-chain by the member
+    // recourse data, read off-chain by the member
+    event EncryptedDataPosted(uint256 indexed dayId, uint256 slot, bytes blob);
     event BalanceRevealed(uint256 indexed dayId, uint256 slot, uint64 bal);
     event DustAccrued(uint256 indexed dayId, uint256 amount);
     event DustSwept(uint256 amount);
@@ -178,7 +182,8 @@ contract MarketV4 {
         floorCommitOf[slot] = ZERO_BAL_COMMIT; // and a zero floor
     }
 
-    mapping(uint256 => bytes32) public pendingFloorCommit; // [slot] floor proposed by the operator, awaiting confirmation
+    // [slot] floor proposed by the operator, awaiting confirmation
+    mapping(uint256 => bytes32) public pendingFloorCommit;
 
     // Floor, first signature: the operator proposes a commitment to the member's floor.
     function proposeFloor(uint256 slot, bytes32 floorCommit) external onlyOperator {
@@ -230,8 +235,10 @@ contract MarketV4 {
         require(!sessions[dayId][t].opened, "opened"); // each session opens once
         require(dayId == currentDayId() && t == currentSessionIdx(), "clock"); // only the current session
         (UD60x18 lo, UD60x18 hi) = tariff.getPrices(block.timestamp); // grid band of this session
-        (UD60x18 rUd, UD60x18 cUd) = pricing.prices(ud(uint256(s) * 1e18), ud(uint256(d) * 1e18), lo, hi); // rule's rates
-        sessions[dayId][t] = Session(s, d, _priceDown(rUd), _priceUp(cUd), _priceUp(lo), _priceDown(hi), true); // rounded so the market never pays out more than it collects
+        // rule's rates
+        (UD60x18 rUd, UD60x18 cUd) = pricing.prices(ud(uint256(s) * 1e18), ud(uint256(d) * 1e18), lo, hi);
+        // rounded so the market never pays out more than it collects
+        sessions[dayId][t] = Session(s, d, _priceDown(rUd), _priceUp(cUd), _priceUp(lo), _priceDown(hi), true);
         (uint32 r, uint32 c) = (sessions[dayId][t].priceR, sessions[dayId][t].priceC);
         emit SessionOpened(dayId, t, s, d, r, c);
     }
@@ -252,7 +259,8 @@ contract MarketV4 {
         require(dayId < currentDayId(), "day not over");
         require(!netputHashesPosted[dayId], "posted");
         require(dayId > lastClosedDay, "out of order"); // days close in increasing order
-        require(lastClosedDay == 0 || dayCloses[lastClosedDay].state != DayState.Closing, "previous day still closing"); // one day at a time
+        // one day at a time
+        require(lastClosedDay == 0 || dayCloses[lastClosedDay].state != DayState.Closing, "previous day still closing");
         require(hashes.length == prosumerCount, "len"); // one commitment per member
         for (uint256 i = 0; i < hashes.length; i++) {
             uint256 slot = i + 1;
@@ -366,9 +374,11 @@ contract MarketV4 {
     function cancelDay(uint256 dayId, uint256 revealSlot, string calldata reason) public {
         DayClose storage dc = dayCloses[dayId];
         require(dc.state == DayState.Closing, "state");
-        bool timeout = block.timestamp > dc.disputeDeadline && dc.chunksVerified < chunkCountFor(dayId); // proofs missing
+        // proofs missing
+        bool timeout = block.timestamp > dc.disputeDeadline && dc.chunksVerified < chunkCountFor(dayId);
         bool revealTimeout = revealSlot != 0 && _revealTimedOut(dayId, revealSlot); // recourse left unanswered
-        bool stuck = block.timestamp > dc.disputeDeadline + SETTLEMENT_GRACE && openRevealCount[dayId] == 0; // nobody settled
+        // nobody settled
+        bool stuck = block.timestamp > dc.disputeDeadline + SETTLEMENT_GRACE && openRevealCount[dayId] == 0;
         require(timeout || revealTimeout || stuck, "no ground");
         dc.state = DayState.Cancelled;
         emit DayCancelled(dayId, reason);
@@ -379,7 +389,8 @@ contract MarketV4 {
         uint256 slot = slotOf[msg.sender];
         require(slot != 0, "not registered");
         require(dayCloses[dayId].state == DayState.Closing, "state");
-        require(slot <= dayCloses[dayId].prosumerCountAt, "not a member that day"); // late registrants cannot block the day
+        // late registrants cannot block the day
+        require(slot <= dayCloses[dayId].prosumerCountAt, "not a member that day");
         require(block.timestamp < dayCloses[dayId].disputeDeadline, "objection window closed");
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage1Deadline == 0, "requested"); // once per day
@@ -414,7 +425,8 @@ contract MarketV4 {
     function clearReveal(uint256 dayId, uint256 slot, uint64 bal, bytes calldata proof) external {
         RevealRequest storage r = reveals[dayId][slot];
         require(r.stage2Deadline != 0 && !r.stage2Done, "no request");
-        bytes32 c = stagedCommit[dayId][slot] != bytes32(0) ? stagedCommit[dayId][slot] : balCommitOf[slot]; // new balance if its batch is proven, else the settled one
+        // new balance if its batch is proven, else the settled one
+        bytes32 c = stagedCommit[dayId][slot] != bytes32(0) ? stagedCommit[dayId][slot] : balCommitOf[slot];
         bytes32[] memory pub_ = new bytes32[](2);
         pub_[0] = c;
         pub_[1] = bytes32(uint256(bal));
@@ -429,7 +441,8 @@ contract MarketV4 {
     function escapeAvailable() public view returns (bool) {
         uint256 today = currentDayId();
         if (today < deployDay + ESCAPE_DELAY_DAYS) return false; // too young
-        if (lastClosedDay != 0 && dayCloses[lastClosedDay].state == DayState.Closing) return false; // a day must resolve first
+        // a day must resolve first
+        if (lastClosedDay != 0 && dayCloses[lastClosedDay].state == DayState.Closing) return false;
         for (uint256 i = 0; i < ESCAPE_DELAY_DAYS; i++) {
             if (dayCloses[today - i].state == DayState.Finalized) return false; // operator still active
         }

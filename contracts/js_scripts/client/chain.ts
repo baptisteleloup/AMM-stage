@@ -102,7 +102,8 @@ export class Chain {
 
   async clock(): Promise<{ day: number; t: number }> {
     const ts = await this.now();
-    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) }; // same day and session numbering as MarketV4
+    // same day and session numbering as MarketV4
+    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) };
   }
 
   async eeur(): Promise<ethers.Contract> {
@@ -162,7 +163,8 @@ export class Chain {
     return await this.market.floorCommitOf(slot);
   }
 
-  async snapshot(day: number, slot: number): Promise<{ deposit: bigint; withdrawal: bigint; floorCommit: string }> { // queues frozen at that day's midnight
+  // queues frozen at that day's midnight
+  async snapshot(day: number, slot: number): Promise<{ deposit: bigint; withdrawal: bigint; floorCommit: string }> {
     const [deposit, withdrawal, floorCommit] = await Promise.all([
       this.market.snapDeposit(day, slot),
       this.market.snapWithdrawal(day, slot),
@@ -179,7 +181,8 @@ export class Chain {
     return { deposit: BigInt(deposit), withdrawal: BigInt(withdrawal) };
   }
 
-  async encryptedDataFor(day: number, slot: number, fromBlock = 0): Promise<string[]> { // stage 1 answers for this member and day, as encrypted blobs
+  // stage 1 answers for this member and day, as encrypted blobs
+  async encryptedDataFor(day: number, slot: number, fromBlock = 0): Promise<string[]> {
     const f = this.market.filters.EncryptedDataPosted(day); // dayId is indexed, slot is filtered below
     const logs = await this.market.queryFilter(f, fromBlock, "latest");
     const events = logs.filter((l): l is ethers.EventLog => "args" in l);

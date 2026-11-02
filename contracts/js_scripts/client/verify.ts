@@ -112,7 +112,8 @@ export async function verifyDay(chain: Chain, id: Identity, store: Store, day: n
   if (!floor) {
     add("minimum balance requirement", "skip", "no opening held for the requirement - cannot check participation");
   } else {
-    const fc = await commitBalance(BigInt(floor.floor), BigInt(floor.blind)); // floor opening must open the frozen floor commitment
+    // floor opening must open the frozen floor commitment
+    const fc = await commitBalance(BigInt(floor.floor), BigInt(floor.blind));
     const ok = norm(fc) === pad(snap.floorCommit);
     add("minimum balance requirement", ok ? "pass" : "fail",
       ok ? `opening matches the commitment frozen for day ${day}`
@@ -131,7 +132,8 @@ export async function verifyDay(chain: Chain, id: Identity, store: Store, day: n
   }
 
   const zeroCommit = (await chain.market.ZERO_BAL_COMMIT()) as string;
-  const oldCommitComputed = await commitBalance(oldBal, oldBlind); // zero balance opens ZERO_BAL_COMMIT, so a new member needs no packet
+  // zero balance opens ZERO_BAL_COMMIT, so a new member needs no packet
+  const oldCommitComputed = await commitBalance(oldBal, oldBlind);
   const oldCommitIsZero = norm(oldCommitComputed) === pad(zeroCommit);
   if (!prevOpening && oldCommitIsZero) {
     add("opening balance", "skip", "no packet for the previous day; assuming an untouched account (balance zero)");
@@ -193,7 +195,8 @@ export async function verifyDay(chain: Chain, id: Identity, store: Store, day: n
     }
   }
 
-  const commitComputed = await commitBalance(claimed, BigInt(opening.blind)); // claimed balance must open the on-chain commitment
+  // claimed balance must open the on-chain commitment
+  const commitComputed = await commitBalance(claimed, BigInt(opening.blind));
   const staged = await chain.stagedCommit(day, slot);
   const settled = await chain.balCommit(slot);
   const target = staged !== ZERO32 ? staged : settled; // staged before settlement, settled after
@@ -233,6 +236,7 @@ export async function verifyDay(chain: Chain, id: Identity, store: Store, day: n
     newBalancePeur: newBal.toString(),
     discrepancies,
   };
-  store.putVerdict(`day-${day}`, { verdict, at: new Date().toISOString(), failed: checks.filter((c) => c.status === "fail").map((c) => c.name) }); // remembered for the UI and the watch loop
+  // remembered for the UI and the watch loop
+  store.putVerdict(`day-${day}`, { verdict, at: new Date().toISOString(), failed: checks.filter((c) => c.status === "fail").map((c) => c.name) });
   return out;
 }

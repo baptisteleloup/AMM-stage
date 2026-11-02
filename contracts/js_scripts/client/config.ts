@@ -30,7 +30,8 @@ export const config = {
   },
   eeurAddress: process.env.EEUR_ADDRESS ?? "", // token address, optional (read from the market otherwise)
   dataDir,
-  storePath: process.env.CLIENT_STORE ?? path.join(dataDir, "state.json"), // local state file (openings, sessions, verdicts)
+  // local state file (openings, sessions, verdicts)
+  storePath: process.env.CLIENT_STORE ?? path.join(dataDir, "state.json"),
   inboxDir: process.env.CLIENT_INBOX ?? path.join(dataDir, "inbox"), // where decrypted recourse data is written
   transport: (process.env.RECEIPT_TRANSPORT ?? "fs") as "fs" | "http", // how receipts reach the client
   get receiptsDir(): string { // fs transport: folder the operator's receipts are delivered to

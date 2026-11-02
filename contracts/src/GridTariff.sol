@@ -61,7 +61,8 @@ contract GridTariff is IGridTariff {
         admin = _admin;
         _storeSchedule(current, initial);
 
-        require(_mode == Mode.Schedule || (_quorum > 0 && _quorum <= reporters.length), "bad quorum"); // feed: 1 <= quorum <= reporters
+        // feed: 1 <= quorum <= reporters
+        require(_mode == Mode.Schedule || (_quorum > 0 && _quorum <= reporters.length), "bad quorum");
         quorum = _quorum;
         for (uint256 i = 0; i < reporters.length; i++) {
             isReporter[reporters[i]] = true;

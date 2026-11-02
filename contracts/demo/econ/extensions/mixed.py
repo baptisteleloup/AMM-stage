@@ -148,7 +148,8 @@ def best_response(i, sigma):
     m.ModelSense = GRB.MAXIMIZE
     base = np.linspace(-X, X, args.points)  # 201 positions between -5 and 5 kW
     for t in range(T):
-        kinks = np.unique(np.clip(D[:, t] - S[:, t], -X, X))[:50]  # balance points of the likely draws (formula changes there)
+        # balance points of the likely draws (formula changes there)
+        kinks = np.unique(np.clip(D[:, t] - S[:, t], -X, X))[:50]
         xs = np.unique(np.concatenate([base, [0.0], kinks]))  # points of the broken line
         s_, d_ = np.clip(xs, 0, None), np.clip(-xs, 0, None)
         Sx = S[:, t][:, None] + s_[None, :]  # supply for every draw x every position of the household
@@ -171,7 +172,8 @@ for outer in range(1, args.outer + 1):
     gains = []
     for i in range(N):  # 2) for each household, look for a better schedule outside its bank
         probs, S, D = others(i, sigma, args.max_exact)
-        current = float(sigma[i] @ np.array([expected_value(net(s), probs, S, D) for s in banks[i]]))  # its mean revenue now
+        # its mean revenue now
+        current = float(sigma[i] @ np.array([expected_value(net(s), probs, S, D) for s in banks[i]]))
         sch, val = best_response(i, sigma)  # best schedule over everything
         gains.append(val - current)  # what it would gain by switching
         if val - current > args.tol and not any(np.allclose(net(sch), net(o), atol=1e-6) for o in banks[i]):

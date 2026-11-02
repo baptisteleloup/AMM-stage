@@ -28,7 +28,8 @@ mark()  { echo "{\"t\":$(now_ms),\"phase\":\"$1\"}" >> "$EVENTS"; echo "[$(date 
 # node_cmd CMD N: runs CMD with {n} replaced by the node number
 node_cmd() { local p='{n}'; local c="${1//$p/$2}"; eval "$c" >/dev/null; }
 
-(cd "$CONTRACTS" && RPC_URLS="$RPC_URLS" OUT="$WATCH" npx tsx "$BENCH/chainwatch.ts") & # polls every node in the background
+# polls every node in the background
+(cd "$CONTRACTS" && RPC_URLS="$RPC_URLS" OUT="$WATCH" npx tsx "$BENCH/chainwatch.ts") &
 WATCHER=$!
 trap 'kill $WATCHER 2>/dev/null || true' EXIT
 sleep 3 # let the watcher connect

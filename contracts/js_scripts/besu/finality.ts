@@ -7,7 +7,8 @@ import fs from "node:fs";
 import { ethers } from "ethers";
 
 const RPC_URLS = (process.env.RPC_URLS ?? "http://127.0.0.1:8545").split(",").map((s) => s.trim());
-const KEY = process.env.KEY ?? "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // public test key, funded in network/genesis.json
+// public test key, funded in network/genesis.json
+const KEY = process.env.KEY ?? "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const N = Number(process.env.N ?? 200);          // number of transactions
 const BURST = Number(process.env.BURST ?? 1);    // transactions sent at once per round
 const POLL_MS = Number(process.env.POLL_MS ?? 50); // receipt polling period
@@ -38,7 +39,8 @@ async function main() {
   const providers = RPC_URLS.map((u) => new ethers.JsonRpcProvider(u, undefined, { staticNetwork: true, pollingInterval: POLL_MS }));
   const wallet = new ethers.Wallet(KEY, providers[0]);
   const chainId = (await providers[0].getNetwork()).chainId;
-  let nonce = await providers[0].getTransactionCount(wallet.address, "pending"); // nonces set by hand so a burst goes out at once
+  // nonces set by hand so a burst goes out at once
+  let nonce = await providers[0].getTransactionCount(wallet.address, "pending");
   const samples: Sample[] = [];
 
   console.log(`chain ${chainId}, ${RPC_URLS.length} node(s), ${N} transactions in bursts of ${BURST}`);

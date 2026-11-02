@@ -56,7 +56,8 @@ export class Store {
   constructor(private file: string = config.storePath) {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     if (fs.existsSync(this.file)) {
-      this.state = { ...EMPTY, ...JSON.parse(fs.readFileSync(this.file, "utf-8")) }; // fill fields missing from older files
+      // fill fields missing from older files
+      this.state = { ...EMPTY, ...JSON.parse(fs.readFileSync(this.file, "utf-8")) };
     } else {
       this.state = { ...EMPTY };
       this.flush(); // create the file on first run

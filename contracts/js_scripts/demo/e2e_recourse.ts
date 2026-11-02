@@ -54,7 +54,8 @@ async function main(): Promise<void> {
     roles: Record<string, { address: string; privateKey: string }>;
     prosumers: Record<string, { address: string; privateKey: string; slot: number }>;
   };
-  const marketAddr = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4; // accepts the layouts the file has had
+  // accepts the layouts the file has had
+  const marketAddr = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4;
   if (!marketAddr) throw new Error("market address not found in the deploy file");
 
   const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -97,7 +98,8 @@ async function main(): Promise<void> {
   console.log("  -> a single unanswered request stops the whole day from settling");
 
   step(3, "The operator answers by publishing encrypted data");
-  const blob = "0x" + Buffer.from(JSON.stringify({ day, slot: SLOT, note: "demonstration payload" })).toString("hex"); // content is not checked on-chain
+  // content is not checked on-chain
+  const blob = "0x" + Buffer.from(JSON.stringify({ day, slot: SLOT, note: "demonstration payload" })).toString("hex");
   await (await asOperator.postEncryptedData(day, SLOT, blob)).wait();
   const r2 = await read.reveals(day, SLOT);
   const open2 = await read.openRevealCount(day);

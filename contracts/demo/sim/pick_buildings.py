@@ -11,7 +11,8 @@ import subprocess
 import pandas as pd
 
 RELEASE = "2024/resstock_amy2018_release_2"  # ResStock release used by the paper
-META_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"  # per-state metadata, one row per dwelling
+# per-state metadata, one row per dwelling
+META_URL = ("https://oedi-data-lake.s3.amazonaws.com/nrel-pds-building-stock/"
             "end-use-load-profiles-for-us-building-stock/{release}/metadata_and_annual_results/"
             "by_state/state={state}/parquet/{state}_baseline_metadata_and_annual_results.parquet")
 
@@ -29,7 +30,7 @@ def fetch(state, release, cache):
     if r.returncode != 0:
         os.path.exists(dest) and os.remove(dest)  # drop a partial download
         raise SystemExit(
-            "download failed. The release path moves between publications — open\n"
+            "download failed. The release path moves between publications. Open\n"
             "https://data.openei.org/submissions/4520 , find the current\n"
             "metadata_and_annual_results path, and pass it with --release")
     return dest
@@ -74,20 +75,23 @@ def main():
 
     print(f"PV column: {pv_col}")
 
-    has_pv = df[pv_col].astype(str).str.lower().isin(["none", "nan", "0", "0.0", "false", ""])  # True where the dwelling has NO PV (misleading name, kept as is)
+    # True where the dwelling has NO PV (misleading name, kept as is)
+    has_pv = df[pv_col].astype(str).str.lower().isin(["none", "nan", "0", "0.0", "false", ""])
     with_pv = df[~has_pv].copy()  # dwellings with an array
     without_pv = df[has_pv].copy()
     print(f"{len(with_pv)} with PV, {len(without_pv)} without")
 
     if type_col:
-        sf = without_pv[type_col].astype(str).str.contains("Single-Family", case=False, na=False)  # single-family, comparable to the PV group
+        # single-family, comparable to the PV group
+        sf = without_pv[type_col].astype(str).str.contains("Single-Family", case=False, na=False)
         if sf.sum() >= args.without_pv:
             without_pv = without_pv[sf]
             print(f"restricted the no-PV group to single-family for comparability "
                   f"({len(without_pv)} left)")
 
 
-    county_col = find_col(df, [r"in\.county_and_puma", r"in\.county"], required=False)  # one county: shared feeder and price zone
+    # one county: shared feeder and price zone
+    county_col = find_col(df, [r"in\.county_and_puma", r"in\.county"], required=False)
     chosen_county = None
     if county_col and not args.any_county:
         counts = with_pv.groupby(county_col).size()
@@ -102,19 +106,21 @@ def main():
                   f"{chosen_county}")
         else:
             print("no single county can supply the whole panel; drawing from the "
-                  "whole state. The members will not share a feeder — say so in "
+                  "whole state. The members will not share a feeder. Say so in "
                   "the paper, or ask for fewer dwellings.")
 
     if len(with_pv) < args.with_pv:
         raise SystemExit(f"only {len(with_pv)} dwellings with PV available")
 
     with_pv = with_pv.sort_values(pv_col)  # by system size
-    idx = [int(round(i * (len(with_pv) - 1) / max(1, args.with_pv - 1)))  # evenly spaced ranks over the size distribution
+    # evenly spaced ranks over the size distribution
+    idx = [int(round(i * (len(with_pv) - 1) / max(1, args.with_pv - 1)))
            for i in range(args.with_pv)]
     sel_pv = with_pv.iloc[idx]
     sel_no = without_pv.sample(args.without_pv, random_state=args.seed)  # random no-PV dwellings, fixed seed
 
-    id_col = "bldg_id" if "bldg_id" in df.columns else df.index.name or df.columns[0]  # building id column, or the index
+    # building id column, or the index
+    id_col = "bldg_id" if "bldg_id" in df.columns else df.index.name or df.columns[0]
 
     def ids(frame):
         return [str(v) for v in (frame[id_col] if id_col in frame.columns else frame.index)]

@@ -50,7 +50,8 @@ export async function tryFinalize(chain: Chain, id: Identity, store: Store, day:
     const grace = Number((await chain.market.SETTLEMENT_GRACE()) as bigint);
     if (now > Number(dc.disputeDeadline) + grace) { // grace over: cancelDay accepts the stuck-day ground
       try {
-        const rc = await (await chain.market.cancelDay(day, 0, `settlement impossible: ${why.slice(0, 80)}`)).wait(); // revealSlot 0: general ground
+        // revealSlot 0: general ground
+        const rc = await (await chain.market.cancelDay(day, 0, `settlement impossible: ${why.slice(0, 80)}`)).wait();
         return { action: "cancelDay", day, attempted: true, tx: rc.hash, reason: `settlement kept failing past the grace period (${why}); day cancelled so later days can proceed` };
       } catch (e2) {
         return { action: "cancelDay", day, attempted: true, tx: null, reason: `settlement failing (${why}) and cancel refused: ${(e2 as Error).message.slice(0, 80)}` };
@@ -76,7 +77,8 @@ export async function tryCancelOwn(chain: Chain, id: Identity, store: Store, day
     return { action: "cancelDay", day, attempted: false, tx: null, reason: "no unanswered request of your own has timed out" };
   }
   try {
-    const rc = await (await chain.market.cancelDay(day, slot, "disclosure request unanswered")).wait(); // revealSlot = own slot
+    // revealSlot = own slot
+    const rc = await (await chain.market.cancelDay(day, slot, "disclosure request unanswered")).wait();
     return { action: "cancelDay", day, attempted: true, tx: rc.hash, reason: "cancelled on your own timeout" };
   } catch (e) {
     return { action: "cancelDay", day, attempted: true, tx: null, reason: `reverted: ${(e as Error).message.slice(0, 120)}` };
@@ -112,7 +114,7 @@ export async function tryVerify(chain: Chain, id: Identity, store: Store, day: n
     return {
       action: "verify", day, attempted: true, tx: null,
       reason: r.verdict === "mismatch"
-        ? `MISMATCH — ${failed.join(", ")}. Demand your data before the day settles.`
+        ? `MISMATCH (${failed.join(", ")}). Demand your data before the day settles.`
         : r.verdict === "verified"
           ? `verified, net ${r.amountEur} EUR`
           : "incomplete: something is still missing, will retry",
@@ -144,7 +146,8 @@ async function tryRecourse(
     return out;
   }
 
-  if (r.stage1Done && config.autoFetchData && !store.verdict(`fetched-${day}`)) { // read the operator's answer once, then re-check the day
+  // read the operator's answer once, then re-check the day
+  if (r.stage1Done && config.autoFetchData && !store.verdict(`fetched-${day}`)) {
     let usable = true;
     try {
       const res = await fetchData(chain, id, store, day);
@@ -164,7 +167,8 @@ async function tryRecourse(
     }
   }
 
-  if (r.stage1Done && r.stage2Deadline === 0n && config.autoRequestClear // stage 2 when the answer still does not verify
+  // stage 2 when the answer still does not verify
+  if (r.stage1Done && r.stage2Deadline === 0n && config.autoRequestClear
       && store.verdict(`fetched-${day}`) && verdictOf(store, day) !== "verified") {
     try {
       const res = await requestClearReveal(chain, id, store, day);
@@ -188,7 +192,8 @@ export async function actionTick(chain: Chain, id: Identity, store: Store): Prom
     const dc = await chain.dayClose(day);
     const closing = DAY_STATE[dc.state] === "Closing";
     if (closing) {
-      const needsData = verdictOf(store, day) === "mismatch" || !store.opening(day); // recourse only when the data is missing or wrong
+      // recourse only when the data is missing or wrong
+      const needsData = verdictOf(store, day) === "mismatch" || !store.opening(day);
       for (const a of await tryRecourse(chain, id, store, day, needsData)) out.push(a);
     }
 

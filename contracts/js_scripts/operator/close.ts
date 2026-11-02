@@ -77,7 +77,7 @@ export class Close {
     const n = this.attempts(day) + 1;
     this.store.metaSet(`proofFails:${day}`, String(n));
     this.nextAttemptAt.set(day, Date.now() + RETRY_BACKOFF_MS * n);
-    console.error(`[close] day ${day}: proof attempt ${n}/${MAX_PROOF_ATTEMPTS} failed — ${why}`);
+    console.error(`[close] day ${day}: proof attempt ${n}/${MAX_PROOF_ATTEMPTS} failed: ${why}`);
     if (n >= MAX_PROOF_ATTEMPTS) {
       console.error(`[close] day ${day}: giving up on proving it; will cancel once the dispute deadline passes`);
     }
@@ -92,11 +92,11 @@ export class Close {
     if (expected > 0 && dc.chunksVerified >= expected) return false; // all proven after all
     try {
       await this.chain.cancelDay(day, 0, `proof incomplete after ${this.attempts(day)} attempt(s)`);
-      console.error(`[close] day ${day}: CANCELLED — it could not be proven before the deadline`);
+      console.error(`[close] day ${day}: CANCELLED, it could not be proven before the deadline`);
       this.store.metaSet(`proofFails:${day}`, "0"); // reset the counter
       return true;
     } catch (e) {
-      console.error(`[close] day ${day}: cancelDay refused — ${(e as Error).message.slice(0, 120)}`);
+      console.error(`[close] day ${day}: cancelDay refused: ${(e as Error).message.slice(0, 120)}`);
       return false;
     }
   }
@@ -114,7 +114,7 @@ export class Close {
       const st = (await this.chain.dayClose(d)).state;
       if (st === 2) { found = d; break; } // Finalized
       if (st === 1) { // Closing: should not happen if each day resolves within 24 h
-        console.error(`[close] day ${d} is still Closing while day ${target} is being proven — its opening commitments are not final; is PROOF_WINDOW + SETTLEMENT_GRACE below 24 h?`);
+        console.error(`[close] day ${d} is still Closing while day ${target} is being proven, so its opening commitments are not final; is PROOF_WINDOW + SETTLEMENT_GRACE below 24 h?`);
         continue;
       }
       if (st === 0 && !(await this.chain.netputHashesPosted(d))) break; // before the first frozen day
@@ -147,10 +147,10 @@ export class Close {
       }
       try {
         await this.chain.cancelDay(day, 0, `settlement impossible: ${why.slice(0, 80)}`);
-        console.error(`[close] day ${day}: CANCELLED — settlement kept failing past the grace period (${why})`);
+        console.error(`[close] day ${day}: CANCELLED, settlement kept failing past the grace period (${why})`);
         return true;
       } catch (e2) {
-        console.error(`[close] day ${day}: cancelDay refused — ${(e2 as Error).message.slice(0, 120)}`);
+        console.error(`[close] day ${day}: cancelDay refused: ${(e2 as Error).message.slice(0, 120)}`);
         return false;
       }
     }
@@ -164,7 +164,7 @@ export class Close {
     if (prev > 0 && prev < target) { // an older day still open blocks the freeze of this one
       const pdc = await this.chain.dayClose(prev);
       if (pdc.state === 1) {
-        console.error(`[close] day ${prev} is still Closing while day ${target} waits — settling or cancelling it first`);
+        console.error(`[close] day ${prev} is still Closing while day ${target} waits, settling or cancelling it first`);
         await this.settleOrCancel(prev, pdc);
         return;
       }
@@ -412,7 +412,8 @@ export class Close {
         this.prover.clear(jobId);
         const msg = (e as Error).message;
         const sel = /data="(0x[0-9a-f]{8})/.exec(msg)?.[1] ?? ""; // revert selector, if any
-        const named = sel === "0x9fc3a218" ? "SumcheckFailed (the proof does not match the posted data)" : sel; // verifier error selector
+        // verifier error selector
+        const named = sel === "0x9fc3a218" ? "SumcheckFailed (the proof does not match the posted data)" : sel;
         this.noteFailure(target, `chunk ${k + 1}/${K} rejected on chain: ${named}\n`
           + `      ${ctx}\n      raw: ${msg.slice(0, 300)}`);
         return;

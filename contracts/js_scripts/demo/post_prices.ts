@@ -11,7 +11,8 @@ const PRICES_JSON = process.env.PRICES_JSON ?? "demo/data/prices.json";
 const NETPUTS_JSON = process.env.NETPUTS_JSON ?? "demo/data/netputs_raw.json";
 const DEPLOYMENT = process.env.DEPLOYMENT_JSON ?? "demo/state/deployed_demo.json";
 const HORIZON = Number(process.argv[2] ?? process.env.PRICE_HORIZON_DAYS ?? 40); // days posted ahead
-const UNIT_SCALE = Number(process.env.PRICE_UNIT_SCALE ?? 100); // prices.json is per kWh in currency, GridTariff wants cents
+// prices.json is per kWh in currency, GridTariff wants cents
+const UNIT_SCALE = Number(process.env.PRICE_UNIT_SCALE ?? 100);
 
 const ABI = [
   "function submitDailyPrices(uint32 day, uint256[96] low, uint256[96] high)",

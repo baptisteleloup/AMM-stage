@@ -7,7 +7,8 @@ export class Identity {
   readonly wallet: ethers.Wallet;
 
   constructor(provider?: ethers.Provider) {
-    this.wallet = new ethers.Wallet(config.prosumerKey, provider); // PROSUMER_KEY, connected to the chain if a provider is given
+    // PROSUMER_KEY, connected to the chain if a provider is given
+    this.wallet = new ethers.Wallet(config.prosumerKey, provider);
   }
 
   get address(): string {

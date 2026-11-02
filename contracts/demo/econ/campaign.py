@@ -34,7 +34,8 @@ def run(tag, extra):
     if res.returncode != 0:
         print(f"FAILED {tag}\n{res.stderr[-2000:]}", flush=True)
         return
-    last = [line for line in res.stdout.splitlines() if line.startswith(("nash under", "community bill", "certificate"))]  # summary lines of the run
+    # summary lines of the run
+    last = [line for line in res.stdout.splitlines() if line.startswith(("nash under", "community bill", "certificate"))]
     print(f"done {tag} in {time.time() - t0:.0f} s | " + " | ".join(last), flush=True)
 
 

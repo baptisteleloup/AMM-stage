@@ -29,7 +29,8 @@ data = Data()
 names = data.names
 N, days = len(names), data.cfg["days"]
 hours = np.arange(96) / 4  # x axis, hour of the day
-mixed = {r: json.loads((EXT / "out" / f"mixed_{r}.json").read_text()) for r in RULES if (EXT / "out" / f"mixed_{r}.json").exists()}  # rules already solved
+# rules already solved
+mixed = {r: json.loads((EXT / "out" / f"mixed_{r}.json").read_text()) for r in RULES if (EXT / "out" / f"mixed_{r}.json").exists()}
 solo = json.loads((OUT / "solo.json").read_text())  # bills alone
 planner = json.loads((OUT / "planner.json").read_text())  # planner bill
 pv = [i for i, n in enumerate(names) if data.hh[n]["omega"].sum() > 0]  # households with photovoltaics
@@ -86,7 +87,8 @@ plt.close(fig)
 # 3) distribution of each household's gain over draws, one panel per rule
 fig, axes = plt.subplots(1, len(mixed), figsize=(4.2 * len(mixed), 3.2), sharey=True, squeeze=False)
 for ax, (rule, run) in zip(axes[0], mixed.items()):
-    gains = np.array([solo["bills"][n]["solo"] for n in names])[None, :] - np.array(run["draw_bills"])  # draws x households
+    # draws x households
+    gains = np.array([solo["bills"][n]["solo"] for n in names])[None, :] - np.array(run["draw_bills"])
     ax.boxplot([gains[:, i] for i in range(N)], whis=(5, 95), showfliers=False)  # whiskers at 5 and 95%
     ax.axhline(0, color="k", lw=0.6)
     ax.set_xticklabels([str(i + 1) for i in range(N)])

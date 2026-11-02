@@ -19,7 +19,8 @@ import { actionTick, tryFinalize, trySweep } from "./actions.js";
 import { config, envReady, SESSIONS } from "./config.js";
 
 const PORT = Number(process.env.CLIENT_UI_PORT ?? 8787); // UI port
-const UI_DIR = process.env.CLIENT_UI_DIR ?? path.join(process.cwd(), "js_scripts", "client", "ui"); // folder of index.html
+// folder of index.html
+const UI_DIR = process.env.CLIENT_UI_DIR ?? path.join(process.cwd(), "js_scripts", "client", "ui");
 
 let id: Identity;
 let chain: Chain;

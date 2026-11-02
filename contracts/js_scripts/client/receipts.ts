@@ -133,7 +133,8 @@ export class ReceiptInbox {
       if (p) {
         const verdict = await this.checkDayClose(p, slot);
         if (verdict === "ok") {
-          this.store.putOpening(d, { balance: String(p.newBalance), blind: p.newBlind, netputBlind: p.netputBlind }); // opening of the day's balance and position commitments
+          // opening of the day's balance and position commitments
+          this.store.putOpening(d, { balance: String(p.newBalance), blind: p.newBlind, netputBlind: p.netputBlind });
           dayCloseIngested = true;
         } else {
           dayCloseRejected = verdict === "sig" ? "signature not from operator" : "packet addressed to another slot";
@@ -167,7 +168,8 @@ export class ReceiptInbox {
     if (blobs.length === 0) throw new Error(`no encrypted data posted on chain for day ${day}`);
 
     const cipher = Buffer.from(blobs[blobs.length - 1].slice(2), "hex"); // latest blob if posted more than once
-    const plain = Buffer.from(decrypt(this.id.decryptionKeyHex, cipher)).toString("utf-8"); // ECIES with the member's wallet key
+    // ECIES with the member's wallet key
+    const plain = Buffer.from(decrypt(this.id.decryptionKeyHex, cipher)).toString("utf-8");
     const parsed = JSON.parse(plain) as {
       day: number;
       slot: number;

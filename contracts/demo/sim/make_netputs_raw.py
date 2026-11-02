@@ -33,7 +33,8 @@ def main():
     sim_days = days[:keep]  # days written to the netputs
 
     profiles = {}
-    totals = {"sold": 0, "bought": 0, "generation_kwh": 0.0, "consumption_kwh": 0.0}  # community totals, for the energy balance check below
+    # community totals, for the energy balance check below
+    totals = {"sold": 0, "bought": 0, "generation_kwh": 0.0, "consumption_kwh": 0.0}
     for n in names:
         s = pd.read_parquet(os.path.join(args.profiles, f"{n}.parquet"))
         per_day = {}
@@ -42,7 +43,8 @@ def main():
             if len(rows_of_day) != SESSIONS:
                 raise SystemExit(f"{n} has {len(rows_of_day)} rows on {day}, expected {SESSIONS}")
             gen = rows_of_day["omega_kw"].values  # PV output, kW
-            con = (rows_of_day["alpha_base_kw"] + rows_of_day["flex_kw"]).values  # base plus flexible load as recorded, kW
+            # base plus flexible load as recorded, kW
+            con = (rows_of_day["alpha_base_kw"] + rows_of_day["flex_kw"]).values
             rows = []
             for t in range(SESSIONS):
                 wh = (gen[t] - con[t]) * HOURS_PER_SESSION * 1000  # net energy of the session, Wh

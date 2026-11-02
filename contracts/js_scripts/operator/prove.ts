@@ -26,7 +26,8 @@ async function prove(circuitPath: string, inputs: Record<string, unknown>): Prom
   const api = await Barretenberg.new({ threads: 1 });
   try {
     const backend = new UltraHonkBackend(circuit.bytecode, api);
-    const { proof } = await backend.generateProof(witness, { verifierTarget: "evm" } as never); // checkable by the Solidity verifier
+    // checkable by the Solidity verifier
+    const { proof } = await backend.generateProof(witness, { verifierTarget: "evm" } as never);
     return proof;
   } finally {
     await api.destroy(); // free the WASM instance

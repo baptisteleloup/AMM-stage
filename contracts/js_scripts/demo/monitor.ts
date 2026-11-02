@@ -106,7 +106,7 @@ async function history(read: ethers.Contract, slots: number, today: number, span
   if (hist.size === 0) {
     console.log(`${C.dim}no balances yet in ${OPERATOR_DB}.`);
     console.log(`they appear once the operator closes its first day. balances are not`);
-    console.log(`on chain — only commitments are — so this view reads the operator's`);
+    console.log(`on chain (only commitments are), so this view reads the operator's`);
     console.log(`own records, which is the privacy property working.${C.off}`);
     return;
   }
@@ -267,7 +267,7 @@ async function main(): Promise<void> {
     const bals = balances(day, slots);
     if (bals.length === 0) {
       console.log(`  ${C.dim}no operator database at ${OPERATOR_DB}, so no balances.`);
-      console.log(`  balances are not on chain — only commitments are. This view needs`);
+      console.log(`  balances are not on chain, only commitments are. This view needs`);
       console.log(`  the operator's own records, which is the privacy property working.${C.off}`);
     } else {
       console.log(`  ${C.head}balances at the opening of day ${day}${C.off} ${C.dim}(operator-side, not public)${C.off}`);
@@ -307,7 +307,7 @@ async function main(): Promise<void> {
       console.log(`  slot ${String(b.slot).padStart(3)}  ${bar(Number(b.balance), peakBal, 24, b.below ? C.warn : C.ok)} ${b.balance.padStart(12)} EUR${flag}`);
     }
   } else {
-    console.log(`${C.dim}no operator database at ${OPERATOR_DB} — balances live there, not on chain.${C.off}`);
+    console.log(`${C.dim}no operator database at ${OPERATOR_DB}. Balances live there, not on chain.${C.off}`);
   }
 }
 

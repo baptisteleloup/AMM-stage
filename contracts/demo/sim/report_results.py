@@ -66,7 +66,8 @@ def session_prices(S, D, low, high, rule="mmr"):
     with np.errstate(divide="ignore", invalid="ignore"):
         y = np.where(D > 0, S / np.where(D > 0, D, 1.0), 0.0)  # supply-demand ratio, guarded against D = 0
         if rule == "mmr":
-            u = np.clip(1.0 - np.where(S > 0, D / np.where(S > 0, S, 1.0), 0.0), 0.0, None)  # share of supply sold to the grid
+            # share of supply sold to the grid
+            u = np.clip(1.0 - np.where(S > 0, D / np.where(S > 0, S, 1.0), 0.0), 0.0, None)
             v = np.clip(1.0 - y, 0.0, None)  # share of demand bought from the grid
             r = rho - (rho - low) * u
             c = rho + (high - rho) * v

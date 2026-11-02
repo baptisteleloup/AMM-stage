@@ -121,7 +121,8 @@ def add_household(m, data, name):
         # hot water + pumps: same energy as in the data every day, but whenever we want
         m.addConstr(gp.quicksum(f[t] for t in ts) == float(sum(h["flex"][t] for t in ts)))
 
-    return {"sell": s, "buy": d, "flex": f, "batt": k, "soc": b, "cycle_load": load, "starts": starts}  # handles for objectives and readout
+    # handles for objectives and readout
+    return {"sell": s, "buy": d, "flex": f, "batt": k, "soc": b, "cycle_load": load, "starts": starts}
 
 
 def values(v, T):

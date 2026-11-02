@@ -19,7 +19,8 @@ args = ap.parse_args()
 RULES = ("mmr", "sdr", "hyperbolic")
 LABEL = {"mmr": "Mid-market rate", "sdr": "Supply-demand ratio", "hyperbolic": "Hyperbolic"}
 OUT = HERE / "out"
-FIG = HERE.joinpath("figures") if args.out == str(HERE / "figures") else __import__("pathlib").Path(args.out)  # figures folder
+# figures folder
+FIG = HERE.joinpath("figures") if args.out == str(HERE / "figures") else __import__("pathlib").Path(args.out)
 FIG.mkdir(exist_ok=True)
 
 data = Data()
@@ -28,7 +29,8 @@ names = data.names
 hours = np.arange(96) / 4  # x axis, hour of the day
 solo = json.loads((OUT / "solo.json").read_text())  # bills alone
 planner = json.loads((OUT / "planner.json").read_text())  # planner bills and schedules
-nash = {r: json.loads((OUT / f"nash_{r}.json").read_text()) for r in RULES if (OUT / f"nash_{r}.json").exists()}  # equilibria found from solo
+# equilibria found from solo
+nash = {r: json.loads((OUT / f"nash_{r}.json").read_text()) for r in RULES if (OUT / f"nash_{r}.json").exists()}
 pv = [n for n in names if data.hh[n]["omega"].sum() > 0]  # households with photovoltaics
 nopv = [n for n in names if n not in pv]
 

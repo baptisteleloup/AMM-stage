@@ -50,11 +50,13 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
   const state = DAY_STATE[dc.state] ?? String(dc.state);
   const posted = (await chain.market.netputHashesPosted(day)) as boolean;
   const myHash = await chain.netputHash(day, slot);
-  const expected = posted ? ((await chain.market.chunkCountFor(day)) as bigint) : 0n; // batches expected, known once the day is frozen
+  // batches expected, known once the day is frozen
+  const expected = posted ? ((await chain.market.chunkCountFor(day)) as bigint) : 0n;
 
   const deadlines: Deadline[] = [];
   if (dc.disputeDeadline > 0n) {
-    deadlines.push(mk("time to object", Number(dc.disputeDeadline), now, // the dispute deadline, seen from the member's side
+    // the dispute deadline, seen from the member's side
+    deadlines.push(mk("time to object", Number(dc.disputeDeadline), now,
       "nothing is paid before this; check the day and object if it does not add up"));
   }
 
@@ -97,7 +99,8 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
 
   const actionable: string[] = [];
   if (state === "Closing") {
-    if (myHash === ZERO32) actionable.push("no fingerprint posted for your slot on this day"); // operator posted no commitment for this slot
+    // operator posted no commitment for this slot
+    if (myHash === ZERO32) actionable.push("no fingerprint posted for your slot on this day");
     if (!store.opening(day)) actionable.push("no day-close packet held: run `sync`, or `request-data` to compel the operator");
     if (ground) actionable.push(`the day can be cancelled now (${ground})`);
     if (!ground && store.opening(day)) actionable.push("check this day before the time to object runs out");

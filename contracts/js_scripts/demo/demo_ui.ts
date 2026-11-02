@@ -9,7 +9,8 @@ import { ethers } from "ethers";
 
 const RPC_URL = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const CHAIN = process.env.CHAIN ?? "anvil"; // "besu": the network in network/, real time, no time travel
-const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // public anvil test key, also funded in the Besu genesis
+// public anvil test key, also funded in the Besu genesis
+const DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const N_PROSUMERS = Number(process.env.N_PROSUMERS ?? 8);
 const FLOOR_EUR = process.env.FLOOR_EUR ?? "31";
 const TARIFF_MODE = process.env.TARIFF_MODE ?? "schedule";
@@ -19,7 +20,8 @@ const TICK_MS = process.env.TICK_MS ?? "200"; // operator loop period
 const BLOCK_TIME = process.env.BLOCK_TIME ?? "1"; // anvil block time, s
 const SESSION_PACE_MS = Number(process.env.SESSION_PACE_MS ?? 4000); // wall time per quarter-hour of market time
 const SESSION_TIMEOUT_MS = Number(process.env.SESSION_TIMEOUT_MS ?? 30000); // wait for the operator to open a session
-const CLIENT_SLOTS = (process.env.CLIENT_SLOTS ?? "1").split(",").map((s) => Number(s.trim())); // members that get a browser client
+// members that get a browser client
+const CLIENT_SLOTS = (process.env.CLIENT_SLOTS ?? "1").split(",").map((s) => Number(s.trim()));
 const CLIENT_POLL_MS = process.env.CLIENT_POLL_MS ?? "5000";
 const BASE_PORT = Number(process.env.CLIENT_UI_PORT ?? 8787); // first client port, the next ones follow
 const OPEN_BROWSER = process.env.OPEN_BROWSER !== "0";
@@ -115,7 +117,7 @@ async function startAnvil(): Promise<void> {
     const up = await waitFor("besu", async () => {
       try { await provider.getBlockNumber(); return true; } catch { return false; }
     }, 30000, 1000);
-    if (!up) throw new Error(`no Besu node answering at ${RPC_URL} (run Network/reset.sh first)`);
+    if (!up) throw new Error(`no Besu node answering at ${RPC_URL} (run network/reset.sh first)`);
     ok(`Besu up at ${RPC_URL}, real-time clock`);
     return;
   }
@@ -163,7 +165,8 @@ function deploy(): Deployment {
     roles: Record<string, { privateKey: string }>;
     prosumers: Record<string, { privateKey: string; address?: string; slot: number }>;
   };
-  const market = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4 ?? ""; // accepts the layouts the file has had
+  // accepts the layouts the file has had
+  const market = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4 ?? "";
   if (!market) throw new Error("market address missing from deployed_demo.json");
 
   const prosumers: Deployment["prosumers"] = {};
@@ -311,7 +314,7 @@ async function main(): Promise<void> {
       let paused = false;
       while (fs.existsSync("PAUSE")) { // `touch PAUSE` in contracts/ freezes the clock
         if (!paused) {
-          log("PAUSE file found — the clock is frozen. Delete it to resume.");
+          log("PAUSE file found, the clock is frozen. Delete it to resume.");
           paused = true;
         }
         await sleep(2000);

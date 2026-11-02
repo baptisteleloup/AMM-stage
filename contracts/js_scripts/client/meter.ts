@@ -13,7 +13,8 @@ export type MeterDay = { // Wh offered and demanded in each of the 96 sessions
 };
 
 type FlatFile = { day?: number; sell: (string | number)[]; buy: (string | number)[] }; // two arrays of 96 values
-type RowFile = { day?: number; sessions: Record<string, { sell: string | number; buy: string | number }> }; // sparse, one entry per session
+// sparse, one entry per session
+type RowFile = { day?: number; sessions: Record<string, { sell: string | number; buy: string | number }> };
 
 function zeros(): bigint[] {
   return Array(SESSIONS).fill(0n);

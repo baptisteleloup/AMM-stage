@@ -35,7 +35,8 @@ function loadDeploy(): { dep: Deploy; marketAddr: string } {
     throw new Error(`${DEPLOY_FILE} not found - run this from contracts/ after deploy_demo`);
   }
   const dep = JSON.parse(fs.readFileSync(DEPLOY_FILE, "utf-8")) as Deploy;
-  const marketAddr = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4; // accepts the layouts the file has had
+  // accepts the layouts the file has had
+  const marketAddr = dep.market ?? dep.contracts?.market ?? dep.contracts?.MarketV4;
   if (!marketAddr) throw new Error(`could not find the market address in ${DEPLOY_FILE}`);
   return { dep, marketAddr };
 }
@@ -43,7 +44,8 @@ function loadDeploy(): { dep: Deploy; marketAddr: string } {
 async function main(): Promise<void> {
   const { dep, marketAddr } = loadDeploy();
 
-  process.env.OPERATOR_KEY ??= dep.roles.operator.privateKey; // the operator store reads its config from the environment
+  // the operator store reads its config from the environment
+  process.env.OPERATOR_KEY ??= dep.roles.operator.privateKey;
   process.env.MARKET_ADDRESS ??= marketAddr;
 
   const { Store } = await import("../operator/store.js"); // imported after the env is set
@@ -58,7 +60,8 @@ async function main(): Promise<void> {
 
   const store = new Store(); // operator database, keeps the floor openings for the proofs
 
-  const floor = BigInt(Math.round(Number(FLOOR_EUR) * 1e6)) * (PEUR_PER_EUR / 1_000_000n); // EUR to pEUR, exact to 1e-6 EUR
+  // EUR to pEUR, exact to 1e-6 EUR
+  const floor = BigInt(Math.round(Number(FLOOR_EUR) * 1e6)) * (PEUR_PER_EUR / 1_000_000n);
   const n = Number(await asOperator.prosumerCount());
   if (n === 0) throw new Error("no prosumer registered on this market");
   const slots = ONLY_SLOT > 0 ? [ONLY_SLOT] : Array.from({ length: n }, (_, i) => i + 1);

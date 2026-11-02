@@ -35,7 +35,7 @@ environment:
   MARKET_ADDRESS   required   the market contract address
   PROSUMER_KEY     required   this prosumer's private key
   RPC_URL          optional   default http://127.0.0.1:8545
-  RECEIPTS_DIR     optional   default ./operator-data/receipts
+  RECEIPTS_DIR     required with the fs receipt transport (the default), no default value
   METER_PATH       optional   meter data, enables the meter check in \`verify\``;
 
 const COMMANDS = new Set([
@@ -154,7 +154,8 @@ async function main(): Promise<void> {
 
     case "cancel":
       if (!arg) throw new Error("usage: cancel <dayId>");
-      print(await cancel(chain, id, store, Number(arg), process.argv[4] ?? "client-initiated")); // optional reason as third argument
+      // optional reason as third argument
+      print(await cancel(chain, id, store, Number(arg), process.argv[4] ?? "client-initiated"));
       break;
 
       break;
@@ -179,7 +180,8 @@ async function main(): Promise<void> {
       for (;;) {
         try {
           const r = await inbox.tick();
-          if (r.newSessions.length || r.dayCloseIngested || r.floorIngested || r.badSignatures.length) print(r); // print only when something changed
+          // print only when something changed
+          if (r.newSessions.length || r.dayCloseIngested || r.floorIngested || r.badSignatures.length) print(r);
           if (r.newSessions.length) { // new receipts change the projected balance
             const m = await marginState(chain, id, store);
             if (shouldNotify(store, m.day, m.tier)) print({ alert: m.tier, day: m.day, message: m.message });

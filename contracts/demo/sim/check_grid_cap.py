@@ -71,7 +71,8 @@ def min_cap(df, cycles):
         prof = c["profile_kw"]
         L = len(prof)
         first = 96 * c["day"]
-        taus = [tau for tau in range(first, first + 96) if tau + L <= T]  # start sessions within its day that fit the horizon
+        # start sessions within its day that fit the horizon
+        taus = [tau for tau in range(first, first + 96) if tau + L <= T]
         z = m.addVars(taus, vtype=GRB.BINARY)  # chosen start
         m.addConstr(z.sum() == 1)  # each cycle runs exactly once
         start_of[c["id"]] = gp.quicksum(tau * z[tau] for tau in taus)
@@ -80,7 +81,8 @@ def min_cap(df, cycles):
                 load[tau + j] += p * z[tau]
     for c in cycles:
         if c["after"] in start_of:
-            m.addConstr(start_of[c["id"]] >= start_of[c["after"]] + c["min_lag_steps"])  # dryer after its washer, with the observed lag
+            # dryer after its washer, with the observed lag
+            m.addConstr(start_of[c["id"]] >= start_of[c["after"]] + c["min_lag_steps"])
 
     for t in range(T):
         m.addConstr(omega[t] + d[t] == base[t] + f[t] + load[t] + k[t] + s[t])  # energy balance of the session

@@ -16,7 +16,8 @@ import { Prover } from "./prover.js";
 
 // Metering source: the NETPUTS_JSON file if it exists, else synthetic curves.
 async function buildSource(chain: Chain): Promise<NetputSource> {
-  const prosumers = JSON.parse(fs.readFileSync(config.prosumersJson, "utf-8")) as Record<string, string>; // name => wallet
+  // name => wallet
+  const prosumers = JSON.parse(fs.readFileSync(config.prosumersJson, "utf-8")) as Record<string, string>;
   const slotByName = new Map<string, number>();
   for (const [name, addr] of Object.entries(prosumers)) {
     const slot = await chain.slotOf(addr); // 0 if the wallet has not registered
@@ -42,7 +43,7 @@ async function main(): Promise<void> {
   const close = new Close(chain, store, source, receipts, prover);
   const reveals = new Reveals(chain, store, prover);
 
-  console.log(`[main] operator daemon up — market=${config.marketAddress} chainId=${chainId}`);
+  console.log(`[main] operator daemon up, market=${config.marketAddress} chainId=${chainId}`);
   console.log(`[main] proofs run in a separate process; session opening is never blocked by one`);
 
   const stop = () => { prover.stop(); process.exit(0); }; // also kills the proving child
@@ -71,7 +72,7 @@ async function main(): Promise<void> {
 
     const spent = Date.now() - started;
     if (spent > config.tickMs * 2) {
-      console.error(`[main] a tick took ${spent}ms, longer than expected — sessions may be late`);
+      console.error(`[main] a tick took ${spent}ms, longer than expected, sessions may be late`);
     }
     await new Promise((res) => setTimeout(res, Math.max(0, config.tickMs - spent))); // keep a steady period
   }

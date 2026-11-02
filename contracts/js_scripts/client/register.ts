@@ -64,7 +64,8 @@ export async function register(chain: Chain, id: Identity, store: Store): Promis
 
   const key = id.encryptionPubKey;
   const bytes = (key.length - 2) / 2; // key length in bytes
-  const ok = (bytes === 33 && (key.startsWith("0x02") || key.startsWith("0x03"))) // same format check as MarketV4.register
+  // same format check as MarketV4.register
+  const ok = (bytes === 33 && (key.startsWith("0x02") || key.startsWith("0x03")))
     || (bytes === 65 && key.startsWith("0x04"));
   if (!ok) throw new Error(`bad encryption key format: ${bytes} bytes, ${key.slice(0, 4)}`);
 

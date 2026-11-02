@@ -77,7 +77,8 @@ export async function marginState(chain: Chain, id: Identity, store: Store, dayA
   let alreadyIn = 0n;
   if (snap.deposit > 0n) { // part of the pending deposit may already be applied by yesterday's close
     try {
-      const frozen = (await chain.market.snapDeposit(day - 1, slot)) as bigint; // deposit frozen at yesterday's midnight
+      // deposit frozen at yesterday's midnight
+      const frozen = (await chain.market.snapDeposit(day - 1, slot)) as bigint;
       alreadyIn = BigInt(frozen) < snap.deposit ? BigInt(frozen) : snap.deposit;
     } catch {
       alreadyIn = 0n;
@@ -86,7 +87,8 @@ export async function marginState(chain: Chain, id: Identity, store: Store, dayA
   const incomingDeposit = snap.deposit - alreadyIn; // deposits that will reach today's balance
 
   const projected = opening + earned + incomingDeposit - spent; // expected end-of-day balance
-  const conservative = opening - (netSpend > 0n ? netSpend : 0n); // worst case: a net gain and incoming deposits are ignored
+  // worst case: a net gain and incoming deposits are ignored
+  const conservative = opening - (netSpend > 0n ? netSpend : 0n);
   const f = BigInt(floor.floor);
 
   let tier: MarginState["tier"] = "ok";

@@ -20,7 +20,8 @@ ap.add_argument("--max-passes", type=int, default=60)  # 0 = only the final chec
 ap.add_argument("--solo", default=str(HERE / "out" / "solo.json"))
 ap.add_argument("--init", choices=("solo", "planner", "mix", "file"), default="solo")  # starting point
 ap.add_argument("--from", dest="from_file", default=None)  # with --init file: json with the starting schedules
-ap.add_argument("--mix-p", type=float, default=0.5)  # with --init mix: chance each household starts from its planner schedule
+# with --init mix: chance each household starts from its planner schedule
+ap.add_argument("--mix-p", type=float, default=0.5)
 ap.add_argument("--perturb", type=int, default=0)  # put this many random households back on their solo schedule
 ap.add_argument("--shuffle", action="store_true")  # random order of the households at each pass
 ap.add_argument("--seed", type=int, default=0)  # for mix, perturb and shuffle

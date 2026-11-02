@@ -8,7 +8,8 @@ import path from "node:path";
 import { ethers } from "ethers";
 
 const DEPLOY_FILE = process.env.DEPLOY_OUT ?? "demo/state/deployed_demo.json";
-const RECEIPTS_DIR = process.env.RECEIPTS_DIR ?? "demo/state/operator-data/receipts"; // per-session receipts written by the operator
+// per-session receipts written by the operator
+const RECEIPTS_DIR = process.env.RECEIPTS_DIR ?? "demo/state/operator-data/receipts";
 const LOG_FILE = process.env.DEMO_LOG ?? "demo/state/demo.log"; // holds the "proof took Xs" lines
 const OUT_FILE = process.env.MEASURE_OUT ?? "demo/measure_chain.json";
 
@@ -136,7 +137,8 @@ async function main(): Promise<void> {
 
   const proofTimes: number[] = [];
   if (fs.existsSync(LOG_FILE)) {
-    for (const m of fs.readFileSync(LOG_FILE, "utf-8").matchAll(/proof took ([0-9.]+)s/g)) proofTimes.push(Number(m[1])); // logged by the operator
+    // logged by the operator
+    for (const m of fs.readFileSync(LOG_FILE, "utf-8").matchAll(/proof took ([0-9.]+)s/g)) proofTimes.push(Number(m[1]));
   }
 
   // Fidelity: for each settled day, the previous balance plus the receipts at the on-chain prices,
@@ -185,7 +187,8 @@ async function main(): Promise<void> {
     }
   }
 
-  const dustEvents = await market.queryFilter(market.filters.DustAccrued(), 0, latest); // rounding residual per settled day
+  // rounding residual per settled day
+  const dustEvents = await market.queryFilter(market.filters.DustAccrued(), 0, latest);
   const dust = dustEvents.map((e: any) => ({ day: Number(e.args.dayId), amount: e.args.amount.toString() }));
 
   const perFn = Object.fromEntries([...fns.entries()].map(([k, v]) => [k, {

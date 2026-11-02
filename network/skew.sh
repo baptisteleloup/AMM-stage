@@ -1,5 +1,6 @@
 #!/bin/bash
 # Clock-skew experiment: restarts one validator (node-4) with its clock shifted by each offset
+# (only node-4 is skewed in docker-compose.skew.yml, so NODE must stay at 4)
 # in turn and measures how far it can move block timestamps, from which the market derives
 # sessions and deadlines. Writes besu_results/skew_watch.jsonl, skew_events.jsonl and skew.json.
 # Run from network/ while the network is up, after building the image (see Dockerfile.faketime):  bash skew.sh
@@ -11,7 +12,7 @@
 #   SKEWS="+2s -3s -8s -30s"  offsets applied in turn to the skewed node
 #   PHASE_S=240               length of each phase in seconds (a restarted node
 #                             needs time to start and resync before it proposes)
-#   NODE=4                    which validator to skew
+#   NODE=4                    which validator to skew (keep 4, see above)
 #   RESTART_CMD               how to restart node {n} with offset {skew}
 
 set -euo pipefail
@@ -45,7 +46,8 @@ mark() { echo "{\"t\":$(now_ms),\"phase\":\"$1\"}" >> "$EVENTS"; echo "[$(date +
 # restart OFFSET: recreates node NODE with its clock shifted by OFFSET
 restart() { local pn='{n}' ps='{skew}'; local c="${RESTART_CMD//$pn/$NODE}"; c="${c//$ps/$1}"; eval "$c" >/dev/null; }
 
-(cd "$CONTRACTS" && RPC_URLS="$RPC_URLS" OUT="$WATCH" npx tsx "$BENCH/chainwatch.ts") & # polls every node in the background
+# polls every node in the background
+(cd "$CONTRACTS" && RPC_URLS="$RPC_URLS" OUT="$WATCH" npx tsx "$BENCH/chainwatch.ts") &
 WATCHER=$!
 trap 'kill $WATCHER 2>/dev/null || true' EXIT
 sleep 3 # let the watcher connect

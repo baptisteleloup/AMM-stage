@@ -52,7 +52,8 @@ export async function deposit(chain: Chain, id: Identity, store: Store, eur: str
   }
 
   let approveTx: string | null = null;
-  const allowance = (await token.allowance(id.address, chain.market.target)) as bigint; // market pulls the deposit with transferFrom
+  // market pulls the deposit with transferFrom
+  const allowance = (await token.allowance(id.address, chain.market.target)) as bigint;
   if (allowance < amount) {
     const tx = await token.approve(chain.market.target, amount);
     const rc = await tx.wait();
@@ -139,7 +140,8 @@ export async function position(chain: Chain, id: Identity, store: Store): Promis
   let counted = 0n; // part of the queue frozen into the known balance's day, already counted
   if (knownAtDay !== null && pending.deposit > 0n) {
     try {
-      const frozen = (await chain.market.snapDeposit(knownAtDay, slot)) as bigint; // deposit frozen at that day's midnight
+      // deposit frozen at that day's midnight
+      const frozen = (await chain.market.snapDeposit(knownAtDay, slot)) as bigint;
       counted = frozen < pending.deposit ? frozen : pending.deposit;
     } catch {
       counted = 0n;

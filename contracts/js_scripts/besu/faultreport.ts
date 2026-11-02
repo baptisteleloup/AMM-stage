@@ -29,7 +29,8 @@ async function main() {
   const watch = readJsonl<W>(WATCH);
   const events = readJsonl<E>(EVENTS);
   const end = watch[watch.length - 1].t; // the last phase ends with the log
-  const phases = events.map((e, i) => ({ phase: e.phase, from: e.t, to: events[i + 1]?.t ?? end })); // each phase runs to the next marker
+  // each phase runs to the next marker
+  const phases = events.map((e, i) => ({ phase: e.phase, from: e.t, to: events[i + 1]?.t ?? end }));
 
   // Chain progress in each phase, seen from the highest head among the nodes that are up.
   const report = phases.map((p) => {
@@ -40,9 +41,11 @@ async function main() {
     const startH = series[0]?.[1] ?? 0, endH = series[series.length - 1]?.[1] ?? 0;
     let lastChange = series[0]?.[0] ?? p.from, prev = startH, longestGapS = 0;
     for (const [t, h] of series) {
-      if (h !== prev) { longestGapS = Math.max(longestGapS, (t - lastChange) / 1000); lastChange = t; prev = h; } // time without a new block
+      // time without a new block
+      if (h !== prev) { longestGapS = Math.max(longestGapS, (t - lastChange) / 1000); lastChange = t; prev = h; }
     }
-    longestGapS = Math.max(longestGapS, ((series[series.length - 1]?.[0] ?? p.to) - lastChange) / 1000); // a stall that lasts to the end of the phase
+    // a stall that lasts to the end of the phase
+    longestGapS = Math.max(longestGapS, ((series[series.length - 1]?.[0] ?? p.to) - lastChange) / 1000);
     const durationS = (p.to - p.from) / 1000;
     const nodesUp = [...new Set(rows.map((r) => r.node))].sort();
     return { phase: p.phase, durationS, nodesUp, blocks: endH - startH,

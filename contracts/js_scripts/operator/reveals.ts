@@ -70,7 +70,8 @@ export class Reveals {
     const r = await this.chain.revealOf(day, slot);
     if (r.stage1Done) return true; // already answered
     const pk = await this.chain.encryptionKeyOf(slot);
-    const cipher = encrypt(Buffer.from(pk.slice(2), "hex"), this.blobFor(day, slot)); // ECIES to the key given at registration
+    // ECIES to the key given at registration
+    const cipher = encrypt(Buffer.from(pk.slice(2), "hex"), this.blobFor(day, slot));
     await this.chain.postEncryptedData(day, slot, "0x" + Buffer.from(cipher).toString("hex"));
     console.log(`[reveals] stage 1 served: day=${day} slot=${slot}`);
     return true;
@@ -98,7 +99,7 @@ export class Reveals {
     if (job.state === "failed") { // cleared so the next tick retries
       this.prover.clear(jobId);
       this.pending.delete(jobId);
-      console.error(`[reveals] stage 2 proof failed: day=${day} slot=${slot} — ${job.error.slice(0, 120)}`);
+      console.error(`[reveals] stage 2 proof failed: day=${day} slot=${slot}: ${job.error.slice(0, 120)}`);
       return false;
     }
 
