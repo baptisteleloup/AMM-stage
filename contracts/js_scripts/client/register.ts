@@ -1,3 +1,6 @@
+// Registration with MarketV4 and its status: registered, key matches, floor set or pending.
+// A member trades only once a floor has been set by the operator and the floor admin.
+
 import { Chain } from "./chain.js";
 import { Identity } from "./identity.js";
 import { Store } from "./store.js";
@@ -13,8 +16,9 @@ export type RegistrationStatus = {
   note: string;
 };
 
-const ZERO32 = "0x" + "0".repeat(64);
+const ZERO32 = "0x" + "0".repeat(64); // empty bytes32
 
+// Reads the member's registration state from the chain and the local store.
 export async function status(chain: Chain, id: Identity, store: Store): Promise<RegistrationStatus> {
   const slot = await chain.slotOf(id.address);
   if (slot === 0) {
@@ -26,15 +30,15 @@ export async function status(chain: Chain, id: Identity, store: Store): Promise<
   }
 
   const onchainKey = (await chain.market.encryptionKeyOf(slot)) as string;
-  const keyMatches = id.ownsKey(onchainKey);
+  const keyMatches = id.ownsKey(onchainKey); // the registered key must be ours to read recourse data
 
-  const zeroCommit = (await chain.market.ZERO_BAL_COMMIT()) as string;
+  const zeroCommit = (await chain.market.ZERO_BAL_COMMIT()) as string; // floor commitment of a member without a floor
   const floorCommit = await chain.floorCommit(slot);
   const pendingFloor = (await chain.market.pendingFloorCommit(slot)) as string;
 
-  const floorSet = floorCommit !== zeroCommit && floorCommit !== ZERO32;
-  const floorPending = pendingFloor !== ZERO32;
-  const hasOpening = store.floor() !== null;
+  const floorSet = floorCommit !== zeroCommit && floorCommit !== ZERO32; // floor confirmed by both signatures
+  const floorPending = pendingFloor !== ZERO32; // proposed by the operator, awaiting the floor admin
+  const hasOpening = store.floor() !== null; // floor opening received from the operator
 
   let note: string;
   if (!floorSet && floorPending) note = "awaiting metering hookup: a minimum balance requirement has been proposed and is awaiting confirmation";
@@ -44,22 +48,23 @@ export async function status(chain: Chain, id: Identity, store: Store): Promise<
 
   return {
     registered: true, slot, address: id.address, keyMatches,
-    floorSet, floorPending, tradable: floorSet,
+    floorSet, floorPending, tradable: floorSet, // no floor, no trading
     note,
   };
 }
 
+// Registers the wallet if needed (idempotent) and records the slot locally.
 export async function register(chain: Chain, id: Identity, store: Store): Promise<RegistrationStatus> {
   const existing = await chain.slotOf(id.address);
   if (existing !== 0) {
     const st = await status(chain, id, store);
-    store.setIdentity(st.slot, id.address, await chain.now());
+    store.setIdentity(st.slot, id.address, await chain.now()); // already registered: just record the slot
     return st;
   }
 
   const key = id.encryptionPubKey;
-  const bytes = (key.length - 2) / 2;
-  const ok = (bytes === 33 && (key.startsWith("0x02") || key.startsWith("0x03")))
+  const bytes = (key.length - 2) / 2; // key length in bytes
+  const ok = (bytes === 33 && (key.startsWith("0x02") || key.startsWith("0x03"))) // same format check as MarketV4.register
     || (bytes === 65 && key.startsWith("0x04"));
   if (!ok) throw new Error(`bad encryption key format: ${bytes} bytes, ${key.slice(0, 4)}`);
 
@@ -67,6 +72,6 @@ export async function register(chain: Chain, id: Identity, store: Store): Promis
 
   const slot = await chain.slotOf(id.address);
   if (slot === 0) throw new Error("registration did not assign a slot");
-  store.setIdentity(slot, id.address, await chain.now());
+  store.setIdentity(slot, id.address, await chain.now()); // block time, for the record
   return await status(chain, id, store);
 }

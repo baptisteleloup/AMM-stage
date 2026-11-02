@@ -1,15 +1,19 @@
+// Reads the member's own meter readings for a day (METER_PATH), used to cross-check the positions
+// in the operator's receipts. Accepts a 96-entry {sell, buy} file or a {sessions: {t: {sell, buy}}} file.
+// METER_PATH is a single file or a folder of meter-<day>.json / day-<day>.json.
+
 import fs from "node:fs";
 import path from "node:path";
 import { config, SESSIONS } from "./config.js";
 
-export type MeterDay = {
+export type MeterDay = { // Wh offered and demanded in each of the 96 sessions
   day: number;
   sell: bigint[];
   buy: bigint[];
 };
 
-type FlatFile = { day?: number; sell: (string | number)[]; buy: (string | number)[] };
-type RowFile = { day?: number; sessions: Record<string, { sell: string | number; buy: string | number }> };
+type FlatFile = { day?: number; sell: (string | number)[]; buy: (string | number)[] }; // two arrays of 96 values
+type RowFile = { day?: number; sessions: Record<string, { sell: string | number; buy: string | number }> }; // sparse, one entry per session
 
 function zeros(): bigint[] {
   return Array(SESSIONS).fill(0n);
@@ -19,18 +23,18 @@ function parse(raw: unknown, day: number): MeterDay {
   const sell = zeros();
   const buy = zeros();
 
-  if (raw && typeof raw === "object" && "sessions" in (raw as RowFile)) {
+  if (raw && typeof raw === "object" && "sessions" in (raw as RowFile)) { // sparse form
     const f = raw as RowFile;
     for (const [k, v] of Object.entries(f.sessions)) {
       const t = Number(k);
-      if (!Number.isInteger(t) || t < 0 || t >= SESSIONS) continue;
+      if (!Number.isInteger(t) || t < 0 || t >= SESSIONS) continue; // ignore keys that are not a session index
       sell[t] = BigInt(v.sell ?? 0);
       buy[t] = BigInt(v.buy ?? 0);
     }
     return { day: f.day ?? day, sell, buy };
   }
 
-  const f = raw as FlatFile;
+  const f = raw as FlatFile; // dense form
   if (!Array.isArray(f.sell) || !Array.isArray(f.buy)) {
     throw new Error("meter file: expected {sell:[],buy:[]} or {sessions:{t:{sell,buy}}}");
   }
@@ -45,7 +49,7 @@ function parse(raw: unknown, day: number): MeterDay {
 }
 
 export function readMeter(day: number): MeterDay | null {
-  if (!config.meterPath) return null;
+  if (!config.meterPath) return null; // no meter configured: nothing to cross-check
   const candidates = fs.existsSync(config.meterPath) && fs.statSync(config.meterPath).isDirectory()
     ? [path.join(config.meterPath, `meter-${day}.json`), path.join(config.meterPath, `day-${day}.json`)]
     : [config.meterPath];
@@ -54,7 +58,7 @@ export function readMeter(day: number): MeterDay | null {
     if (!fs.existsSync(f)) continue;
     const raw = JSON.parse(fs.readFileSync(f, "utf-8")) as unknown;
     const m = parse(raw, day);
-    if (m.day !== day) continue;
+    if (m.day !== day) continue; // file for another day
     return m;
   }
   return null;

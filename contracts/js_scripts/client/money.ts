@@ -1,3 +1,7 @@
+// Deposits, withdrawal requests and the member's money position (queues on chain, last known
+// balance from the day-close packets, token balance). Amounts are entered in currency units and
+// must be whole pEUR, as MarketV4 requires.
+
 import { ethers } from "ethers";
 import { Chain } from "./chain.js";
 import { Identity } from "./identity.js";
@@ -22,6 +26,7 @@ export type WithdrawResult = {
   warning: string;
 };
 
+// Slot of the wallet, recorded locally; fails if not registered.
 async function requireSlot(chain: Chain, id: Identity, store: Store): Promise<number> {
   const slot = await chain.slotOf(id.address);
   if (slot === 0) throw new Error("not registered: run `register` first");
@@ -29,13 +34,14 @@ async function requireSlot(chain: Chain, id: Identity, store: Store): Promise<nu
   return slot;
 }
 
+// Approves the market if needed, then deposits. Applied by the next day that closes and settles.
 export async function deposit(chain: Chain, id: Identity, store: Store, eur: string): Promise<DepositResult> {
   const slot = await requireSlot(chain, id, store);
 
   const raw = eurToWei(eur);
-  const amount = roundDownToUnit(raw);
+  const amount = roundDownToUnit(raw); // largest whole-pEUR amount
   if (amount === 0n) throw new Error(`amount too small: minimum is ${WEI_PER_UNIT} wei`);
-  if (amount !== raw) {
+  if (amount !== raw) { // refuse rather than round silently
     throw new Error(`amount must be a whole pEUR; ${eur} rounds to ${amount} wei, retry with that value`);
   }
 
@@ -46,17 +52,17 @@ export async function deposit(chain: Chain, id: Identity, store: Store, eur: str
   }
 
   let approveTx: string | null = null;
-  const allowance = (await token.allowance(id.address, chain.market.target)) as bigint;
+  const allowance = (await token.allowance(id.address, chain.market.target)) as bigint; // market pulls the deposit with transferFrom
   if (allowance < amount) {
     const tx = await token.approve(chain.market.target, amount);
     const rc = await tx.wait();
     approveTx = rc.hash;
   }
 
-  const dtx = await chain.market.deposit(amount);
+  const dtx = await chain.market.deposit(amount); // MarketV4.deposit
   const drc = await dtx.wait();
 
-  const pending = await chain.pending(slot);
+  const pending = await chain.pending(slot); // queue after the deposit
   return {
     amountEur: eur,
     amountWei: amount.toString(),
@@ -67,6 +73,7 @@ export async function deposit(chain: Chain, id: Identity, store: Store, eur: str
   };
 }
 
+// Queues a withdrawal request. Paid at a later settlement, capped by the available balance.
 export async function requestWithdraw(chain: Chain, id: Identity, store: Store, eur: string): Promise<WithdrawResult> {
   const slot = await requireSlot(chain, id, store);
 
@@ -77,7 +84,7 @@ export async function requestWithdraw(chain: Chain, id: Identity, store: Store, 
     throw new Error(`amount must be a whole pEUR; ${eur} rounds to ${amount} wei, retry with that value`);
   }
 
-  const tx = await chain.market.requestWithdraw(amount);
+  const tx = await chain.market.requestWithdraw(amount); // MarketV4.requestWithdraw
   const rc = await tx.wait();
   const pending = await chain.pending(slot);
 
@@ -109,6 +116,7 @@ export type Position = {
   depositStillToApplyEur: string;
 };
 
+// Current money position of the member.
 export async function position(chain: Chain, id: Identity, store: Store): Promise<Position> {
   const slot = await requireSlot(chain, id, store);
   const pending = await chain.pending(slot);
@@ -119,7 +127,7 @@ export async function position(chain: Chain, id: Identity, store: Store): Promis
   let knownBalance: bigint | null = null;
   let knownAtDay: number | null = null;
   const { day } = await chain.clock();
-  for (let d = day; d >= day - 30; d--) {
+  for (let d = day; d >= day - 30; d--) { // latest day-close packet held, looking back 30 days
     const o = store.opening(d);
     if (o) {
       knownBalance = BigInt(o.balance);
@@ -128,19 +136,17 @@ export async function position(chain: Chain, id: Identity, store: Store): Promis
     }
   }
 
-  // The freeze for the day whose packet we hold is exactly the part of the
-  // queue that has already been counted.
-  let counted = 0n;
+  let counted = 0n; // part of the queue frozen into the known balance's day, already counted
   if (knownAtDay !== null && pending.deposit > 0n) {
     try {
-      const frozen = (await chain.market.snapDeposit(knownAtDay, slot)) as bigint;
+      const frozen = (await chain.market.snapDeposit(knownAtDay, slot)) as bigint; // deposit frozen at that day's midnight
       counted = frozen < pending.deposit ? frozen : pending.deposit;
     } catch {
       counted = 0n;
     }
   }
 
-  const stillToApply = pending.deposit - counted;
+  const stillToApply = pending.deposit - counted; // deposit the next close will apply
 
   return {
     slot,

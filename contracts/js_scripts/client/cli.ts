@@ -1,3 +1,7 @@
+// Command-line client of a member: registration, money, receipts, checks, recourse and the watch
+// daemon. Prints JSON. Configured by environment only (see config.ts).
+// Run from contracts/: npx tsx js_scripts/client/cli.ts <command> [arg]   (no command: usage)
+
 import { Chain } from "./chain.js";
 import { Identity } from "./identity.js";
 import { Store } from "./store.js";
@@ -11,6 +15,7 @@ import { requestData, fetchData, requestClearReveal, readRevealed, cancel } from
 import { actionTick, tryFinalize, trySweep } from "./actions.js";
 import { config, envReady } from "./config.js";
 
+// JSON output, bigints as strings.
 function print(o: unknown): void {
   console.log(JSON.stringify(o, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2));
 }
@@ -40,8 +45,9 @@ const COMMANDS = new Set([
   "finalize", "sweep", "watch",
 ]);
 
+// Parses the command, checks the environment, then dispatches.
 async function main(): Promise<void> {
-  const [cmd, arg] = process.argv.slice(2);
+  const [cmd, arg] = process.argv.slice(2); // command and its first argument (usually a day number)
 
   if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
     console.log(USAGE);
@@ -53,7 +59,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const env = envReady();
+  const env = envReady(); // fail early with the list of missing variables
   if (!env.ok) {
     console.error(`missing environment: ${env.missing.join(", ")}\n`);
     console.log(USAGE);
@@ -61,8 +67,8 @@ async function main(): Promise<void> {
   }
 
   const id = new Identity();
-  const chain = new Chain(id.wallet);
-  const store = new Store();
+  const chain = new Chain(id.wallet); // signs as the member
+  const store = new Store(); // local state file
 
   switch (cmd) {
     case "register":
@@ -106,7 +112,7 @@ async function main(): Promise<void> {
       if (!arg) throw new Error("usage: verify <dayId>");
       const v = await verifyDay(chain, id, store, Number(arg));
       print(v);
-      if (v.verdict === "mismatch") process.exitCode = 2;
+      if (v.verdict === "mismatch") process.exitCode = 2; // exit code 2 lets scripts detect a mismatch
       break;
     }
 
@@ -148,7 +154,7 @@ async function main(): Promise<void> {
 
     case "cancel":
       if (!arg) throw new Error("usage: cancel <dayId>");
-      print(await cancel(chain, id, store, Number(arg), process.argv[4] ?? "client-initiated"));
+      print(await cancel(chain, id, store, Number(arg), process.argv[4] ?? "client-initiated")); // optional reason as third argument
       break;
 
       break;
@@ -167,14 +173,14 @@ async function main(): Promise<void> {
       print(await new ReceiptInbox(chain, id, store).ingestOnChainBlob(Number(arg)));
       break;
 
-    case "watch": {
+    case "watch": { // daemon: poll receipts, alert on margin, run automatic actions
       const inbox = new ReceiptInbox(chain, id, store);
       console.error(`watching, every ${config.pollMs} ms`);
       for (;;) {
         try {
           const r = await inbox.tick();
-          if (r.newSessions.length || r.dayCloseIngested || r.floorIngested || r.badSignatures.length) print(r);
-          if (r.newSessions.length) {
+          if (r.newSessions.length || r.dayCloseIngested || r.floorIngested || r.badSignatures.length) print(r); // print only when something changed
+          if (r.newSessions.length) { // new receipts change the projected balance
             const m = await marginState(chain, id, store);
             if (shouldNotify(store, m.day, m.tier)) print({ alert: m.tier, day: m.day, message: m.message });
           }
@@ -182,7 +188,7 @@ async function main(): Promise<void> {
         } catch (e) {
           console.error("[sync]", (e as Error).message);
         }
-        await new Promise((res) => setTimeout(res, config.pollMs));
+        await new Promise((res) => setTimeout(res, config.pollMs)); // CLIENT_POLL_MS
       }
     }
 

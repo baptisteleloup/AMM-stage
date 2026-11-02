@@ -1,3 +1,7 @@
+// Receipt inbox: fetches the operator's signed session receipts, day-close packets and floor opening
+// through the transport, checks the EIP-712 signatures against MarketV4.operator(), and stores what
+// passes. Also ingests the encrypted recourse blob posted on chain (stage 1).
+
 import { ethers } from "ethers";
 import { decrypt } from "eciesjs";
 import { Chain } from "./chain.js";
@@ -6,6 +10,7 @@ import { Store } from "./store.js";
 import { makeTransport, type Transport, type RawSessionReceipt, type RawDayClosePacket } from "./transport.js";
 import { SESSIONS } from "./config.js";
 
+// EIP-712 types, identical to the operator's (operator/receipts.ts).
 const TYPES_SESSION = {
   SessionReceipt: [
     { name: "day", type: "uint256" },
@@ -38,6 +43,7 @@ export type IngestReport = {
   coverage: string;
 };
 
+// Pulls, checks and stores the member's receipts.
 export class ReceiptInbox {
   private domain: ethers.TypedDataDomain | null = null;
   private operator: string | null = null;
@@ -47,13 +53,14 @@ export class ReceiptInbox {
     this.transport = makeTransport();
   }
 
+  // EIP-712 domain and operator address, read once from the chain.
   private async ctx(): Promise<{ domain: ethers.TypedDataDomain; operator: string }> {
     if (!this.domain || !this.operator) {
       const chainId = await this.chain.chainId();
       this.domain = {
         name: "EnergyMarket",
         version: "4",
-        chainId,
+        chainId, // chain and market bind the signature
         verifyingContract: await this.chain.market.getAddress(),
       };
       this.operator = ((await this.chain.market.operator()) as string).toLowerCase();
@@ -61,6 +68,7 @@ export class ReceiptInbox {
     return { domain: this.domain, operator: this.operator };
   }
 
+  // A session receipt counts only if signed by the operator and addressed to this slot.
   private async checkSession(r: RawSessionReceipt, slot: number): Promise<"ok" | "sig" | "slot"> {
     if (Number(r.slot) !== slot) return "slot";
     const { domain, operator } = await this.ctx();
@@ -76,6 +84,7 @@ export class ReceiptInbox {
     }
   }
 
+  // Same check for a day-close packet.
   private async checkDayClose(p: RawDayClosePacket, slot: number): Promise<"ok" | "sig" | "slot"> {
     if (Number(p.slot) !== slot) return "slot";
     const { domain, operator } = await this.ctx();
@@ -93,22 +102,23 @@ export class ReceiptInbox {
     }
   }
 
+  // One poll: new session receipts of the day, then its day-close packet and the floor opening.
   async tick(day?: number): Promise<IngestReport> {
     const slot = this.store.slot || (await this.chain.slotOf(this.id.address));
     if (slot === 0) throw new Error("not registered");
 
     const clock = await this.chain.clock();
-    const d = day ?? clock.day;
-    const upTo = d === clock.day ? clock.t : SESSIONS - 1;
+    const d = day ?? clock.day; // today by default
+    const upTo = d === clock.day ? clock.t : SESSIONS - 1; // today: only sessions already passed
 
     const newSessions: number[] = [];
     const badSignatures: number[] = [];
     const wrongSlot: number[] = [];
 
     for (let t = 0; t <= upTo; t++) {
-      if (this.store.session(d, t)) continue;
+      if (this.store.session(d, t)) continue; // already held
       const r = await this.transport.session(slot, d, t);
-      if (!r) continue;
+      if (!r) continue; // not published yet
       const verdict = await this.checkSession(r, slot);
       if (verdict === "sig") { badSignatures.push(t); continue; }
       if (verdict === "slot") { wrongSlot.push(t); continue; }
@@ -118,12 +128,12 @@ export class ReceiptInbox {
 
     let dayCloseIngested = false;
     let dayCloseRejected: string | null = null;
-    if (!this.store.opening(d)) {
+    if (!this.store.opening(d)) { // one packet per day
       const p = await this.transport.dayClose(slot, d);
       if (p) {
         const verdict = await this.checkDayClose(p, slot);
         if (verdict === "ok") {
-          this.store.putOpening(d, { balance: String(p.newBalance), blind: p.newBlind, netputBlind: p.netputBlind });
+          this.store.putOpening(d, { balance: String(p.newBalance), blind: p.newBlind, netputBlind: p.netputBlind }); // opening of the day's balance and position commitments
           dayCloseIngested = true;
         } else {
           dayCloseRejected = verdict === "sig" ? "signature not from operator" : "packet addressed to another slot";
@@ -134,7 +144,7 @@ export class ReceiptInbox {
     let floorIngested = false;
     if (!this.store.floor()) {
       const f = await this.transport.floorOpening(slot);
-      if (f && Number(f.slot) === slot) {
+      if (f && Number(f.slot) === slot) { // floor opening is not signed, checked against the chain in verify.ts
         this.store.setFloor({ floor: String(f.floor), blind: f.blind });
         floorIngested = true;
       }
@@ -148,6 +158,7 @@ export class ReceiptInbox {
     };
   }
 
+  // Stage 1 recourse: decrypts the blob the operator posted on chain and stores its signed content.
   async ingestOnChainBlob(day: number): Promise<{ sessions: number; opening: boolean; source: string }> {
     const slot = this.store.slot || (await this.chain.slotOf(this.id.address));
     if (slot === 0) throw new Error("not registered");
@@ -155,8 +166,8 @@ export class ReceiptInbox {
     const blobs = await this.chain.encryptedDataFor(day, slot);
     if (blobs.length === 0) throw new Error(`no encrypted data posted on chain for day ${day}`);
 
-    const cipher = Buffer.from(blobs[blobs.length - 1].slice(2), "hex");
-    const plain = Buffer.from(decrypt(this.id.decryptionKeyHex, cipher)).toString("utf-8");
+    const cipher = Buffer.from(blobs[blobs.length - 1].slice(2), "hex"); // latest blob if posted more than once
+    const plain = Buffer.from(decrypt(this.id.decryptionKeyHex, cipher)).toString("utf-8"); // ECIES with the member's wallet key
     const parsed = JSON.parse(plain) as {
       day: number;
       slot: number;
@@ -167,12 +178,12 @@ export class ReceiptInbox {
     if (Number(parsed.slot) !== slot) throw new Error("blob addressed to another slot");
 
     let sessions = 0;
-    for (const [name, body] of Object.entries(parsed.receipts ?? {})) {
-      const m = /^t-(\d+)\.json$/.exec(name);
+    for (const [name, body] of Object.entries(parsed.receipts ?? {})) { // receipts keyed by file name
+      const m = /^t-(\d+)\.json$/.exec(name); // session receipts only
       if (!m) continue;
       const r = body as RawSessionReceipt;
       const verdict = await this.checkSession(r, slot);
-      if (verdict !== "ok") continue;
+      if (verdict !== "ok") continue; // unsigned or foreign entries are ignored
       this.store.putSession({ day, t: Number(m[1]), sell: String(r.sell), buy: String(r.buy), sig: r.sig });
       sessions++;
     }

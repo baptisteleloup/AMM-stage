@@ -1,3 +1,7 @@
+// Automatic actions of the watch loop: verify recent days, run recourse when a day does not check out,
+// settle verified days, cancel on the member's own unanswered request, sweep dust. Each AUTO_* flag
+// in config.ts switches one of them; every attempt is reported, done or not.
+
 import { Chain, DAY_STATE } from "./chain.js";
 import { Identity } from "./identity.js";
 import { Store } from "./store.js";
@@ -5,6 +9,7 @@ import { config } from "./config.js";
 import { verifyDay } from "./verify.js";
 import { requestData, fetchData, requestClearReveal } from "./recourse.js";
 
+// What one action did, or why it was not attempted.
 export type ActionAttempt = {
   action: string;
   day?: number;
@@ -18,9 +23,10 @@ function verdictOf(store: Store, day: number): string | undefined {
   return (store.verdict(`day-${day}`) as { verdict?: string } | undefined)?.verdict;
 }
 
+// Calls finalizeDay once its conditions hold. If settlement keeps reverting past the grace period, cancels the day.
 export async function tryFinalize(chain: Chain, id: Identity, store: Store, day: number): Promise<ActionAttempt> {
   const dc = await chain.dayClose(day);
-  if (dc.state !== 1) {
+  if (dc.state !== 1) { // 1 = Closing
     return { action: "finalizeDay", day, attempted: false, tx: null, reason: `day is ${DAY_STATE[dc.state]}` };
   }
   const expected = (await chain.market.chunkCountFor(day)) as bigint;
@@ -37,16 +43,14 @@ export async function tryFinalize(chain: Chain, id: Identity, store: Store, day:
   }
 
   try {
-    const rc = await (await chain.market.finalizeDay(day)).wait();
+    const rc = await (await chain.market.finalizeDay(day)).wait(); // MarketV4.finalizeDay
     return { action: "finalizeDay", day, attempted: true, tx: rc.hash, reason: "settled" };
   } catch (e) {
     const why = (e as Error).message.slice(0, 120);
-    // Settlement itself is failing. Past the grace period the contract lets
-    // anyone cancel such a day so it cannot freeze the ones after it.
     const grace = Number((await chain.market.SETTLEMENT_GRACE()) as bigint);
-    if (now > Number(dc.disputeDeadline) + grace) {
+    if (now > Number(dc.disputeDeadline) + grace) { // grace over: cancelDay accepts the stuck-day ground
       try {
-        const rc = await (await chain.market.cancelDay(day, 0, `settlement impossible: ${why.slice(0, 80)}`)).wait();
+        const rc = await (await chain.market.cancelDay(day, 0, `settlement impossible: ${why.slice(0, 80)}`)).wait(); // revealSlot 0: general ground
         return { action: "cancelDay", day, attempted: true, tx: rc.hash, reason: `settlement kept failing past the grace period (${why}); day cancelled so later days can proceed` };
       } catch (e2) {
         return { action: "cancelDay", day, attempted: true, tx: null, reason: `settlement failing (${why}) and cancel refused: ${(e2 as Error).message.slice(0, 80)}` };
@@ -56,6 +60,7 @@ export async function tryFinalize(chain: Chain, id: Identity, store: Store, day:
   }
 }
 
+// Cancels a day on this member's own recourse request left unanswered past its deadline.
 export async function tryCancelOwn(chain: Chain, id: Identity, store: Store, day: number): Promise<ActionAttempt> {
   const slot = store.slot || (await chain.slotOf(id.address));
   const dc = await chain.dayClose(day);
@@ -71,13 +76,14 @@ export async function tryCancelOwn(chain: Chain, id: Identity, store: Store, day
     return { action: "cancelDay", day, attempted: false, tx: null, reason: "no unanswered request of your own has timed out" };
   }
   try {
-    const rc = await (await chain.market.cancelDay(day, slot, "disclosure request unanswered")).wait();
+    const rc = await (await chain.market.cancelDay(day, slot, "disclosure request unanswered")).wait(); // revealSlot = own slot
     return { action: "cancelDay", day, attempted: true, tx: rc.hash, reason: "cancelled on your own timeout" };
   } catch (e) {
     return { action: "cancelDay", day, attempted: true, tx: null, reason: `reverted: ${(e as Error).message.slice(0, 120)}` };
   }
 }
 
+// Sends the dust pot to the reserve, if any.
 export async function trySweep(chain: Chain): Promise<ActionAttempt> {
   const dust = (await chain.market.dustPot()) as bigint;
   if (dust === 0n) {
@@ -91,12 +97,13 @@ export async function trySweep(chain: Chain): Promise<ActionAttempt> {
   }
 }
 
+// Checks a day once its packet is held; an incomplete check is retried at the next tick.
 export async function tryVerify(chain: Chain, id: Identity, store: Store, day: number): Promise<ActionAttempt> {
   if (!store.opening(day)) {
     return { action: "verify", day, attempted: false, tx: null, reason: "no day-close packet held yet" };
   }
   const prior = store.verdict(`day-${day}`) as { verdict?: string } | undefined;
-  if (prior && prior.verdict !== "incomplete") {
+  if (prior && prior.verdict !== "incomplete") { // verified or mismatch is final
     return { action: "verify", day, attempted: false, tx: null, reason: `already ${prior.verdict}` };
   }
   try {
@@ -116,6 +123,7 @@ export async function tryVerify(chain: Chain, id: Identity, store: Store, day: n
 }
 
 
+// Recourse ladder for a closing day: request data, read the answer and re-check, then ask for a clear reveal.
 async function tryRecourse(
   chain: Chain, id: Identity, store: Store, day: number, needsData: boolean,
 ): Promise<ActionAttempt[]> {
@@ -125,7 +133,7 @@ async function tryRecourse(
   const r = await chain.revealOf(day, slot);
 
   // Stage 1: the packet is missing, or it does not match the commitment on chain.
-  if (r.stage1Deadline === 0n) {
+  if (r.stage1Deadline === 0n) { // stage 1 not requested yet: packet missing or mismatch
     if (!needsData || !config.autoRequestData) return out;
     try {
       const res = await requestData(chain, id, store, day);
@@ -136,9 +144,7 @@ async function tryRecourse(
     return out;
   }
 
-  // The operator answered: read what it published once, whatever made us ask, and check
-  // the day again against it.
-  if (r.stage1Done && config.autoFetchData && !store.verdict(`fetched-${day}`)) {
+  if (r.stage1Done && config.autoFetchData && !store.verdict(`fetched-${day}`)) { // read the operator's answer once, then re-check the day
     let usable = true;
     try {
       const res = await fetchData(chain, id, store, day);
@@ -158,9 +164,7 @@ async function tryRecourse(
     }
   }
 
-  // Stage 2: what the operator published does not let the day verify, so the operator
-  // must now prove the opening of the balance commitment in the clear.
-  if (r.stage1Done && r.stage2Deadline === 0n && config.autoRequestClear
+  if (r.stage1Done && r.stage2Deadline === 0n && config.autoRequestClear // stage 2 when the answer still does not verify
       && store.verdict(`fetched-${day}`) && verdictOf(store, day) !== "verified") {
     try {
       const res = await requestClearReveal(chain, id, store, day);
@@ -172,24 +176,23 @@ async function tryRecourse(
   return out;
 }
 
+// One tick over the last two days, then the global actions.
 export async function actionTick(chain: Chain, id: Identity, store: Store): Promise<ActionAttempt[]> {
   const out: ActionAttempt[] = [];
   const clock = await chain.clock();
 
-  for (const day of [clock.day - 1, clock.day - 2]) {
+  for (const day of [clock.day - 1, clock.day - 2]) { // days still closing or just settled
     const v = await tryVerify(chain, id, store, day);
     if (v.attempted) out.push(v);
 
     const dc = await chain.dayClose(day);
     const closing = DAY_STATE[dc.state] === "Closing";
     if (closing) {
-      const needsData = verdictOf(store, day) === "mismatch" || !store.opening(day);
+      const needsData = verdictOf(store, day) === "mismatch" || !store.opening(day); // recourse only when the data is missing or wrong
       for (const a of await tryRecourse(chain, id, store, day, needsData)) out.push(a);
     }
 
-    // This client settles only a day whose own data it has verified. Data fetched in this
-    // tick has just been checked inside tryRecourse, so the verdict read here is current.
-    if (config.autoFinalize && closing) {
+    if (config.autoFinalize && closing) { // settle only a day this client has verified, never a mismatch
       const verdict = verdictOf(store, day);
       if (verdict === "verified") {
         const a = await tryFinalize(chain, id, store, day);

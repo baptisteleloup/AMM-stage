@@ -1,3 +1,7 @@
+// The member's view of a closing day: state, proofs, deadlines, open recourse requests, whether
+// the day can be cancelled and on what ground, and what the member should do next.
+// Also counts the session receipts held for a day (coverage).
+
 import { Chain, DAY_STATE } from "./chain.js";
 import { Identity } from "./identity.js";
 import { Store } from "./store.js";
@@ -28,30 +32,29 @@ export type DayView = {
 
 const ZERO32 = "0x" + "0".repeat(64);
 
+// One deadline, seconds left from chain time.
 function mk(label: string, at: number, now: number, meaning: string): Deadline {
   return { label, at, secondsLeft: at - now, expired: now > at, meaning };
 }
 
+// Builds the view of a day, by default yesterday (the day closing now).
 export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?: number): Promise<DayView> {
   const slot = store.slot || (await chain.slotOf(id.address));
   if (slot === 0) throw new Error("not registered");
 
   const clock = await chain.clock();
   const now = await chain.now();
-  const day = dayArg ?? clock.day - 1;
+  const day = dayArg ?? clock.day - 1; // yesterday by default
 
   const dc = await chain.dayClose(day);
   const state = DAY_STATE[dc.state] ?? String(dc.state);
   const posted = (await chain.market.netputHashesPosted(day)) as boolean;
   const myHash = await chain.netputHash(day, slot);
-  const expected = posted ? ((await chain.market.chunkCountFor(day)) as bigint) : 0n;
+  const expected = posted ? ((await chain.market.chunkCountFor(day)) as bigint) : 0n; // batches expected, known once the day is frozen
 
   const deadlines: Deadline[] = [];
   if (dc.disputeDeadline > 0n) {
-    // One deadline, two roles: it is the operator's time to finish proving, and
-    // it is your time to check the day and object before any money moves. Named
-    // from your side, because that is whose window it is.
-    deadlines.push(mk("time to object", Number(dc.disputeDeadline), now,
+    deadlines.push(mk("time to object", Number(dc.disputeDeadline), now, // the dispute deadline, seen from the member's side
       "nothing is paid before this; check the day and object if it does not add up"));
   }
 
@@ -78,14 +81,14 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
     }
   }
 
-  const pastDeadline = dc.disputeDeadline > 0n && now > Number(dc.disputeDeadline);
-  const grace = Number((await chain.market.SETTLEMENT_GRACE()) as bigint);
+  const pastDeadline = dc.disputeDeadline > 0n && now > Number(dc.disputeDeadline); // proofs and objections window over
+  const grace = Number((await chain.market.SETTLEMENT_GRACE()) as bigint); // SETTLEMENT_GRACE, read from the contract
   const pastGrace = dc.disputeDeadline > 0n && now > Number(dc.disputeDeadline) + grace;
   const proofsMissing = dc.chunksVerified < expected;
   const stage1Timeout = r.stage1Deadline > 0n && !r.stage1Done && now > Number(r.stage1Deadline);
   const stage2Timeout = r.stage2Deadline > 0n && !r.stage2Done && now > Number(r.stage2Deadline);
 
-  let ground: string | null = null;
+  let ground: string | null = null; // same grounds as MarketV4.cancelDay
   if (state === "Closing") {
     if (pastDeadline && proofsMissing) ground = "proof timeout";
     else if (stage1Timeout || stage2Timeout) ground = "unanswered disclosure request";
@@ -94,7 +97,7 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
 
   const actionable: string[] = [];
   if (state === "Closing") {
-    if (myHash === ZERO32) actionable.push("no fingerprint posted for your slot on this day");
+    if (myHash === ZERO32) actionable.push("no fingerprint posted for your slot on this day"); // operator posted no commitment for this slot
     if (!store.opening(day)) actionable.push("no day-close packet held: run `sync`, or `request-data` to compel the operator");
     if (ground) actionable.push(`the day can be cancelled now (${ground})`);
     if (!ground && store.opening(day)) actionable.push("check this day before the time to object runs out");
@@ -118,9 +121,10 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
   };
 }
 
+// Which sessions of a day have a receipt in the store, up to the current session.
 export async function coverage(chain: Chain, id: Identity, store: Store, day: number): Promise<{ day: number; held: number; expected: number; missing: number[] }> {
   const clock = await chain.clock();
-  const upTo = day === clock.day ? clock.t : SESSIONS - 1;
+  const upTo = day === clock.day ? clock.t : SESSIONS - 1; // today: only sessions already passed
   const held = store.sessionsOf(day).map((r) => r.t);
   const missing: number[] = [];
   for (let t = 0; t <= upTo; t++) if (!held.includes(t)) missing.push(t);

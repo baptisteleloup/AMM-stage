@@ -1,3 +1,7 @@
+// Local web UI of a member: serves ui/index.html and a JSON API on 127.0.0.1 over the same functions as
+// cli.ts, plus an optional keeper that runs the watch loop. The private key never leaves this process.
+// Run from contracts/: npx tsx js_scripts/client/server.ts   (KEEPER=1 starts the keeper at launch)
+
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -14,8 +18,8 @@ import * as recourse from "./recourse.js";
 import { actionTick, tryFinalize, trySweep } from "./actions.js";
 import { config, envReady, SESSIONS } from "./config.js";
 
-const PORT = Number(process.env.CLIENT_UI_PORT ?? 8787);
-const UI_DIR = process.env.CLIENT_UI_DIR ?? path.join(process.cwd(), "js_scripts", "client", "ui");
+const PORT = Number(process.env.CLIENT_UI_PORT ?? 8787); // UI port
+const UI_DIR = process.env.CLIENT_UI_DIR ?? path.join(process.cwd(), "js_scripts", "client", "ui"); // folder of index.html
 
 let id: Identity;
 let chain: Chain;
@@ -26,12 +30,14 @@ type LogEntry = { seq: number; at: string; kind: "keeper" | "action" | "alert" |
 const log: LogEntry[] = [];
 let seq = 0;
 
+// In-memory activity log shown by the UI, last 400 entries.
 function note(kind: LogEntry["kind"], text: string, data?: unknown): void {
   seq += 1;
   log.push({ seq, at: new Date().toISOString(), kind, text, data });
   if (log.length > 400) log.splice(0, log.length - 400);
 }
 
+// Runs API calls and keeper ticks one at a time, so they never interleave on the store or the nonce.
 let queue: Promise<unknown> = Promise.resolve();
 function serial<T>(fn: () => Promise<T>): Promise<T> {
   const next = queue.then(fn, fn);
@@ -39,6 +45,7 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
   return next;
 }
 
+// Watch loop state, toggled from the UI.
 const keeper = {
   running: false,
   timer: null as ReturnType<typeof setInterval> | null,
@@ -47,6 +54,7 @@ const keeper = {
   ticks: 0,
 };
 
+// If PROSUMER_KEY or MARKET_ADDRESS is unset, takes them from a deployment file (DEPLOYMENT_JSON, slot CLIENT_SLOT).
 function bootstrapEnv(): void {
   if (process.env.PROSUMER_KEY && process.env.MARKET_ADDRESS) return;
   const file = process.env.DEPLOYMENT_JSON;
@@ -65,11 +73,12 @@ function bootstrapEnv(): void {
   if (!process.env.PROSUMER_KEY && entry) process.env.PROSUMER_KEY = entry.privateKey;
 }
 
-const CATCH_UP_DAYS = Number(process.env.CLIENT_CATCH_UP_DAYS ?? 7);
+const CATCH_UP_DAYS = Number(process.env.CLIENT_CATCH_UP_DAYS ?? 7); // days looked back by catchUp
 
+// Fetches receipts and packets of past days not yet held, so a client started late still has the history.
 async function catchUp(today: number): Promise<void> {
   for (let d = today - 1; d >= Math.max(0, today - CATCH_UP_DAYS); d--) {
-    if (store.opening(d)) continue;          
+    if (store.opening(d)) continue; // day already complete locally
     const r = await inbox.tick(d);
     if (r.dayCloseIngested) {
       note("keeper", `caught up: day-close packet for day ${d}`);
@@ -85,6 +94,7 @@ async function catchUp(today: number): Promise<void> {
   }
 }
 
+// One keeper tick: receipts, catch-up, margin alert, automatic actions.
 async function keeperTick(): Promise<void> {
   await serial(async () => {
     try {
@@ -103,7 +113,7 @@ async function keeperTick(): Promise<void> {
       }
 
       for (const a of await actionTick(chain, id, store)) {
-        const kind = a.reason.startsWith("MISMATCH") ? "alert" : "action";
+        const kind = a.reason.startsWith("MISMATCH") ? "alert" : "action"; // a failed check is shown as an alert
         note(kind, `${a.action}${a.day !== undefined ? ` day ${a.day}` : ""}: ${a.reason}`, a);
       }
 
@@ -137,6 +147,7 @@ function jsonify(value: unknown): string {
   return JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
 }
 
+// Data of the main screen.
 async function overview(): Promise<unknown> {
   const clock = await chain.clock();
   const reg = await status(chain, id, store);
@@ -173,11 +184,12 @@ async function overview(): Promise<unknown> {
   };
 }
 
+// Data of one day: view, receipt strip, margin, last verdict.
 async function dayDetail(day: number): Promise<unknown> {
   const view = await dayView(chain, id, store, day);
   const cov = await coverage(chain, id, store, day);
   const rows = store.sessionsOf(day);
-  const strip = Array.from({ length: SESSIONS }, (_v, t) => {
+  const strip = Array.from({ length: SESSIONS }, (_v, t) => { // one cell per session, for the receipt strip
     const row = rows.find((r) => r.t === t);
     if (!row) return { t, held: false, sell: "0", buy: "0" };
     return { t, held: true, sell: row.sell, buy: row.buy };
@@ -198,6 +210,7 @@ async function dayDetail(day: number): Promise<unknown> {
   };
 }
 
+// One line per recent day, today first.
 async function daysIndex(count: number): Promise<unknown> {
   const clock = await chain.clock();
   const out: unknown[] = [];
@@ -206,7 +219,7 @@ async function daysIndex(count: number): Promise<unknown> {
     const cov = await coverage(chain, id, store, d);
     out.push({
       day: d,
-      state: ["Pending", "Closing", "Finalized", "Cancelled"][dc.state] ?? String(dc.state),
+      state: ["Pending", "Closing", "Finalized", "Cancelled"][dc.state] ?? String(dc.state), // MarketV4.DayState
       held: cov.held,
       expected: cov.expected,
       hasOpening: store.opening(d) !== null,
@@ -219,6 +232,7 @@ async function daysIndex(count: number): Promise<unknown> {
 
 type Handler = (body: Record<string, unknown>, url: URL) => Promise<unknown>;
 
+// API routes, keyed "METHOD path".
 const routes: Record<string, Handler> = {
   "GET /api/overview": async () => overview(),
   "GET /api/days": async (_b, url) => daysIndex(Number(url.searchParams.get("count") ?? 7)),
@@ -251,6 +265,7 @@ const routes: Record<string, Handler> = {
   },
 };
 
+// Routes whose outcome goes into the activity log.
 const LOGGED = new Set([
   "POST /api/register", "POST /api/deposit", "POST /api/withdraw",
   "POST /api/request-data", "POST /api/fetch-data", "POST /api/request-clear",
@@ -274,6 +289,7 @@ function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
+// Starts the HTTP server.
 function main(): void {
   bootstrapEnv();
 
@@ -291,7 +307,7 @@ function main(): void {
 
   const server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
     void (async () => {
-      const url = new URL(req.url ?? "/", `http://127.0.0.1:${PORT}`);
+      const url = new URL(req.url ?? "/", `http://127.0.0.1:${PORT}`); // local only
       const key = `${req.method} ${url.pathname}`;
 
       if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
@@ -310,7 +326,7 @@ function main(): void {
 
       try {
         const body = req.method === "POST" ? await readBody(req) : {};
-        const result = await serial(() => handler(body, url));
+        const result = await serial(() => handler(body, url)); // serialised with the keeper
         if (LOGGED.has(key)) note("action", `${key.replace("POST /api/", "")} ok`, result);
         res.writeHead(200, { "content-type": "application/json" });
         res.end(jsonify(result));
@@ -323,7 +339,7 @@ function main(): void {
     })();
   });
 
-  server.listen(PORT, "127.0.0.1", () => {
+  server.listen(PORT, "127.0.0.1", () => { // bound to localhost only
     console.log(`prosumer client at http://127.0.0.1:${PORT}`);
     console.log(`  address ${id.address}`);
     console.log(`  market  ${config.marketAddress}`);

@@ -1,18 +1,25 @@
+// The client's local state, one JSON file (CLIENT_STORE, default <CLIENT_DATA_DIR>/state.json):
+// slot, floor opening, per-day balance openings, session receipts, check verdicts and cursors.
+// Every setter writes the file at once, so a restart loses nothing.
+
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
 
+// Opening of a day's balance commitment, from the day-close packet.
 export type Opening = {
   balance: string;
   blind: string;
   netputBlind: string;
 };
 
+// Opening of the floor commitment.
 export type FloorOpening = {
   floor: string;
   blind: string;
 };
 
+// One verified session receipt.
 export type SessionRow = {
   day: number;
   t: number;
@@ -24,12 +31,12 @@ export type SessionRow = {
 type State = {
   slot: number;
   address: string;
-  registeredAt: number | null;
+  registeredAt: number | null; // block time of registration
   floor: FloorOpening | null;
-  openings: Record<string, Opening>;
-  sessions: Record<string, SessionRow>;
-  verdicts: Record<string, unknown>;
-  cursors: Record<string, number>;
+  openings: Record<string, Opening>; // by day
+  sessions: Record<string, SessionRow>; // by "day:t"
+  verdicts: Record<string, unknown>; // results of the checks, by key
+  cursors: Record<string, number>; // progress markers of the watch loop
 };
 
 const EMPTY: State = {
@@ -49,10 +56,10 @@ export class Store {
   constructor(private file: string = config.storePath) {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     if (fs.existsSync(this.file)) {
-      this.state = { ...EMPTY, ...JSON.parse(fs.readFileSync(this.file, "utf-8")) };
+      this.state = { ...EMPTY, ...JSON.parse(fs.readFileSync(this.file, "utf-8")) }; // fill fields missing from older files
     } else {
       this.state = { ...EMPTY };
-      this.flush();
+      this.flush(); // create the file on first run
     }
   }
 
@@ -94,7 +101,7 @@ export class Store {
   }
 
   putSession(row: SessionRow): void {
-    this.state.sessions[`${row.day}:${row.t}`] = row;
+    this.state.sessions[`${row.day}:${row.t}`] = row; // keyed "day:t"
     this.flush();
   }
 

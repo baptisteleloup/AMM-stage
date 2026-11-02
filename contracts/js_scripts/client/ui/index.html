@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- Member UI served by server.ts: overview, days, money and activity views over its local JSON API.
+     Holds no key; every action is a call to /api/*. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -145,10 +147,7 @@
   .btn.danger { color: var(--bad); border-color: var(--bad); }
 
   .note { font-size: 13.5px; color: var(--ink-soft); margin: 10px 0 0; }
-  /* (i) — a short explanation on demand instead of a sentence on screen.
-     A button and its (i) are wrapped together so the mark hugs the action it
-     explains; the popover resets the heading styles it would otherwise inherit
-     (uppercase, tracking, display font) and is raised above its neighbours. */
+  /* (i) marks: a short explanation on demand, kept next to the action it explains. */
   .act { display: inline-flex; align-items: center; gap: 4px; }
   .info { position: relative; display: inline-flex; align-items: center; }
   .info > button {
@@ -232,6 +231,7 @@
   <main id="main"></main>
 </div>
 <script>
+// UI state: current view, selected day, activity log cursor.
 const $ = (s, r = document) => r.querySelector(s);
 let view = "overview";
 let selectedDay = null;
@@ -239,6 +239,7 @@ let logSeq = 0;
 let logEntries = [];
 let overviewData = null;
 
+// Calls the local API and throws its {error} message on failure.
 async function api(method, path, body) {
   const res = await fetch(path, {
     method,
@@ -275,6 +276,7 @@ function clock(hms) {
   return new Date(hms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+// Receipt strip of a day: one cell per session, sold or bought.
 function ribbon(strip) {
   const W = 960, H = 92, mid = 50, cw = W / strip.length;
   const peak = Math.max(1, ...strip.map((s) => Math.max(Number(s.sell), Number(s.buy))));
@@ -444,8 +446,7 @@ async function renderDays() {
 async function renderDay(day) {
   const d = await api("GET", "/api/day?day=" + day);
   const v = d.view;
-  // Seconds are hard to read past a few minutes; show h/m/s. The meaning of
-  // each deadline goes behind an (i) instead of a sentence on the row.
+  // Time left shown as h/m/s; the meaning of each deadline sits behind an (i).
   const fmtLeft = (sec) => {
     if (sec <= 0) return "expired";
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = sec % 60;
@@ -565,6 +566,7 @@ async function render() {
   }
 }
 
+// Actions that take a day number, with the title of their result panel.
 const NEEDS_DAY = {
   verify: "Checked day",
   finalize: "Settlement",
@@ -642,6 +644,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
+// Pulls new activity entries every 4 s and toasts alerts and errors.
 async function pollLog() {
   try {
     const r = await api("GET", "/api/log?since=" + logSeq);

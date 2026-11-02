@@ -1,3 +1,7 @@
+// Recourse commands on a closing day: request the member's data (stage 1), decrypt and ingest the
+// operator's answer, request the clear opening of the balance (stage 2), read the revealed balance,
+// and cancel a day on a valid ground. Each returns what happened and what to do next.
+
 import { ethers } from "ethers";
 import { Chain, DAY_STATE } from "./chain.js";
 import { Identity } from "./identity.js";
@@ -5,6 +9,7 @@ import { Store } from "./store.js";
 import { ReceiptInbox } from "./receipts.js";
 import { peurToEur } from "./units.js";
 
+// Outcome of a recourse command, with the next step for the member.
 export type RecourseResult = {
   action: string;
   day: number;
@@ -21,6 +26,7 @@ async function slotOrThrow(chain: Chain, id: Identity, store: Store): Promise<nu
   return slot;
 }
 
+// Null if recourse is still possible on this day, else the reason it is not.
 async function closingOnly(
   chain: Chain, action: string, day: number, slot: number,
 ): Promise<RecourseResult | null> {
@@ -37,8 +43,8 @@ async function closingOnly(
   }
   const now = await chain.now();
   const deadline = Number(dc.disputeDeadline);
-  const extra = action === "requestClearReveal" ? Number((await chain.market.REVEAL_WINDOW()) as bigint) : 0;
-  if (now >= deadline + extra) {
+  const extra = action === "requestClearReveal" ? Number((await chain.market.REVEAL_WINDOW()) as bigint) : 0; // stage 2 window ends REVEAL_WINDOW after the deadline
+  if (now >= deadline + extra) { // same windows as MarketV4
     return {
       action, day, slot, tx: null,
       outcome: `the time to object on day ${day} has passed`,
@@ -48,6 +54,7 @@ async function closingOnly(
   return null;
 }
 
+// Stage 1: MarketV4.requestData, which blocks settlement until the operator answers.
 export async function requestData(chain: Chain, id: Identity, store: Store, day: number): Promise<RecourseResult> {
   const slot = await slotOrThrow(chain, id, store);
   const guard = await closingOnly(chain, "requestData", day, slot);
@@ -70,6 +77,7 @@ export async function requestData(chain: Chain, id: Identity, store: Store, day:
   };
 }
 
+// Reads the stage 1 answer from the chain and stores its signed receipts.
 export async function fetchData(chain: Chain, id: Identity, store: Store, day: number): Promise<RecourseResult> {
   const slot = await slotOrThrow(chain, id, store);
   const r = await chain.revealOf(day, slot);
@@ -83,7 +91,7 @@ export async function fetchData(chain: Chain, id: Identity, store: Store, day: n
     };
   }
   const inbox = new ReceiptInbox(chain, id, store);
-  const got = await inbox.ingestOnChainBlob(day);
+  const got = await inbox.ingestOnChainBlob(day); // decrypts and checks signatures
   return {
     action: "fetchData", day, slot, tx: null,
     outcome: `decrypted and ingested ${got.sessions} session receipt(s)${got.opening ? " and the balance opening" : ""}`,
@@ -91,6 +99,7 @@ export async function fetchData(chain: Chain, id: Identity, store: Store, day: n
   };
 }
 
+// Stage 2: MarketV4.requestClearReveal, after stage 1 is answered.
 export async function requestClearReveal(chain: Chain, id: Identity, store: Store, day: number): Promise<RecourseResult> {
   const slot = await slotOrThrow(chain, id, store);
   const guard = await closingOnly(chain, "requestClearReveal", day, slot);
@@ -120,6 +129,7 @@ export async function requestClearReveal(chain: Chain, id: Identity, store: Stor
   };
 }
 
+// Reads the balance revealed on chain and compares it with the local packet.
 export async function readRevealed(chain: Chain, id: Identity, store: Store, day: number): Promise<RecourseResult> {
   const slot = await slotOrThrow(chain, id, store);
   const f = chain.market.filters.BalanceRevealed(day);
@@ -130,7 +140,7 @@ export async function readRevealed(chain: Chain, id: Identity, store: Store, day
   if (mine.length === 0) {
     return { action: "readRevealed", day, slot, tx: null, outcome: "no balance revealed on chain for this day", next: "run `request-clear` first" };
   }
-  const bal = BigInt(mine[mine.length - 1].args[2] as bigint);
+  const bal = BigInt(mine[mine.length - 1].args[2] as bigint); // latest reveal for this slot
   const held = store.opening(day);
   const agrees = held !== null && BigInt(held.balance) === bal;
   return {
@@ -144,6 +154,7 @@ export async function readRevealed(chain: Chain, id: Identity, store: Store, day
   };
 }
 
+// MarketV4.cancelDay, on the member's own timeout if there is one, else on a general ground.
 export async function cancel(chain: Chain, id: Identity, store: Store, day: number, reason: string): Promise<RecourseResult> {
   const slot = await slotOrThrow(chain, id, store);
   const dc = await chain.dayClose(day);
@@ -156,7 +167,7 @@ export async function cancel(chain: Chain, id: Identity, store: Store, day: numb
     (r.stage1Deadline > 0n && !r.stage1Done && now > Number(r.stage1Deadline))
     || (r.stage2Deadline > 0n && !r.stage2Done && now > Number(r.stage2Deadline));
 
-  const revealSlot = mineTimedOut ? slot : 0;
+  const revealSlot = mineTimedOut ? slot : 0; // 0 = general ground (proof timeout or stuck settlement)
   const tx = await chain.market.cancelDay(day, revealSlot, reason);
   const rc = await tx.wait();
   return {

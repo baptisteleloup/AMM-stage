@@ -1,6 +1,10 @@
+// Read and write access to MarketV4 (and its token) for one member, through ethers and RPC_URL.
+// Reads public state only: sessions, day closes, commitments, frozen queues and recourse events.
+
 import { ethers } from "ethers";
 import { config } from "./config.js";
 
+// The part of the MarketV4 ABI the client uses.
 const MARKET_ABI = [
   "function register(bytes encryptionKey)",
   "function deposit(uint256 amount)",
@@ -48,6 +52,7 @@ const MARKET_ABI = [
   "event FloorSet(uint256 indexed slot)",
 ];
 
+// Token calls for deposits (approve) and balances.
 const ERC20_ABI = [
   "function approve(address spender,uint256 amount) returns (bool)",
   "function allowance(address owner,address spender) view returns (uint256)",
@@ -55,6 +60,7 @@ const ERC20_ABI = [
   "function decimals() view returns (uint8)",
 ];
 
+// Typed copies of MarketV4 structs.
 export type SessionView = {
   s: bigint; d: bigint; priceR: bigint; priceC: bigint;
   lambdaLo: bigint; lambdaHi: bigint; opened: boolean;
@@ -70,8 +76,9 @@ export type RevealView = {
   stage1Done: boolean; stage2Done: boolean;
 };
 
-export const DAY_STATE = ["Pending", "Closing", "Finalized", "Cancelled"] as const;
+export const DAY_STATE = ["Pending", "Closing", "Finalized", "Cancelled"] as const; // index = MarketV4.DayState
 
+// Member-side handle on the market; read-only when built without a signer.
 export class Chain {
   readonly provider: ethers.JsonRpcProvider;
   readonly market: ethers.Contract;
@@ -79,7 +86,7 @@ export class Chain {
 
   constructor(private signer?: ethers.Wallet) {
     this.provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    if (signer) this.signer = signer.connect(this.provider) as ethers.Wallet;
+    if (signer) this.signer = signer.connect(this.provider) as ethers.Wallet; // signs as the member
     this.market = new ethers.Contract(config.marketAddress, MARKET_ABI, this.signer ?? this.provider);
   }
 
@@ -88,19 +95,19 @@ export class Chain {
   }
 
   async now(): Promise<number> {
-    const b = await this.provider.getBlock("latest");
+    const b = await this.provider.getBlock("latest"); // chain time, the only clock the contract trusts
     if (!b) throw new Error("no latest block");
     return b.timestamp;
   }
 
   async clock(): Promise<{ day: number; t: number }> {
     const ts = await this.now();
-    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) };
+    return { day: Math.floor(ts / 86400), t: Math.floor((ts % 86400) / 900) }; // same day and session numbering as MarketV4
   }
 
   async eeur(): Promise<ethers.Contract> {
     if (this.token) return this.token;
-    const addr = config.eeurAddress || (await this.market.eeur());
+    const addr = config.eeurAddress || (await this.market.eeur()); // EEUR_ADDRESS, else the market's token
     this.token = new ethers.Contract(addr, ERC20_ABI, this.signer ?? this.provider);
     return this.token;
   }
@@ -111,7 +118,7 @@ export class Chain {
 
   async register(pubkey: string): Promise<string> {
     const tx = await this.market.register(pubkey);
-    const rc = await tx.wait();
+    const rc = await tx.wait(); // waits for inclusion
     return rc.hash;
   }
 
@@ -155,7 +162,7 @@ export class Chain {
     return await this.market.floorCommitOf(slot);
   }
 
-  async snapshot(day: number, slot: number): Promise<{ deposit: bigint; withdrawal: bigint; floorCommit: string }> {
+  async snapshot(day: number, slot: number): Promise<{ deposit: bigint; withdrawal: bigint; floorCommit: string }> { // queues frozen at that day's midnight
     const [deposit, withdrawal, floorCommit] = await Promise.all([
       this.market.snapDeposit(day, slot),
       this.market.snapWithdrawal(day, slot),
@@ -164,7 +171,7 @@ export class Chain {
     return { deposit: BigInt(deposit), withdrawal: BigInt(withdrawal), floorCommit };
   }
 
-  async pending(slot: number): Promise<{ deposit: bigint; withdrawal: bigint }> {
+  async pending(slot: number): Promise<{ deposit: bigint; withdrawal: bigint }> { // queues not yet applied
     const [deposit, withdrawal] = await Promise.all([
       this.market.pendingDeposit(slot),
       this.market.pendingWithdrawal(slot),
@@ -172,8 +179,8 @@ export class Chain {
     return { deposit: BigInt(deposit), withdrawal: BigInt(withdrawal) };
   }
 
-  async encryptedDataFor(day: number, slot: number, fromBlock = 0): Promise<string[]> {
-    const f = this.market.filters.EncryptedDataPosted(day);
+  async encryptedDataFor(day: number, slot: number, fromBlock = 0): Promise<string[]> { // stage 1 answers for this member and day, as encrypted blobs
+    const f = this.market.filters.EncryptedDataPosted(day); // dayId is indexed, slot is filtered below
     const logs = await this.market.queryFilter(f, fromBlock, "latest");
     const events = logs.filter((l): l is ethers.EventLog => "args" in l);
     return events

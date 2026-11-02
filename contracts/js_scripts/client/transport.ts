@@ -1,7 +1,12 @@
+// How the operator's receipts reach the client: read from a folder (fs, RECEIPTS_DIR) or fetched
+// over HTTP (RECEIPTS_URL). Both use the layout slot-<n>/day-<d>/t-<t>.json, day-close.json,
+// and slot-<n>/floor-opening.json. Signatures are checked in receipts.ts.
+
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
 
+// Signed per-session receipt: the member's position in session t.
 export type RawSessionReceipt = {
   day: number;
   t: number;
@@ -11,22 +16,25 @@ export type RawSessionReceipt = {
   sig: string;
 };
 
+// Signed day-close packet: the new balance and the blindings that open the day's commitments.
 export type RawDayClosePacket = {
   day: number;
   slot: number;
   newBalance: string;
   newBlind: string;
-  netputBlind: string;
+  netputBlind: string; // seed of the position commitment
   sig: string;
 };
 
+// Opening of the member's floor commitment.
 export type RawFloorOpening = {
   slot: number;
   floor: string;
   blind: string;
-  sig?: string;
+  sig?: string; // optional
 };
 
+// Common interface; null means not published yet.
 export interface Transport {
   session(slot: number, day: number, t: number): Promise<RawSessionReceipt | null>;
   dayClose(slot: number, day: number): Promise<RawDayClosePacket | null>;
@@ -39,11 +47,11 @@ class FsTransport implements Transport {
   }
 
   private read<T>(file: string): T | null {
-    if (!fs.existsSync(file)) return null;
+    if (!fs.existsSync(file)) return null; // not published yet
     try {
       return JSON.parse(fs.readFileSync(file, "utf-8")) as T;
     } catch {
-      return null;
+      return null; // half-written file: retry at the next poll
     }
   }
 
@@ -62,9 +70,9 @@ class FsTransport implements Transport {
 
 class HttpTransport implements Transport {
   private async get<T>(suffix: string): Promise<T | null> {
-    const url = `${config.receiptsUrl.replace(/\/$/, "")}/${suffix}`;
+    const url = `${config.receiptsUrl.replace(/\/$/, "")}/${suffix}`; // base URL without trailing slash
     const res = await fetch(url);
-    if (res.status === 404) return null;
+    if (res.status === 404) return null; // not published yet
     if (!res.ok) throw new Error(`transport ${res.status} on ${suffix}`);
     return (await res.json()) as T;
   }
@@ -83,7 +91,7 @@ class HttpTransport implements Transport {
 }
 
 export function makeTransport(): Transport {
-  if (config.transport === "http") {
+  if (config.transport === "http") { // RECEIPT_TRANSPORT=http
     if (!config.receiptsUrl) throw new Error("RECEIPT_TRANSPORT=http requires RECEIPTS_URL");
     return new HttpTransport();
   }
