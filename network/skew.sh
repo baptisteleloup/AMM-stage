@@ -1,8 +1,8 @@
 #!/bin/bash
 # Clock-skew experiment: restarts one validator (node-4) with its clock shifted by each offset
-# (only node-4 is skewed in docker-compose.skew.yml, so NODE must stay at 4)
 # in turn and measures how far it can move block timestamps, from which the market derives
 # sessions and deadlines. Writes besu_results/skew_watch.jsonl, skew_events.jsonl and skew.json.
+# Only node-4 is skewed in docker-compose.skew.yml, so NODE must stay at 4.
 # Run from network/ while the network is up, after building the image (see Dockerfile.faketime):  bash skew.sh
 #
 # QBFT validators accept a block only if its timestamp is at least 5 s after the parent and at
