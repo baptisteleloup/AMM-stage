@@ -12,7 +12,7 @@ from report_results import BOUGHT, GRID, RULES, SOLD, load, session_prices  # no
 
 demo = Path(__file__).resolve().parents[1]
 ap = argparse.ArgumentParser()
-ap.add_argument("--netputs", default=str(demo / "data" / "netputs_resstock.json"))
+ap.add_argument("--netputs", default=str(demo / "data" / "netputs_raw.json"))
 ap.add_argument("--prices", default=str(demo / "data" / "prices.json"))
 ap.add_argument("--out", default=str(demo / "figures_raw" / "fig_prices_rules.pdf"))
 args = ap.parse_args()

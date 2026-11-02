@@ -6,8 +6,8 @@ function req(name: string): string {
     throw new Error(
       `missing env ${name}\n`
       + `  example:\n`
-      + `    export MARKET_ADDRESS=0x...   (from deployed_demo.json)\n`
-      + `    export PROSUMER_KEY=0x...     (a prosumer privateKey from deployed_demo.json)`,
+      + `    export MARKET_ADDRESS=0x...   (from the deployment file)\n`
+      + `    export PROSUMER_KEY=0x...     (the prosumer's private key)`,
     );
   }
   return v;

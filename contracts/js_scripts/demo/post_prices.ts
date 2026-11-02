@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 
 const RPC_URL = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const PRICES_JSON = process.env.PRICES_JSON ?? "demo/data/prices.json";
-const NETPUTS_JSON = process.env.NETPUTS_JSON ?? "demo/data/netputs_resstock.json";
+const NETPUTS_JSON = process.env.NETPUTS_JSON ?? "demo/data/netputs_raw.json";
 const DEPLOYMENT = process.env.DEPLOYMENT_JSON ?? "demo/state/deployed_demo.json";
 const HORIZON = Number(process.argv[2] ?? process.env.PRICE_HORIZON_DAYS ?? 40);
 

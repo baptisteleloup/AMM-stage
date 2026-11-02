@@ -30,7 +30,6 @@ venv/
 # ---- generated files / local ----
 deployed_besu.json
 deployed.json
-prosumers_nice.json
 netputs_nice.json
 
 # ---- OS / éditeur ----
@@ -45,5 +44,19 @@ netputs_nice.json
 # demo runtime state and bulky caches
 contracts/demo/state/
 contracts/demo/data/raw/
-contracts/demo/data/profiles/
 contracts/__pycache__/
+# econ results are committed (overrides the Foundry out/ rule above)
+!contracts/demo/econ/out/
+!contracts/demo/econ/extensions/out/
+
+# Besu network: chain data and raw block watches (too big for GitHub)
+network/nodes/*/data/*
+!network/nodes/*/data/key
+network/besu_results/watch.jsonl
+network/besu_results/skew_watch.jsonl
+
+# archives and local copies
+contracts/demo.zip
+contracts/js_scripts/client.zip
+__MACOSX/
+CLEANUP.md

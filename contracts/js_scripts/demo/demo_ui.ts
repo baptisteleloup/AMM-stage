@@ -188,7 +188,7 @@ function startDaemon(market: string, operatorKey: string): void {
       MARKET_ADDRESS: market,
       PROSUMERS_JSON: process.env.PROSUMERS_JSON ?? "demo/state/prosumers_demo.json",
       DATA_DIR: process.env.DATA_DIR ?? "demo/state/operator-data",
-      NETPUTS_JSON: process.env.NETPUTS_JSON ?? "demo/data/netputs_resstock.json",
+      NETPUTS_JSON: process.env.NETPUTS_JSON ?? "demo/data/netputs_raw.json",
       TICK_MS,
     },
     stdio: ["ignore", "pipe", "pipe"],

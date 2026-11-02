@@ -1,0 +1,137 @@
+[
+ {
+  "phase": "no skew",
+  "blocks": 42,
+  "skewedShare": 0.23809523809523808,
+  "blockIntervalS": {
+   "n": 41,
+   "min": 5,
+   "mean": 5,
+   "max": 5
+  },
+  "seenMinusTimestampS": {
+   "skewed": {
+    "n": 10,
+    "min": 0.7560000419616699,
+    "mean": 0.8391000032424927,
+    "max": 0.9159998893737793
+   },
+   "others": {
+    "n": 32,
+    "min": 0.749000072479248,
+    "mean": 0.8417812511324883,
+    "max": 0.9200000762939453
+   }
+  }
+ },
+ {
+  "phase": "node-4 clock +2s",
+  "blocks": 26,
+  "skewedShare": 0,
+  "blockIntervalS": {
+   "n": 25,
+   "min": 5,
+   "mean": 8.16,
+   "max": 15
+  },
+  "seenMinusTimestampS": {
+   "skewed": null,
+   "others": {
+    "n": 26,
+    "min": 0.017999887466430664,
+    "mean": 0.5142307739991409,
+    "max": 1.9609999656677246
+   }
+  }
+ },
+ {
+  "phase": "node-4 clock -3s",
+  "blocks": 27,
+  "skewedShare": 0.037037037037037035,
+  "blockIntervalS": {
+   "n": 26,
+   "min": 5,
+   "mean": 7.6923076923076925,
+   "max": 15
+  },
+  "seenMinusTimestampS": {
+   "skewed": {
+    "n": 1,
+    "min": 3.5329999923706055,
+    "mean": 3.5329999923706055,
+    "max": 3.5329999923706055
+   },
+   "others": {
+    "n": 26,
+    "min": 0.2669999599456787,
+    "mean": 0.4071154044224666,
+    "max": 0.5439999103546143
+   }
+  }
+ },
+ {
+  "phase": "node-4 clock -8s",
+  "blocks": 24,
+  "skewedShare": 0,
+  "blockIntervalS": {
+   "n": 23,
+   "min": 5,
+   "mean": 8.043478260869565,
+   "max": 15
+  },
+  "seenMinusTimestampS": {
+   "skewed": null,
+   "others": {
+    "n": 24,
+    "min": 0.5999999046325684,
+    "mean": 0.7218749821186066,
+    "max": 0.8459999561309814
+   }
+  }
+ },
+ {
+  "phase": "node-4 clock -30s",
+  "blocks": 26,
+  "skewedShare": 0,
+  "blockIntervalS": {
+   "n": 25,
+   "min": 5,
+   "mean": 8.16,
+   "max": 15
+  },
+  "seenMinusTimestampS": {
+   "skewed": null,
+   "others": {
+    "n": 26,
+    "min": 0.012000083923339844,
+    "mean": 0.4388461663172795,
+    "max": 1.940000057220459
+   }
+  }
+ },
+ {
+  "phase": "node-4 clock restored",
+  "blocks": 36,
+  "skewedShare": 0.16666666666666666,
+  "blockIntervalS": {
+   "n": 34,
+   "min": 5,
+   "mean": 5.882352941176471,
+   "max": 15
+  },
+  "seenMinusTimestampS": {
+   "skewed": {
+    "n": 6,
+    "min": 0.36299991607666016,
+    "mean": 0.6274999380111694,
+    "max": 1.5109999179840088
+   },
+   "others": {
+    "n": 30,
+    "min": 0.2390000820159912,
+    "mean": 0.3896666685740153,
+    "max": 0.5269999504089355
+   }
+  }
+ }
+]

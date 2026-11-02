@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Results report for the ResStock demo.
 
-Reads demo/data/netputs_resstock.json and demo/data/prices.json and writes a
+Reads demo/data/netputs_raw.json and demo/data/prices.json and writes a
 PDF with tables and charts: market volumes, prices, community gains and
 individual gains, all measured against the status quo in which every kWh is
 traded with the grid alone (exports paid the wholesale price, imports paid
@@ -199,15 +199,17 @@ def table_page(pdf, df, title, subtitle="", col_w=None, dec=None):
 def main():
     demo = Path(__file__).resolve().parents[1]
     ap = argparse.ArgumentParser(description="Results PDF for the ResStock demo")
-    ap.add_argument("--netputs", default=str(demo / "data" / "netputs_resstock.json"))
+    ap.add_argument("--netputs", default=str(demo / "data" / "netputs_raw.json"))
     ap.add_argument("--prices", default=str(demo / "data" / "prices.json"))
-    ap.add_argument("--out", default=str(demo / "results_resstock.pdf"))
+    ap.add_argument("--out", default=None, help="default demo/results_raw_<rule>.pdf")
     ap.add_argument("--rule", default="mmr", choices=RULES,
                     help="pricing rule, as fixed in the Pricing contract (default mmr)")
     ap.add_argument("--figdir", default=None,
                     help="also export each figure as a standalone PDF plus two LaTeX "
                          "tables (booktabs) into this folder, sized for a report")
     args = ap.parse_args()
+    if args.out is None:
+        args.out = str(demo / f"results_raw_{args.rule}.pdf")
 
     names, sell, buy, dates, low, high, feed = load(args.netputs, args.prices)
     n, n_days, T = sell.shape

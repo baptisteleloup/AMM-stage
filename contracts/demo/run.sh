@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 #
-# run_resstock_demo.sh — the whole ResStock run, from building selection to a
-# live view of the ten balances. Put this in contracts/ and run it from there.
+# demo/run.sh: the whole ResStock run, from building selection to a
+# live view of the ten balances. Run it from contracts/.
 #
-#   ./run_resstock_demo.sh
+#   bash demo/run.sh
 #
 # Everything is configurable from the environment:
 #
 #   STATE=MA          which state's ResStock buildings to draw from
 #   WITH_PV=5         how many dwellings with rooftop PV
 #   WITHOUT_PV=5      how many without
-#   DAYS_FROM / DAYS_TO   date range; you need one more day than you simulate,
-#                         because the solver looks one day ahead
-#   REFERENCE=...     folder holding rollingHorizon.py; found automatically
-#                     in the usual places if you do not set it
+#   DAYS_FROM / DAYS_TO   date range; the last day is dropped from the netputs
 #   PACE=4            seconds of wall clock per quarter-hour of market time
 #   ZONE=WCMA         ISO New England load zone the prices come from
 #   DELIVERY_ADDER    per kWh added to the wholesale price to get the retail one
@@ -35,7 +32,7 @@ export DEPLOY_OUT="${DEPLOY_OUT:-$DEMO_STATE/deployed_demo.json}"
 export PROSUMERS_OUT="${PROSUMERS_OUT:-$DEMO_STATE/prosumers_demo.json}"
 export PROSUMERS_JSON="${PROSUMERS_JSON:-$DEMO_STATE/prosumers_demo.json}"
 export DATA_DIR="${DATA_DIR:-$DEMO_STATE/operator-data}"
-export OPERATOR_DB="${OPERATOR_DB:-$DEMO_STATE/demo/state/operator-data/operator.db}"
+export OPERATOR_DB="${OPERATOR_DB:-$DEMO_STATE/operator-data/operator.db}"
 export RECEIPTS_DIR="${RECEIPTS_DIR:-$DEMO_STATE/operator-data/receipts}"
 export CLIENT_DATA_DIR="${CLIENT_DATA_DIR:-$DEMO_STATE/client-data}"
 export PRICES_JSON="${PRICES_JSON:-$DEMO_DATA/prices.json}"
@@ -45,7 +42,7 @@ WITH_PV="${WITH_PV:-5}"
 WITHOUT_PV="${WITHOUT_PV:-5}"
 DAYS_FROM="${DAYS_FROM:-2018-07-01}"
 DAYS_TO="${DAYS_TO:-2018-07-05}"
-NETPUTS="${NETPUTS:-demo/data/netputs_resstock.json}"
+NETPUTS="${NETPUTS:-demo/data/netputs_raw.json}"
 PACE="${PACE:-4}"
 FLOOR_EUR="${FLOOR_EUR:-31}"
 ZONE="${ZONE:-WCMA}"
@@ -66,53 +63,15 @@ need() {
 step "checks"
 need python3
 need npx
-# CHAIN=besu runs on the Besu network in ../Network (see README-besu.md), no anvil needed.
+# CHAIN=besu runs on the Besu network in network/, no anvil needed.
 [ "${CHAIN:-anvil}" = anvil ] && need anvil
 need curl
 [ -f js_scripts/demo/demo_ui.ts ] || { red "run this from contracts/ (js_scripts/demo/demo_ui.ts not found)"; exit 1; }
 
-# Find the paper's solver. REFERENCE wins if it is set and correct; otherwise
-# look in the usual places, then search nearby. A zip that already contains a
-# "reference" folder gives you reference/reference when unzipped into a folder
-# of the same name, so both shapes are tried.
-find_solver() {
-  local c
-  for c in "${REFERENCE:-}" \
-           "${REFERENCE:-}/reference" \
-           ./reference ./reference/reference \
-           ../reference ../reference/reference \
-           ../../reference ../../reference/reference; do
-    [ -n "$c" ] && [ -f "$c/rollingHorizon.py" ] && { echo "$c"; return 0; }
-  done
-  c=$(find .. -maxdepth 4 -name rollingHorizon.py -not -path "*/node_modules/*" 2>/dev/null | head -1)
-  [ -n "$c" ] && { dirname "$c"; return 0; }
-  return 1
-}
-
-if ! REFERENCE=$(find_solver); then
-  red "cannot find rollingHorizon.py (the paper's solver) anywhere nearby"
-  echo
-  echo "unzip reference.zip, then point REFERENCE at the folder that HOLDS"
-  echo "rollingHorizon.py. Note the shell detail that bites here: setting the"
-  echo "variable on its own line does not export it to this script. Use either"
-  echo
-  echo "    export REFERENCE=\"/path/to/reference\""
-  echo "    ./run_resstock_demo.sh"
-  echo
-  echo "or put both on one line:"
-  echo
-  echo "    REFERENCE=\"/path/to/reference\" ./run_resstock_demo.sh"
-  echo
-  echo "to locate it:   find ~ -name rollingHorizon.py 2>/dev/null"
-  exit 1
-fi
-REFERENCE=$(cd "$REFERENCE" && pwd)
-green "solver found at $REFERENCE"
-
-python3 - <<'EOF' || { echo; echo "install them with:"; echo "  python3 -m pip install pandas pyarrow openpyxl cvxpy tqdm matplotlib"; exit 1; }
+python3 - <<'EOF' || { echo; echo "install them with:"; echo "  python3 -m pip install pandas pyarrow openpyxl tqdm matplotlib"; exit 1; }
 import sys
 missing = []
-for m in ("pandas", "pyarrow", "openpyxl", "cvxpy", "tqdm", "matplotlib"):
+for m in ("pandas", "pyarrow", "openpyxl", "tqdm", "matplotlib"):
     try:
         __import__(m)
     except Exception:
@@ -143,11 +102,6 @@ if [ "$TARIFF_MODE" = "feed" ] && [ "${SKIP_DATA:-0}" != "1" ]; then
   green "price workbook for ${PRICE_YEAR} found"
 fi
 
-if [ -f demo/data/netputs_nice.json ] && [ ! -f demo/data/netputs_nice.json.bak ]; then
-  cp demo/data/netputs_nice.json demo/data/netputs_nice.json.bak
-  green "backed up demo/data/netputs_nice.json (the paper's Nice data) to demo/data/netputs_nice.json.bak"
-fi
-
 if [ "${SKIP_DATA:-0}" != "1" ]; then
 
   step "1/5  choosing $N buildings in $STATE ($WITH_PV with PV, $WITHOUT_PV without)"
@@ -169,16 +123,11 @@ print(','.join(s['with_pv_ids'] + s['without_pv_ids']))
     echo "same year as the building weather, so loads and prices move together"
     python3 demo/sim/fetch_prices.py --days "$DAYS_FROM:$DAYS_TO" --zone "$ZONE" \
       --delivery-adder "$DELIVERY_ADDER" --out "$DEMO_DATA/prices.json"
-    PRICE_ARG="--prices $PRICES_JSON"
-  else
-    PRICE_ARG=""
   fi
 
-  step "4/5  running the paper's solver at 96 steps a day"
-  echo "this is where gross production and consumption become netputs"
+  step "4/5  turning the recorded profiles into netputs at 96 sessions a day"
   rm -f "$NETPUTS"
-  # shellcheck disable=SC2086
-  python3 demo/sim/make_netputs.py --profiles "$DEMO_DATA/profiles" --reference "$REFERENCE" --out "$NETPUTS" $PRICE_ARG --force
+  python3 demo/sim/make_netputs_raw.py --profiles "$DEMO_DATA/profiles" --out "$NETPUTS" --force
 
 else
   step "skipping data preparation (SKIP_DATA=1)"

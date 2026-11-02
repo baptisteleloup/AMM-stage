@@ -1,0 +1,70 @@
+{
+ "phases": [
+  {
+   "phase": "4 validators up",
+   "durationS": 121.358,
+   "nodesUp": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "blocks": 24,
+   "meanIntervalS": 5.056583333333333,
+   "longestGapS": 5.007
+  },
+  {
+   "phase": "node-4 stopped (3 up)",
+   "durationS": 121.363,
+   "nodesUp": [
+    1,
+    2,
+    3
+   ],
+   "blocks": 15,
+   "meanIntervalS": 8.090866666666667,
+   "longestGapS": 15.016
+  },
+  {
+   "phase": "node-3 stopped (2 up)",
+   "durationS": 120.236,
+   "nodesUp": [
+    1,
+    2
+   ],
+   "blocks": 0,
+   "meanIntervalS": null,
+   "longestGapS": 119.114
+  },
+  {
+   "phase": "node-3 restarted (3 up)",
+   "durationS": 120.228,
+   "nodesUp": [
+    1,
+    2,
+    3
+   ],
+   "blocks": 0,
+   "meanIntervalS": null,
+   "longestGapS": 119.12
+  },
+  {
+   "phase": "node-4 restarted (4 up)",
+   "durationS": 119.689,
+   "nodesUp": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "blocks": 0,
+   "meanIntervalS": null,
+   "longestGapS": 118.117
+  }
+ ],
+ "forkCheck": {
+  "heightsCompared": 929,
+  "nodes": 4,
+  "mismatches": 0
+ }
+}

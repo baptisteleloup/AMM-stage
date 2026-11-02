@@ -1,0 +1,354 @@
+{
+ "sessions_per_day": 96,
+ "days": [
+  "2018-07-01",
+  "2018-07-02",
+  "2018-07-03",
+  "2018-07-04",
+  "2018-07-05"
+ ],
+ "agents": [
+  {
+   "name": "prosumer-0",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.272,
+   "cycles": 7,
+   "base_columns_count": 18,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 58.14,
+   "base_kwh_per_day": 16.17,
+   "flexible_kwh_per_day": 2.17,
+   "cycle_kwh_per_day": 2.88,
+   "flexible_share": 0.238,
+   "resstock_building_id": "185485"
+  },
+  {
+   "name": "prosumer-1",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.0,
+   "cycles": 4,
+   "base_columns_count": 18,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 58.14,
+   "base_kwh_per_day": 18.71,
+   "flexible_kwh_per_day": 0.0,
+   "cycle_kwh_per_day": 0.73,
+   "flexible_share": 0.038,
+   "resstock_building_id": "457879"
+  },
+  {
+   "name": "prosumer-2",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.0,
+   "cycles": 1,
+   "base_columns_count": 18,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 26.95,
+   "base_kwh_per_day": 20.7,
+   "flexible_kwh_per_day": 0.0,
+   "cycle_kwh_per_day": 0.12,
+   "flexible_share": 0.006,
+   "resstock_building_id": "278632"
+  },
+  {
+   "name": "prosumer-3",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.0,
+   "cycles": 3,
+   "base_columns_count": 18,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 47.57,
+   "base_kwh_per_day": 55.64,
+   "flexible_kwh_per_day": 0.0,
+   "cycle_kwh_per_day": 2.23,
+   "flexible_share": 0.039,
+   "resstock_building_id": "153458"
+  },
+  {
+   "name": "prosumer-4",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 3.024,
+   "cycles": 4,
+   "base_columns_count": 18,
+   "pv_sign_convention": "negative",
+   "has_pv": true,
+   "generation_kwh_per_day": 47.57,
+   "base_kwh_per_day": 28.75,
+   "flexible_kwh_per_day": 8.26,
+   "cycle_kwh_per_day": 0.19,
+   "flexible_share": 0.227,
+   "resstock_building_id": "493042"
+  },
+  {
+   "name": "prosumer-5",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.0,
+   "cycles": 6,
+   "base_columns_count": 18,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 29.81,
+   "flexible_kwh_per_day": 0.0,
+   "cycle_kwh_per_day": 1.67,
+   "flexible_share": 0.053,
+   "resstock_building_id": "397960"
+  },
+  {
+   "name": "prosumer-6",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.0,
+   "cycles": 4,
+   "base_columns_count": 18,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 33.54,
+   "flexible_kwh_per_day": 0.0,
+   "cycle_kwh_per_day": 0.23,
+   "flexible_share": 0.007,
+   "resstock_building_id": "274275"
+  },
+  {
+   "name": "prosumer-7",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 4.852,
+   "cycles": 10,
+   "base_columns_count": 18,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 20.81,
+   "flexible_kwh_per_day": 13.21,
+   "cycle_kwh_per_day": 2.57,
+   "flexible_share": 0.431,
+   "resstock_building_id": "107843"
+  },
+  {
+   "name": "prosumer-8",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.0,
+   "cycles": 2,
+   "base_columns_count": 18,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 49.04,
+   "flexible_kwh_per_day": 0.0,
+   "cycle_kwh_per_day": 0.47,
+   "flexible_share": 0.009,
+   "resstock_building_id": "60561"
+  },
+  {
+   "name": "prosumer-9",
+   "pv_columns": [
+    "out.electricity.pv.energy_consumption"
+   ],
+   "flexible_columns": [
+    "out.electricity.hot_water.energy_consumption",
+    "out.electricity.permanent_spa_pump.energy_consumption",
+    "out.electricity.pool_pump.energy_consumption"
+   ],
+   "cycle_columns": [
+    "out.electricity.clothes_dryer.energy_consumption",
+    "out.electricity.clothes_washer.energy_consumption",
+    "out.electricity.dishwasher.energy_consumption"
+   ],
+   "flex_cap_kw": 0.0,
+   "cycles": 9,
+   "base_columns_count": 18,
+   "pv_sign_convention": "positive",
+   "has_pv": false,
+   "generation_kwh_per_day": 0.0,
+   "base_kwh_per_day": 43.38,
+   "flexible_kwh_per_day": 0.0,
+   "cycle_kwh_per_day": 2.67,
+   "flexible_share": 0.058,
+   "resstock_building_id": "408142"
+  }
+ ],
+ "flex_daily_kwh": {
+  "prosumer-0": {
+   "2018-07-01": 2.172,
+   "2018-07-02": 2.172,
+   "2018-07-03": 2.172,
+   "2018-07-04": 2.172,
+   "2018-07-05": 2.172
+  },
+  "prosumer-1": {
+   "2018-07-01": 0.0,
+   "2018-07-02": 0.0,
+   "2018-07-03": 0.0,
+   "2018-07-04": 0.0,
+   "2018-07-05": 0.0
+  },
+  "prosumer-2": {
+   "2018-07-01": 0.0,
+   "2018-07-02": 0.0,
+   "2018-07-03": 0.0,
+   "2018-07-04": 0.0,
+   "2018-07-05": 0.0
+  },
+  "prosumer-3": {
+   "2018-07-01": 0.0,
+   "2018-07-02": 0.0,
+   "2018-07-03": 0.0,
+   "2018-07-04": 0.0,
+   "2018-07-05": 0.0
+  },
+  "prosumer-4": {
+   "2018-07-01": 6.611,
+   "2018-07-02": 9.6,
+   "2018-07-03": 8.833,
+   "2018-07-04": 7.863,
+   "2018-07-05": 8.388
+  },
+  "prosumer-5": {
+   "2018-07-01": 0.0,
+   "2018-07-02": 0.0,
+   "2018-07-03": 0.0,
+   "2018-07-04": 0.0,
+   "2018-07-05": 0.0
+  },
+  "prosumer-6": {
+   "2018-07-01": 0.0,
+   "2018-07-02": 0.0,
+   "2018-07-03": 0.0,
+   "2018-07-04": 0.0,
+   "2018-07-05": 0.0
+  },
+  "prosumer-7": {
+   "2018-07-01": 11.722,
+   "2018-07-02": 18.654,
+   "2018-07-03": 12.548,
+   "2018-07-04": 10.167,
+   "2018-07-05": 12.956
+  },
+  "prosumer-8": {
+   "2018-07-01": 0.0,
+   "2018-07-02": 0.0,
+   "2018-07-03": 0.0,
+   "2018-07-04": 0.0,
+   "2018-07-05": 0.0
+  },
+  "prosumer-9": {
+   "2018-07-01": 0.0,
+   "2018-07-02": 0.0,
+   "2018-07-03": 0.0,
+   "2018-07-04": 0.0,
+   "2018-07-05": 0.0
+  }
+ }
+}

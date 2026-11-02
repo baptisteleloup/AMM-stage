@@ -1,0 +1,794 @@
+{
+ "step_minutes": 15,
+ "days": [
+  "2018-07-01",
+  "2018-07-02",
+  "2018-07-03",
+  "2018-07-04",
+  "2018-07-05"
+ ],
+ "wash_dry_max_gap_hours": 4.0,
+ "agents": {
+  "prosumer-0": [
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-02",
+    "observed_step": 25,
+    "profile_kw": [
+     0.168,
+     0.316,
+     0.316,
+     0.188
+    ],
+    "energy_kwh": 0.247,
+    "id": "prosumer-0/clothes_washer/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-02",
+    "observed_step": 28,
+    "profile_kw": [
+     5.468,
+     0.992
+    ],
+    "energy_kwh": 1.615,
+    "id": "prosumer-0/clothes_dryer/1",
+    "after": "prosumer-0/clothes_washer/0",
+    "min_lag_steps": 3
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 79,
+    "profile_kw": [
+     0.776,
+     0.972,
+     0.908
+    ],
+    "energy_kwh": 0.664,
+    "id": "prosumer-0/dishwasher/2",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-04",
+    "observed_step": 65,
+    "profile_kw": [
+     0.776,
+     0.972,
+     0.908
+    ],
+    "energy_kwh": 0.664,
+    "id": "prosumer-0/dishwasher/3",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-05",
+    "observed_step": 65,
+    "profile_kw": [
+     0.776,
+     0.972,
+     0.908
+    ],
+    "energy_kwh": 0.664,
+    "id": "prosumer-0/dishwasher/4",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-05",
+    "observed_step": 75,
+    "profile_kw": [
+     0.168,
+     0.316,
+     0.316,
+     0.188
+    ],
+    "energy_kwh": 0.247,
+    "id": "prosumer-0/clothes_washer/5",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-05",
+    "observed_step": 78,
+    "profile_kw": [
+     5.468,
+     7.46,
+     7.46,
+     7.46,
+     7.46,
+     5.968
+    ],
+    "energy_kwh": 10.319,
+    "id": "prosumer-0/clothes_dryer/6",
+    "after": "prosumer-0/clothes_washer/5",
+    "min_lag_steps": 3
+   }
+  ],
+  "prosumer-1": [
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 68,
+    "profile_kw": [
+     0.04,
+     0.584,
+     0.584,
+     0.392
+    ],
+    "energy_kwh": 0.4,
+    "id": "prosumer-1/dishwasher/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-04",
+    "observed_step": 92,
+    "profile_kw": [
+     0.376,
+     0.1
+    ],
+    "energy_kwh": 0.119,
+    "id": "prosumer-1/clothes_washer/1",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-04",
+    "observed_step": 93,
+    "profile_kw": [
+     1.228
+    ],
+    "energy_kwh": 0.307,
+    "id": "prosumer-1/clothes_dryer/2",
+    "after": "prosumer-1/clothes_washer/1",
+    "min_lag_steps": 1
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-05",
+    "observed_step": 91,
+    "profile_kw": [
+     0.3
+    ],
+    "energy_kwh": 0.075,
+    "id": "prosumer-1/clothes_washer/3",
+    "after": null,
+    "min_lag_steps": 0
+   }
+  ],
+  "prosumer-2": [
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-02",
+    "observed_step": 73,
+    "profile_kw": [
+     0.24,
+     0.512,
+     0.512,
+     0.512,
+     0.512,
+     0.036
+    ],
+    "energy_kwh": 0.581,
+    "id": "prosumer-2/dishwasher/0",
+    "after": null,
+    "min_lag_steps": 0
+   }
+  ],
+  "prosumer-3": [
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-01",
+    "observed_step": 41,
+    "profile_kw": [
+     0.036,
+     0.564,
+     0.564
+    ],
+    "energy_kwh": 0.291,
+    "id": "prosumer-3/clothes_washer/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-01",
+    "observed_step": 47,
+    "profile_kw": [
+     10.168,
+     10.9,
+     10.9,
+     7.988
+    ],
+    "energy_kwh": 9.989,
+    "id": "prosumer-3/clothes_dryer/1",
+    "after": "prosumer-3/clothes_washer/0",
+    "min_lag_steps": 6
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 55,
+    "profile_kw": [
+     0.128,
+     1.924,
+     1.412
+    ],
+    "energy_kwh": 0.866,
+    "id": "prosumer-3/dishwasher/2",
+    "after": null,
+    "min_lag_steps": 0
+   }
+  ],
+  "prosumer-4": [
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 23,
+    "profile_kw": [
+     0.256,
+     0.276,
+     0.276,
+     0.276,
+     0.276,
+     0.148
+    ],
+    "energy_kwh": 0.377,
+    "id": "prosumer-4/dishwasher/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-03",
+    "observed_step": 82,
+    "profile_kw": [
+     0.088,
+     0.176
+    ],
+    "energy_kwh": 0.066,
+    "id": "prosumer-4/clothes_washer/1",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-04",
+    "observed_step": 70,
+    "profile_kw": [
+     0.088,
+     0.176
+    ],
+    "energy_kwh": 0.066,
+    "id": "prosumer-4/clothes_washer/2",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-05",
+    "observed_step": 70,
+    "profile_kw": [
+     0.256,
+     0.276,
+     0.276,
+     0.276,
+     0.276,
+     0.276,
+     0.128
+    ],
+    "energy_kwh": 0.441,
+    "id": "prosumer-4/dishwasher/3",
+    "after": null,
+    "min_lag_steps": 0
+   }
+  ],
+  "prosumer-5": [
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 38,
+    "profile_kw": [
+     0.56,
+     0.6,
+     0.48
+    ],
+    "energy_kwh": 0.41,
+    "id": "prosumer-5/dishwasher/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-03",
+    "observed_step": 46,
+    "profile_kw": [
+     1.988,
+     4.976,
+     4.976,
+     1.656
+    ],
+    "energy_kwh": 3.399,
+    "id": "prosumer-5/clothes_dryer/1",
+    "after": "prosumer-5/clothes_washer/2",
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-03",
+    "observed_step": 46,
+    "profile_kw": [
+     0.18,
+     0.12
+    ],
+    "energy_kwh": 0.075,
+    "id": "prosumer-5/clothes_washer/2",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-04",
+    "observed_step": 70,
+    "profile_kw": [
+     0.56,
+     0.6,
+     0.6,
+     0.6,
+     0.36
+    ],
+    "energy_kwh": 0.68,
+    "id": "prosumer-5/dishwasher/3",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-05",
+    "observed_step": 34,
+    "profile_kw": [
+     0.18,
+     0.3,
+     0.3,
+     0.3,
+     0.3,
+     0.18
+    ],
+    "energy_kwh": 0.39,
+    "id": "prosumer-5/clothes_washer/4",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-05",
+    "observed_step": 38,
+    "profile_kw": [
+     0.996,
+     4.976,
+     4.976,
+     2.652
+    ],
+    "energy_kwh": 3.4,
+    "id": "prosumer-5/clothes_dryer/5",
+    "after": "prosumer-5/clothes_washer/4",
+    "min_lag_steps": 4
+   }
+  ],
+  "prosumer-6": [
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 34,
+    "profile_kw": [
+     0.076,
+     0.416
+    ],
+    "energy_kwh": 0.123,
+    "id": "prosumer-6/dishwasher/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 41,
+    "profile_kw": [
+     0.076,
+     0.568,
+     0.38
+    ],
+    "energy_kwh": 0.256,
+    "id": "prosumer-6/dishwasher/1",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-04",
+    "observed_step": 65,
+    "profile_kw": [
+     0.076,
+     0.568,
+     0.38
+    ],
+    "energy_kwh": 0.256,
+    "id": "prosumer-6/dishwasher/2",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-05",
+    "observed_step": 56,
+    "profile_kw": [
+     0.076,
+     0.568,
+     0.568,
+     0.568,
+     0.304
+    ],
+    "energy_kwh": 0.521,
+    "id": "prosumer-6/dishwasher/3",
+    "after": null,
+    "min_lag_steps": 0
+   }
+  ],
+  "prosumer-7": [
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-01",
+    "observed_step": 51,
+    "profile_kw": [
+     0.052,
+     0.16,
+     0.16,
+     0.16,
+     0.128
+    ],
+    "energy_kwh": 0.165,
+    "id": "prosumer-7/clothes_washer/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-01",
+    "observed_step": 57,
+    "profile_kw": [
+     2.8,
+     3.5,
+     3.264
+    ],
+    "energy_kwh": 2.391,
+    "id": "prosumer-7/clothes_dryer/1",
+    "after": "prosumer-7/clothes_washer/0",
+    "min_lag_steps": 6
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-01",
+    "observed_step": 59,
+    "profile_kw": [
+     0.324,
+     0.54,
+     0.54,
+     0.54,
+     0.504
+    ],
+    "energy_kwh": 0.612,
+    "id": "prosumer-7/dishwasher/2",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-02",
+    "observed_step": 51,
+    "profile_kw": [
+     0.36,
+     0.54,
+     0.54,
+     0.54
+    ],
+    "energy_kwh": 0.495,
+    "id": "prosumer-7/dishwasher/3",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-04",
+    "observed_step": 38,
+    "profile_kw": [
+     0.064,
+     0.16,
+     0.16,
+     0.16,
+     0.116
+    ],
+    "energy_kwh": 0.165,
+    "id": "prosumer-7/clothes_washer/4",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-04",
+    "observed_step": 44,
+    "profile_kw": [
+     3.032,
+     3.5,
+     3.032
+    ],
+    "energy_kwh": 2.391,
+    "id": "prosumer-7/clothes_dryer/5",
+    "after": "prosumer-7/clothes_washer/4",
+    "min_lag_steps": 6
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-04",
+    "observed_step": 50,
+    "profile_kw": [
+     0.064,
+     0.096
+    ],
+    "energy_kwh": 0.04,
+    "id": "prosumer-7/clothes_washer/6",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-04",
+    "observed_step": 53,
+    "profile_kw": [
+     3.5,
+     3.5,
+     3.5,
+     2.332
+    ],
+    "energy_kwh": 3.208,
+    "id": "prosumer-7/clothes_dryer/7",
+    "after": "prosumer-7/clothes_washer/6",
+    "min_lag_steps": 3
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-05",
+    "observed_step": 60,
+    "profile_kw": [
+     0.064,
+     0.16,
+     0.16,
+     0.16,
+     0.116
+    ],
+    "energy_kwh": 0.165,
+    "id": "prosumer-7/clothes_washer/8",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-05",
+    "observed_step": 66,
+    "profile_kw": [
+     3.032,
+     3.5,
+     3.5,
+     2.8
+    ],
+    "energy_kwh": 3.208,
+    "id": "prosumer-7/clothes_dryer/9",
+    "after": "prosumer-7/clothes_washer/8",
+    "min_lag_steps": 6
+   }
+  ],
+  "prosumer-8": [
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-03",
+    "observed_step": 63,
+    "profile_kw": [
+     0.104,
+     0.784,
+     0.784,
+     0.784,
+     0.784,
+     0.784,
+     0.26
+    ],
+    "energy_kwh": 1.071,
+    "id": "prosumer-8/dishwasher/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-04",
+    "observed_step": 32,
+    "profile_kw": [
+     0.104,
+     0.784,
+     0.784,
+     0.784,
+     0.784,
+     0.784,
+     0.784,
+     0.208
+    ],
+    "energy_kwh": 1.254,
+    "id": "prosumer-8/dishwasher/1",
+    "after": null,
+    "min_lag_steps": 0
+   }
+  ],
+  "prosumer-9": [
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-01",
+    "observed_step": 36,
+    "profile_kw": [
+     0.072,
+     0.264,
+     0.264,
+     0.264,
+     0.264,
+     0.264,
+     0.052
+    ],
+    "energy_kwh": 0.361,
+    "id": "prosumer-9/dishwasher/0",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-01",
+    "observed_step": 50,
+    "profile_kw": [
+     0.124,
+     0.132,
+     0.132,
+     0.132,
+     0.028
+    ],
+    "energy_kwh": 0.137,
+    "id": "prosumer-9/clothes_washer/1",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-01",
+    "observed_step": 55,
+    "profile_kw": [
+     3.66,
+     3.66,
+     2.684
+    ],
+    "energy_kwh": 2.501,
+    "id": "prosumer-9/clothes_dryer/2",
+    "after": "prosumer-9/clothes_washer/1",
+    "min_lag_steps": 5
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-01",
+    "observed_step": 59,
+    "profile_kw": [
+     0.072,
+     0.264,
+     0.264,
+     0.264,
+     0.264,
+     0.264,
+     0.264,
+     0.036
+    ],
+    "energy_kwh": 0.423,
+    "id": "prosumer-9/dishwasher/3",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "dishwasher",
+    "date": "2018-07-01",
+    "observed_step": 74,
+    "profile_kw": [
+     0.072,
+     0.264,
+     0.264,
+     0.264,
+     0.264,
+     0.264,
+     0.052
+    ],
+    "energy_kwh": 0.361,
+    "id": "prosumer-9/dishwasher/4",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-02",
+    "observed_step": 46,
+    "profile_kw": [
+     0.132,
+     0.132,
+     0.132,
+     0.132,
+     0.016
+    ],
+    "energy_kwh": 0.136,
+    "id": "prosumer-9/clothes_washer/5",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-02",
+    "observed_step": 50,
+    "profile_kw": [
+     0.244,
+     3.66,
+     3.66,
+     3.66,
+     3.66,
+     3.66,
+     1.708
+    ],
+    "energy_kwh": 5.063,
+    "id": "prosumer-9/clothes_dryer/6",
+    "after": "prosumer-9/clothes_washer/5",
+    "min_lag_steps": 4
+   },
+   {
+    "appliance": "clothes_washer",
+    "date": "2018-07-04",
+    "observed_step": 47,
+    "profile_kw": [
+     0.132,
+     0.132,
+     0.132,
+     0.132,
+     0.016
+    ],
+    "energy_kwh": 0.136,
+    "id": "prosumer-9/clothes_washer/7",
+    "after": null,
+    "min_lag_steps": 0
+   },
+   {
+    "appliance": "clothes_dryer",
+    "date": "2018-07-04",
+    "observed_step": 51,
+    "profile_kw": [
+     0.244,
+     3.66,
+     3.66,
+     3.66,
+     3.66,
+     1.952
+    ],
+    "energy_kwh": 4.209,
+    "id": "prosumer-9/clothes_dryer/8",
+    "after": "prosumer-9/clothes_washer/7",
+    "min_lag_steps": 4
+   }
+  ]
+ }
+}

@@ -1,13 +1,16 @@
 # figures for the mixed-strategy equilibria, reads out/mixed_<rule>.json
 import argparse
 import json
+import sys
+from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from common import HERE, Data, session_prices
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # demo/econ, where common.py lives
+from common import HERE, Data, session_prices  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--rule", choices=("mmr", "sdr", "hyperbolic"), default="sdr")  # rule for the battery figure
@@ -15,15 +18,16 @@ args = ap.parse_args()
 
 RULES = ("mmr", "sdr", "hyperbolic")
 LABEL = {"mmr": "Mid-market rate", "sdr": "Supply-demand ratio", "hyperbolic": "Hyperbolic"}
-OUT = HERE / "out"
-FIG = HERE / "figures"
+OUT = HERE / "out"  # solo.json and planner.json of the paper
+EXT = Path(__file__).resolve().parent  # demo/econ/extensions
+FIG = EXT / "figures"
 FIG.mkdir(exist_ok=True)
 
 data = Data()
 names = data.names
 N, days = len(names), data.cfg["days"]
 hours = np.arange(96) / 4
-mixed = {r: json.loads((OUT / f"mixed_{r}.json").read_text()) for r in RULES if (OUT / f"mixed_{r}.json").exists()}
+mixed = {r: json.loads((EXT / "out" / f"mixed_{r}.json").read_text()) for r in RULES if (EXT / "out" / f"mixed_{r}.json").exists()}
 solo = json.loads((OUT / "solo.json").read_text())
 planner = json.loads((OUT / "planner.json").read_text())
 pv = [i for i, n in enumerate(names) if data.hh[n]["omega"].sum() > 0]

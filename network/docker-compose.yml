@@ -1,0 +1,108 @@
+# Four QBFT validators for the settlement layer.
+# Image pinned for reproducible measurements; override with BESU_IMAGE if needed.
+# Free gas: zeroBaseFee in genesis.json plus --min-gas-price=0 on every node.
+x-besu: &besu
+  image: ${BESU_IMAGE:-hyperledger/besu:26.8.1}
+  networks: [besu]
+  restart: "no"
+
+services:
+  node-1:
+    <<: *besu
+    container_name: besu-node-1
+    volumes:
+      - ./genesis.json:/genesis.json:ro
+      - ./nodes/node-1/data:/data
+    command:
+      - --data-path=/data
+      - --genesis-file=/genesis.json
+      - --node-private-key-file=/data/key
+      - --p2p-port=30303
+      - --rpc-http-enabled
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,TXPOOL,ADMIN,DEBUG
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --revert-reason-enabled
+    ports:
+      - "8545:8545"
+
+  node-2:
+    <<: *besu
+    container_name: besu-node-2
+    volumes:
+      - ./genesis.json:/genesis.json:ro
+      - ./nodes/node-2/data:/data
+    command:
+      - --data-path=/data
+      - --genesis-file=/genesis.json
+      - --node-private-key-file=/data/key
+      - --bootnodes=enode://23c284100ff4204031a2c9c14172907648a5658ebbf6d2e815d17bee299ffd2f1767c28784fe69a0ac743f3caadf75011a958f36eb5895a182b58da907f38bd1@node-1:30303
+      - --Xdns-enabled=true
+      - --p2p-port=30303
+      - --rpc-http-enabled
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,TXPOOL,ADMIN,DEBUG
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --revert-reason-enabled
+    ports:
+      - "8546:8545"
+    depends_on: [node-1]
+
+  node-3:
+    <<: *besu
+    container_name: besu-node-3
+    volumes:
+      - ./genesis.json:/genesis.json:ro
+      - ./nodes/node-3/data:/data
+    command:
+      - --data-path=/data
+      - --genesis-file=/genesis.json
+      - --node-private-key-file=/data/key
+      - --bootnodes=enode://23c284100ff4204031a2c9c14172907648a5658ebbf6d2e815d17bee299ffd2f1767c28784fe69a0ac743f3caadf75011a958f36eb5895a182b58da907f38bd1@node-1:30303
+      - --Xdns-enabled=true
+      - --p2p-port=30303
+      - --rpc-http-enabled
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,TXPOOL,ADMIN,DEBUG
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --revert-reason-enabled
+    ports:
+      - "8547:8545"
+    depends_on: [node-1]
+
+  node-4:
+    <<: *besu
+    container_name: besu-node-4
+    volumes:
+      - ./genesis.json:/genesis.json:ro
+      - ./nodes/node-4/data:/data
+    command:
+      - --data-path=/data
+      - --genesis-file=/genesis.json
+      - --node-private-key-file=/data/key
+      - --bootnodes=enode://23c284100ff4204031a2c9c14172907648a5658ebbf6d2e815d17bee299ffd2f1767c28784fe69a0ac743f3caadf75011a958f36eb5895a182b58da907f38bd1@node-1:30303
+      - --Xdns-enabled=true
+      - --p2p-port=30303
+      - --rpc-http-enabled
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,TXPOOL,ADMIN,DEBUG
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --revert-reason-enabled
+    ports:
+      - "8548:8545"
+    depends_on: [node-1]
+
+networks:
+  besu:

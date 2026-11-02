@@ -7,12 +7,17 @@
 import argparse
 import itertools
 import json
+import sys
 import time
+from pathlib import Path
 
 import numpy as np
 from gurobipy import GRB
 
-from common import HERE, Data, add_household, new_model, schedule, session_prices
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # demo/econ, where common.py lives
+from common import HERE, Data, add_household, new_model, schedule, session_prices  # noqa: E402
+
+EXT = Path(__file__).resolve().parent  # demo/econ/extensions
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--rule", choices=("mmr", "sdr", "hyperbolic"), required=True)
@@ -62,7 +67,7 @@ banks = [dedupe(b) for b in banks]
 sigma = [np.ones(len(b)) / len(b) for b in banks]  # sigma[n] = probabilities on the bank of n, start uniform
 if args.resume:
     # pick up a previous run where it stopped (same banks, same probabilities)
-    prev = json.loads((HERE / "out" / f"mixed_{args.rule}.json").read_text())
+    prev = json.loads((EXT / "out" / f"mixed_{args.rule}.json").read_text())
     banks = [[{k: np.array(v) for k, v in s.items()} for s in prev["banks"][n]] for n in names]
     sigma = [np.array(prev["sigma"][n]) for n in names]
 
@@ -223,7 +228,7 @@ out = {"rule": args.rule, "epsilon_usd": epsilon, "epsilon_by_household": eps_n,
        "banks": {n: [{k: np.asarray(v).round(6).tolist() for k, v in s.items()} for s in banks[i]]
                  for i, n in enumerate(names)},
        "draws": picks.tolist(), "draw_bills": bills.round(6).tolist()}
-path = HERE / "out" / f"mixed_{args.rule}.json"
+path = EXT / "out" / f"mixed_{args.rule}.json"
 with open(path, "w") as f:
     json.dump(out, f)
 print(f"wrote {path}")
