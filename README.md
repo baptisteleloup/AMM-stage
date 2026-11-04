@@ -47,24 +47,28 @@ Setup, from the repository root:
 
 ```
 git submodule update --init --recursive        # forge-std, openzeppelin-contracts, prb-math
-npm install                                    # TypeScript dependencies (package.json at the root)
+npm ci                                         # TypeScript dependencies, exact versions of package-lock.json
 uv venv contracts/.venv --python 3.13
-uv pip install --python contracts/.venv/bin/python pandas pyarrow openpyxl tqdm numpy matplotlib gurobipy
+uv pip install --python contracts/.venv/bin/python pandas==3.0.5 pyarrow==25.0.1 openpyxl==3.1.5 \
+    tqdm==4.70.0 numpy==2.5.2 matplotlib==3.11.1 gurobipy==13.0.3
 source contracts/.venv/bin/activate
 cd contracts
 for c in day_chunk reveal poseidon_helper; do (cd circuits/$c && nargo compile); done
 ```
 
 The compiled circuits (`circuits/*/target/`) are not committed. They are read by the operator,
-the proof scripts and the FFI tests.
+the proof scripts and the FFI tests. The Python versions above are the ones that produced the
+committed results. In a new terminal, run `source .venv/bin/activate` from `contracts/` again
+before the Python commands.
 
 Every command below runs from `contracts/`, except the scripts of `network/`, which run from
 `network/`.
 
 ## Quick checks
 
+From `contracts/`, where the setup ends:
+
 ```
-cd contracts
 forge build && forge test --no-match-path "test/*.ffi.t.sol"
 npx tsc --noEmit -p ../tsconfig.json
 python -m py_compile demo/sim/*.py demo/econ/*.py demo/econ/extensions/*.py
