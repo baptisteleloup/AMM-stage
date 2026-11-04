@@ -189,37 +189,28 @@ def main():
     with open(args.out, "w") as f:
         json.dump(payload, f)
 
-    manifest = {  # provenance and modelling choices
+    manifest = {  # provenance of the tariff band
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": {
             "name": f"ISO New England SMD hourly data, {year}",
             "zone": args.zone,
-            "url": ZONE_INFO_PAGE,
+            "landing_page": ZONE_INFO_PAGE,
             "file": os.path.basename(path),
             "sha256": sha256(path),
-            "landing_page": "https://www.iso-ne.com/isoexpress/web/reports/pricing/-/tree/zone-info",
+        },
+        "parameters": {
+            "days": args.days,
+            "delivery_adder_usd_per_kwh": args.delivery_adder,
+            "dst_shift_hours": args.dst_shift_hours,
         },
         "transformations": [
             "hour-ending labels converted to interval-start hours",
-            f"clock shifted back {args.dst_shift_hours}h from Eastern Prevailing "
-            f"Time to the Eastern Standard Time ResStock uses all year",
-            "$/MWh converted to currency per kWh",
-            "each hourly day-ahead price held flat across its four quarter hours, "
-            "as day-ahead settlement does",
-            f"buyer price = day-ahead LMP + {args.delivery_adder}/kWh delivery adder",
+            f"clock shifted back {args.dst_shift_hours} h from Eastern Prevailing Time to Eastern Standard Time, as in ResStock",
+            "USD/MWh converted to USD/kWh",
+            "each hourly day-ahead price held flat over its four quarter hours",
+            "feed-in rate = day-ahead LMP; retail rate = LMP + delivery adder",
         ],
-        "modelling_choice": {
-            "regime": "export paid at wholesale, import paid at retail",
-            "why": "under net metering an export is credited at the retail price, "
-                   "so low equals high, the spread vanishes and a local market "
-                   "has no reason to exist. Pricing exports at wholesale is what "
-                   "creates the spread that a local market splits between "
-                   "neighbours.",
-            "delivery_adder_note": "a single flat figure standing for "
-                                   "distribution, transmission and taxes, which "
-                                   "in practice vary by utility and by rate class",
-        },
-        "daily_wholesale_summary_per_kwh": [
+        "daily_wholesale_summary_usd_per_kwh": [
             {"day": d, "min": round(a, 4), "max": round(b, 4), "mean": round(c, 4)}
             for d, a, b, c in stats
         ],
