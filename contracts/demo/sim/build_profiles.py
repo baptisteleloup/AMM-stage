@@ -291,57 +291,30 @@ def main():
     community_load = sum(a["base_kwh_per_day"] + a["flexible_kwh_per_day"]
                          + a["cycle_kwh_per_day"] for a in agents)
 
-    manifest = {  # provenance and modelling choices
+    manifest = {  # provenance of the generated profiles
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "script": os.path.basename(__file__),
         "dataset": {
             "name": "End-Use Load Profiles for the U.S. Building Stock (ResStock)",
             "publisher": "NREL / U.S. Department of Energy",
             "landing_page": "https://data.openei.org/submissions/4520",
-            "engine": "EnergyPlus (via OpenStudio-HPXML)",
             "native_resolution_minutes": 15,
             "units_in_source": "kWh per interval",
             "timestamp_convention_in_source": "end of interval",
             "timezone_in_source": "Eastern Standard Time",
         },
-        "transformations": [
-            "timestamps shifted back 15 min so the index labels the START of each interval",
-            "kWh per interval converted to average kW by multiplying by 4",
-            "electricity end uses split into generation / flexible / inflexible",
-            "flexible = hot water, pool pump and spa pump: a daily energy that can "
-            "be spread freely within the day, up to flex_cap_kw, the sum of the "
-            "highest power each of these end uses reaches over the period",
-            "pool and spa pumps are spread over the day by ResStock along an "
-            "average schedule; their daily energy is treated as shiftable, as a "
-            "timer would allow",
-            "dishwasher, clothes washer and clothes dryer = cycles: each "
-            "uninterrupted run of non-zero consumption is one cycle, kept with "
-            "its own 15-minute power profile and written to cycles.json; only "
-            "its start time can move, within its day",
-            "a dryer cycle starting at most 4 h after a washer cycle of the same "
-            "day is paired with it and must keep at least the observed lag",
-            "cooling and heating stay inflexible since a thermostat load cannot "
-            "be moved freely within the day",
-            "cycle_kw = observed consumption of the cycles, kept so that the net "
-            "position as recorded is still omega - alpha_base - flex - cycle",
-            "flexible load aggregated to one energy figure per day",
-        ],
-        "selection": {
-            "note": "PV penetration in the ResStock baseline reflects the real US "
-                    "stock, so a seller/buyer mix is obtained by FILTERING on "
-                    "building characteristics, not by random sampling. This is a "
-                    "composition choice and must be declared as such.",
+        "parameters": {
             "state": args.state,
             "date_range": args.days,
             "building_ids": ids,
         },
-        "known_limitations": [
-            "ResStock does not size PV to the dwelling's own consumption, so an "
-            "oversized array can produce large net surplus; NREL warns that "
-            "PV-equipped units may skew distributional analysis",
-            "PV is assigned only to single-family detached units, capped at 14 kW DC",
-            "US building stock and US weather; a French collective self-consumption "
-            "case is not represented",
+        "transformations": [
+            "timestamps shifted back 15 min to label the start of each interval",
+            "kWh per interval converted to average kW (x4)",
+            "end uses split into generation, inflexible, flexible and cycles",
+            "flexible: water heating, pool and spa pumps; daily energy shiftable within the day up to flex_cap_kw",
+            "cycles: dishwasher, washer and dryer runs, written to cycles.json with their power profile",
+            "dryer cycles paired with a washer cycle of the same day when starting within 4 h",
         ],
         "community_totals_kwh_per_day": {
             "generation": round(community_gen, 1),
