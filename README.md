@@ -210,7 +210,7 @@ Use them to check a reproduction.
 ## Extension outside the manuscript
 
 `demo/econ/extensions/` computes mixed-strategy Nash equilibria of the ten-household game. It is
-not part of the manuscript and is kept for reference.
+not part of the manuscript and is kept for reference. A rerun gives results close to the committed ones but not identical (small differences in the mixed strategies and in their epsilon), and `mixed.py --rule hyperbolic` takes more than 30 minutes.
 
 ```
 python demo/econ/extensions/mixed.py --rule <rule>        # extensions/out/mixed_<rule>.json
