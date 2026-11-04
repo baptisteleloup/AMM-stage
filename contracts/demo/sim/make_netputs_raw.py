@@ -18,7 +18,7 @@ def main():
     ap.add_argument("--profiles", default="demo/data/profiles")
     ap.add_argument("--out", default="demo/data/netputs_raw.json")
     ap.add_argument("--days", type=int, default=None,
-                    help="number of days to keep; default: all but the last, as with the solver")
+                    help="number of days to keep; default: all but the last profile day")
     ap.add_argument("--force", action="store_true", help="allow writing over an existing file")
     args = ap.parse_args()
 
@@ -43,7 +43,6 @@ def main():
             if len(rows_of_day) != SESSIONS:
                 raise SystemExit(f"{n} has {len(rows_of_day)} rows on {day}, expected {SESSIONS}")
             gen = rows_of_day["omega_kw"].values  # PV output, kW
-            # base plus flexible load as recorded, kW
             con = (rows_of_day["alpha_base_kw"] + rows_of_day["flex_kw"] + rows_of_day["cycle_kw"]).values  # all recorded consumption, cycles included
             rows = []
             for t in range(SESSIONS):
@@ -62,7 +61,7 @@ def main():
     with open(args.out, "w") as f:
         json.dump({"sessions": SESSIONS, "unit": "Wh", "baseDay": 0,  # format read by the operator (NETPUTS_JSON)
                    "days": len(sim_days), "profiles": profiles}, f)
-    
+
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "method": "net position = photovoltaic output minus recorded consumption "
