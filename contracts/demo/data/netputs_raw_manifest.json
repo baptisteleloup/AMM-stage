@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-09-28T09:32:28.689271+00:00",
- "method": "net position = photovoltaic output minus base and flexible consumption, as recorded, with no battery, no load shifting and no optimisation",
- "profiles": "/Users/baptisteleloup/Desktop/Stage Telecom/1 - AMM/contracts/demo/data/profiles",
+ "generated_at": "2026-11-04T12:34:46.042300+00:00",
+ "method": "net position = photovoltaic output minus recorded consumption (base, flexible and appliance cycles), with no battery, no load shifting and no optimisation",
+ "profiles": "demo/data/profiles",
  "agents": [
   "prosumer-0",
   "prosumer-1",
