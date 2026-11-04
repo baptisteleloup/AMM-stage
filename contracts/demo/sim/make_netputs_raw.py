@@ -44,7 +44,7 @@ def main():
                 raise SystemExit(f"{n} has {len(rows_of_day)} rows on {day}, expected {SESSIONS}")
             gen = rows_of_day["omega_kw"].values  # PV output, kW
             # base plus flexible load as recorded, kW
-            con = (rows_of_day["alpha_base_kw"] + rows_of_day["flex_kw"]).values
+            con = (rows_of_day["alpha_base_kw"] + rows_of_day["flex_kw"] + rows_of_day["cycle_kw"]).values  # all recorded consumption, cycles included
             rows = []
             for t in range(SESSIONS):
                 wh = (gen[t] - con[t]) * HOURS_PER_SESSION * 1000  # net energy of the session, Wh
@@ -62,12 +62,12 @@ def main():
     with open(args.out, "w") as f:
         json.dump({"sessions": SESSIONS, "unit": "Wh", "baseDay": 0,  # format read by the operator (NETPUTS_JSON)
                    "days": len(sim_days), "profiles": profiles}, f)
-
+    
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "method": "net position = photovoltaic output minus base and flexible consumption, "
-                  "as recorded, with no battery, no load shifting and no optimisation",
-        "profiles": os.path.abspath(args.profiles),
+        "method": "net position = photovoltaic output minus recorded consumption "
+                  "(base, flexible and appliance cycles), with no battery, no load shifting and no optimisation",
+        "profiles": args.profiles,
         "agents": names,
         "days": sim_days,
     }
