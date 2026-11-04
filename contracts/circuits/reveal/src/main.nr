@@ -1,4 +1,4 @@
-// Reveal circuit: proves that a public balance opens a balance commitment, without the blinding.
+// Reveal circuit: proves that a public balance opens a balance commitment, without revealing the blinding.
 // Used by MarketV4.clearReveal (recourse, stage 2) and MarketV4.escape.
 // Build with `nargo compile` here; the operator and generateProof_reveal.ts read target/reveal.json.
 
