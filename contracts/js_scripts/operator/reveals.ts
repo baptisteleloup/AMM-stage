@@ -38,6 +38,7 @@ export class Reveals {
           : await this.stage2(ev.day, ev.slot);
       } catch (e) {
         console.error(`[reveals] day=${ev.day} slot=${ev.slot} stage=${ev.stage}:`, (e as Error).message);
+        served = false; // retried next tick instead of being skipped by the cursor
       }
       
       if (!served) blocked = true; // a request still waits: do not move the cursor past it
@@ -69,6 +70,7 @@ export class Reveals {
   private async stage1(day: number, slot: number): Promise<boolean> {
     const r = await this.chain.revealOf(day, slot);
     if (r.stage1Done) return true; // already answered
+    if (!this.store.openingOf(day, slot)) return false; // openings not stored yet: answer once the day is proven
     const pk = await this.chain.encryptionKeyOf(slot);
     // ECIES to the key given at registration
     const cipher = encrypt(Buffer.from(pk.slice(2), "hex"), this.blobFor(day, slot));
@@ -81,7 +83,7 @@ export class Reveals {
     const r = await this.chain.revealOf(day, slot);
     if (r.stage2Done) return true; // already answered
     const opening = this.store.openingOf(day, slot);
-    if (!opening) throw new Error("no stored opening for this (day, slot)");
+    if (!opening) return false; // openings not stored yet: check again next tick
 
     const jobId = `reveal:${day}:${slot}`;
     const job = this.prover.state(jobId);
