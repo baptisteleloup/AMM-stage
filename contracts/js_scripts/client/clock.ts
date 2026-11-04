@@ -55,7 +55,7 @@ export async function dayView(chain: Chain, id: Identity, store: Store, dayArg?:
 
   const deadlines: Deadline[] = [];
   if (dc.disputeDeadline > 0n) {
-    // the dispute deadline, seen from the member's side
+    // the recourse deadline (disputeDeadline), seen from the member's side
     deadlines.push(mk("time to object", Number(dc.disputeDeadline), now,
       "nothing is paid before this; check the day and object if it does not add up"));
   }

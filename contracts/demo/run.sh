@@ -14,8 +14,8 @@
 #   PACE=4            seconds of wall clock per quarter-hour of market time
 #   ZONE=WCMA         ISO New England load zone the prices come from
 #   DELIVERY_ADDER    per kWh added to the wholesale price to get the retail one
-#   TARIFF_MODE=feed  "feed" for real day-ahead prices, "schedule" for the flat
-#                     French-style tariff
+#   TARIFF_MODE=feed  "feed" for real day-ahead prices, "schedule" for a fixed
+#                     two-tier tariff (off-peak and peak)
 #   SKIP_DATA=1       reuse the profiles already built, go straight to the run
 #   NETPUTS=...       netputs file to run (default demo/data/netputs_raw.json)
 #   FLOOR_EUR=31      floor set for every member

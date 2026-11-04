@@ -25,7 +25,7 @@ ap.add_argument("--mix-p", type=float, default=0.5)
 ap.add_argument("--perturb", type=int, default=0)  # put this many random households back on their solo schedule
 ap.add_argument("--shuffle", action="store_true")  # random order of the households at each pass
 ap.add_argument("--seed", type=int, default=0)  # for mix, perturb and shuffle
-ap.add_argument("--tag", default=None)  # output = out/<tag>.json (default: nash_<rule>.json as before)
+ap.add_argument("--tag", default=None)  # output = out/<tag>.json (default: nash_<rule>[_from_<init>].json)
 args = ap.parse_args()
 rng = np.random.default_rng(args.seed)  # reproducible random starts and orders
 

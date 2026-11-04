@@ -1,6 +1,6 @@
 // Closing of the previous day, one step per tick: midnight freeze (position commitments),
 // batch proofs submitted one by one, openings stored and day-close packets written, then
-// settlement after the dispute deadline, or cancellation when the day cannot settle.
+// settlement after the recourse deadline, or cancellation when the day cannot settle.
 
 import crypto from "node:crypto";
 import { hashNetputs, commitBalance, toHex32 } from "../scenario.js";
@@ -79,12 +79,12 @@ export class Close {
     this.nextAttemptAt.set(day, Date.now() + RETRY_BACKOFF_MS * n);
     console.error(`[close] day ${day}: proof attempt ${n}/${MAX_PROOF_ATTEMPTS} failed: ${why}`);
     if (n >= MAX_PROOF_ATTEMPTS) {
-      console.error(`[close] day ${day}: giving up on proving it; will cancel once the dispute deadline passes`);
+      console.error(`[close] day ${day}: giving up on proving it; will cancel once the recourse deadline passes`);
     }
   }
 
 
-  // Cancels a day that could not be proven, once the dispute deadline has passed.
+  // Cancels a day that could not be proven, once the recourse deadline has passed.
   private async maybeCancel(day: number, dc: { chunksVerified: number; disputeDeadline: bigint }): Promise<boolean> {
     const now = await this.chain.now();
     if (BigInt(now) <= dc.disputeDeadline) return false;
