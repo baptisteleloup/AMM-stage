@@ -24,7 +24,7 @@ Inside `contracts/`:
 | `src/` | `MarketV4.sol` (sessions, midnight freeze, batch verification, recourse, settlement), `Pricing.sol` (MMR, SDR and hyperbolic rules), `GridTariff.sol` (tariff band, schedule and feed modes), `EnergyEuro.sol` (demo settlement token; its name is historical, the experiments use USD prices), generated verifiers |
 | `test/` | Foundry tests: mock suite and FFI suite with real proofs |
 | `circuits/` | `day_chunk` (one day for a batch of 8 members), `reveal` (opens a balance commitment), `poseidon_helper` (off-circuit hashes) |
-| `js_scripts/operator/` | operator daemon (configured only through environment variables) |
+| `js_scripts/operator/` | operator daemon |
 | `js_scripts/client/` | prosumer client, CLI and local web UI |
 | `js_scripts/demo/` | demo orchestrator, deployment, price and floor posting, chain measurements |
 | `js_scripts/besu/` | watchers and reports of the Besu experiments |
